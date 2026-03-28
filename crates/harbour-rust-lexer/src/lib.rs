@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
     pub offset: usize,
@@ -129,6 +131,28 @@ pub struct LexError {
     pub kind: LexErrorKind,
     pub span: Span,
     pub message: String,
+}
+
+impl LexError {
+    pub fn line(&self) -> usize {
+        self.span.start.line
+    }
+
+    pub fn column(&self) -> usize {
+        self.span.start.column
+    }
+}
+
+impl fmt::Display for LexError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} at line {}, column {}",
+            self.message,
+            self.line(),
+            self.column()
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -874,6 +898,50 @@ mod tests {
                 TokenKind::Identifier,
                 TokenKind::Eof,
             ]
+        );
+    }
+
+    #[test]
+    fn invalid_character_reports_line_and_column() {
+        let lexed = lex("PROCEDURE Main()\n@\n~");
+        assert_eq!(lexed.errors.len(), 1);
+        assert_eq!(
+            lexed.errors[0].kind,
+            super::LexErrorKind::InvalidCharacter('~')
+        );
+        assert_eq!(lexed.errors[0].line(), 3);
+        assert_eq!(lexed.errors[0].column(), 1);
+        assert_eq!(
+            lexed.errors[0].to_string(),
+            "invalid character `~` at line 3, column 1"
+        );
+    }
+
+    #[test]
+    fn unterminated_string_reports_origin() {
+        let lexed = lex("\"hello");
+        assert_eq!(lexed.errors.len(), 1);
+        assert_eq!(
+            lexed.errors[0].kind,
+            super::LexErrorKind::UnterminatedString
+        );
+        assert_eq!(lexed.errors[0].line(), 1);
+        assert_eq!(lexed.errors[0].column(), 1);
+    }
+
+    #[test]
+    fn unterminated_block_comment_reports_origin() {
+        let lexed = lex("/* comment");
+        assert_eq!(lexed.errors.len(), 1);
+        assert_eq!(
+            lexed.errors[0].kind,
+            super::LexErrorKind::UnterminatedBlockComment
+        );
+        assert_eq!(lexed.errors[0].line(), 1);
+        assert_eq!(lexed.errors[0].column(), 1);
+        assert_eq!(
+            lexed.errors[0].to_string(),
+            "unterminated block comment at line 1, column 1"
         );
     }
 }
