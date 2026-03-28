@@ -1,4 +1,4 @@
-use std::{error::Error, fmt};
+use std::{cmp::Ordering, error::Error, fmt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
@@ -101,6 +101,130 @@ impl Value {
             Self::String(value) => value.clone(),
         }
     }
+
+    pub fn add(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        match (self, rhs) {
+            (Self::String(left), Self::String(right)) => {
+                let mut value = left.clone();
+                value.push_str(right);
+                Ok(Self::String(value))
+            }
+            _ => match self.numeric_pair(rhs, "add")? {
+                NumericPair::Integers(left, right) => Ok(Self::Integer(left + right)),
+                NumericPair::Floats(left, right) => Ok(Self::Float(left + right)),
+            },
+        }
+    }
+
+    pub fn subtract(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        match self.numeric_pair(rhs, "subtract")? {
+            NumericPair::Integers(left, right) => Ok(Self::Integer(left - right)),
+            NumericPair::Floats(left, right) => Ok(Self::Float(left - right)),
+        }
+    }
+
+    pub fn multiply(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        match self.numeric_pair(rhs, "multiply")? {
+            NumericPair::Integers(left, right) => Ok(Self::Integer(left * right)),
+            NumericPair::Floats(left, right) => Ok(Self::Float(left * right)),
+        }
+    }
+
+    pub fn divide(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        let (left, right) = self.numeric_pair_as_float(rhs, "divide")?;
+        if right == 0.0 {
+            return Err(RuntimeError::division_by_zero());
+        }
+
+        Ok(Self::Float(left / right))
+    }
+
+    pub fn equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        let result = match (self, rhs) {
+            (Self::Nil, Self::Nil) => true,
+            (Self::Nil, _) | (_, Self::Nil) => false,
+            (Self::Logical(left), Self::Logical(right)) => left == right,
+            (Self::String(left), Self::String(right)) => left == right,
+            _ => {
+                if let Ok((left, right)) = self.numeric_pair_as_float(rhs, "compare equality") {
+                    left == right
+                } else {
+                    return Err(RuntimeError::binary_operator_mismatch(
+                        "compare equality",
+                        self.kind(),
+                        rhs.kind(),
+                    ));
+                }
+            }
+        };
+
+        Ok(Self::Logical(result))
+    }
+
+    pub fn not_equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        match self.equals(rhs)? {
+            Self::Logical(value) => Ok(Self::Logical(!value)),
+            _ => unreachable!("equals always returns Value::Logical"),
+        }
+    }
+
+    pub fn less_than(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        self.compare_order(rhs, "compare ordering")
+            .map(|ordering| Self::Logical(ordering == Ordering::Less))
+    }
+
+    pub fn less_than_or_equal(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        self.compare_order(rhs, "compare ordering")
+            .map(|ordering| Self::Logical(ordering != Ordering::Greater))
+    }
+
+    pub fn greater_than(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        self.compare_order(rhs, "compare ordering")
+            .map(|ordering| Self::Logical(ordering == Ordering::Greater))
+    }
+
+    pub fn greater_than_or_equal(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        self.compare_order(rhs, "compare ordering")
+            .map(|ordering| Self::Logical(ordering != Ordering::Less))
+    }
+
+    fn numeric_pair(&self, rhs: &Self, operation: &str) -> Result<NumericPair, RuntimeError> {
+        match (self, rhs) {
+            (Self::Integer(left), Self::Integer(right)) => Ok(NumericPair::Integers(*left, *right)),
+            _ => self
+                .numeric_pair_as_float(rhs, operation)
+                .map(|(left, right)| NumericPair::Floats(left, right)),
+        }
+    }
+
+    fn numeric_pair_as_float(
+        &self,
+        rhs: &Self,
+        operation: &str,
+    ) -> Result<(f64, f64), RuntimeError> {
+        match (self, rhs) {
+            (Self::Integer(left), Self::Integer(right)) => Ok((*left as f64, *right as f64)),
+            (Self::Integer(left), Self::Float(right)) => Ok((*left as f64, *right)),
+            (Self::Float(left), Self::Integer(right)) => Ok((*left, *right as f64)),
+            (Self::Float(left), Self::Float(right)) => Ok((*left, *right)),
+            _ => Err(RuntimeError::binary_operator_mismatch(
+                operation,
+                self.kind(),
+                rhs.kind(),
+            )),
+        }
+    }
+
+    fn compare_order(&self, rhs: &Self, operation: &str) -> Result<Ordering, RuntimeError> {
+        match (self, rhs) {
+            (Self::String(left), Self::String(right)) => Ok(left.cmp(right)),
+            _ => {
+                let (left, right) = self.numeric_pair_as_float(rhs, operation)?;
+                left.partial_cmp(&right)
+                    .ok_or_else(RuntimeError::invalid_float_comparison)
+            }
+        }
+    }
 }
 
 impl From<()> for Value {
@@ -186,6 +310,40 @@ impl RuntimeError {
             actual: Some(actual),
         }
     }
+
+    pub fn binary_operator_mismatch(message: &str, left: ValueKind, right: ValueKind) -> Self {
+        Self {
+            message: format!(
+                "{} with {} and {}",
+                message,
+                left.type_name(),
+                right.type_name()
+            ),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn division_by_zero() -> Self {
+        Self {
+            message: "divide by zero".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn invalid_float_comparison() -> Self {
+        Self {
+            message: "compare ordering with non-orderable Float".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+}
+
+enum NumericPair {
+    Integers(i64, i64),
+    Floats(f64, f64),
 }
 
 impl fmt::Display for RuntimeError {
@@ -253,5 +411,85 @@ mod tests {
         assert_eq!(Value::from(false).to_output_string(), ".F.");
         assert_eq!(Value::from(12_i64).to_output_string(), "12");
         assert_eq!(Value::from("abc").to_output_string(), "abc");
+    }
+
+    #[test]
+    fn arithmetic_operations_cover_integer_float_and_string_cases() {
+        assert_eq!(
+            Value::from(2_i64).add(&Value::from(3_i64)),
+            Ok(Value::from(5_i64))
+        );
+        assert_eq!(
+            Value::from(2_i64).add(&Value::from(0.5_f64)),
+            Ok(Value::from(2.5_f64))
+        );
+        assert_eq!(
+            Value::from("har").add(&Value::from("bour")),
+            Ok(Value::from("harbour"))
+        );
+        assert_eq!(
+            Value::from(6_i64).subtract(&Value::from(2_i64)),
+            Ok(Value::from(4_i64))
+        );
+        assert_eq!(
+            Value::from(4_i64).multiply(&Value::from(2.5_f64)),
+            Ok(Value::from(10.0_f64))
+        );
+        assert_eq!(
+            Value::from(9_i64).divide(&Value::from(2_i64)),
+            Ok(Value::from(4.5_f64))
+        );
+    }
+
+    #[test]
+    fn comparison_operations_cover_numbers_and_strings() {
+        assert_eq!(
+            Value::from(2_i64).less_than(&Value::from(3_i64)),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from(3_i64).greater_than_or_equal(&Value::from(3.0_f64)),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from("abc").equals(&Value::from("abc")),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from("abc").less_than(&Value::from("abd")),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::Nil.not_equals(&Value::from(false)),
+            Ok(Value::from(true))
+        );
+    }
+
+    #[test]
+    fn invalid_runtime_operations_report_errors() {
+        assert_eq!(
+            Value::from(true).add(&Value::from(1_i64)),
+            Err(RuntimeError {
+                message: "add with Logical and Integer".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            Value::from(1_i64).divide(&Value::from(0_i64)),
+            Err(RuntimeError {
+                message: "divide by zero".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            Value::from(true).less_than(&Value::from(false)),
+            Err(RuntimeError {
+                message: "compare ordering with Logical and Logical".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
     }
 }

@@ -36,6 +36,14 @@ Na primeira slice da Fase 4, o runtime cobre:
 - promoção de `Integer` para `Float`,
 - formatação básica de saída para `NIL`, `.T.`, `.F.`, números e strings.
 
+Na segunda slice da Fase 4, entram operações básicas:
+
+- `+`, `-`, `*`, `/` para números,
+- concatenação `String + String`,
+- comparações `=`, `<>`, `<`, `<=`, `>`, `>=` para números,
+- igualdade e ordenação léxica básica para strings,
+- erro estruturado para combinações ainda não suportadas e divisão por zero.
+
 ## Ambientes
 
 Precisaremos de pelo menos:
