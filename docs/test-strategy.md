@@ -84,6 +84,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/pp/include_root.prg` -> preprocessamento com `#define` e `#include` simples
+- `tests/fixtures/pp/define_root.prg` -> expansão simples de `#define` objeto
 
 ## Critérios por PR
 

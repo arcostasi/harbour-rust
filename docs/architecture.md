@@ -152,6 +152,12 @@ Na primeira slice da Fase 6, `harbour-rust-pp` começa com uma superfície expl�
 - mapeamento de linhas de saída para o arquivo e a linha de origem,
 - inclusão textual simples antes da futura expansão token-based.
 
+Na slice seguinte, o PP passa a expandir `#define` objeto no source normal:
+
+- expansão case-insensitive por identificador inteiro,
+- sem tocar em strings e comentários de linha,
+- sem expandir macros parametrizadas ainda.
+
 ### 4. Compatibilidade incremental por dialeto
 
 - baseline inicial: subconjunto Clipper procedural,

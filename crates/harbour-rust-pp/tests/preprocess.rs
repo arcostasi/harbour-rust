@@ -57,3 +57,26 @@ fn preprocesses_include_fixture_with_filesystem_resolver() {
         ]
     );
 }
+
+#[test]
+fn preprocesses_object_like_define_fixture() {
+    let root = fixture_path("define_root.prg");
+    let expected = fs::read_to_string(fixture_path("define_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(
+        output
+            .defines
+            .iter()
+            .map(|define| define.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["APP_NAME", "GREETING"]
+    );
+}

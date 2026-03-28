@@ -250,7 +250,10 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
         for (index, raw_line) in split_lines(&source.text).enumerate() {
             let line_number = index + 1;
             match parse_directive(&source.path, raw_line, line_number) {
-                None => self.push_output_line(&source.path, line_number, raw_line),
+                None => {
+                    let expanded_line = expand_object_like_defines(raw_line, &self.defines);
+                    self.push_output_line(&source.path, line_number, &expanded_line);
+                }
                 Some(Ok(Directive::Define(define))) => self.defines.push(define),
                 Some(Ok(Directive::Include(include))) => {
                     match self.include_resolver.resolve_include(&source, &include) {
@@ -550,6 +553,111 @@ fn display_path(path: &Path) -> String {
     }
 }
 
+fn expand_object_like_defines(line: &str, defines: &[DefineDirective]) -> String {
+    let object_like_defines = defines
+        .iter()
+        .filter(|define| define.parameters.is_none())
+        .collect::<Vec<_>>();
+
+    if object_like_defines.is_empty() {
+        return line.to_owned();
+    }
+
+    let mut output = String::with_capacity(line.len());
+    let mut cursor = 0;
+
+    while cursor < line.len() {
+        let ch = char_at(line, cursor);
+        if is_string_delimiter(ch) {
+            cursor = copy_string_literal(line, cursor, ch, &mut output);
+            continue;
+        }
+
+        if starts_line_comment(line, cursor) {
+            output.push_str(&line[cursor..]);
+            break;
+        }
+
+        if is_identifier_start(ch) {
+            let end = advance_identifier(line, cursor);
+            let identifier = &line[cursor..end];
+            let normalized = identifier.to_ascii_uppercase();
+            if let Some(define) = object_like_defines
+                .iter()
+                .find(|define| define.normalized_name == normalized)
+            {
+                output.push_str(&define.replacement);
+            } else {
+                output.push_str(identifier);
+            }
+            cursor = end;
+            continue;
+        }
+
+        output.push(ch);
+        cursor += ch.len_utf8();
+    }
+
+    output
+}
+
+fn char_at(text: &str, offset: usize) -> char {
+    text[offset..].chars().next().expect("valid utf-8 boundary")
+}
+
+fn advance_identifier(text: &str, start: usize) -> usize {
+    let mut end = start;
+    for ch in text[start..].chars() {
+        if !is_identifier_continue(ch) {
+            break;
+        }
+        end += ch.len_utf8();
+    }
+    end
+}
+
+fn is_string_delimiter(ch: char) -> bool {
+    matches!(ch, '"' | '\'' | '`')
+}
+
+fn copy_string_literal(text: &str, start: usize, delimiter: char, output: &mut String) -> usize {
+    let mut cursor = start;
+    let mut escaped = false;
+    let mut saw_opening_delimiter = false;
+
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+        output.push(ch);
+        cursor += ch.len_utf8();
+
+        if !saw_opening_delimiter {
+            saw_opening_delimiter = true;
+            continue;
+        }
+
+        if escaped {
+            escaped = false;
+            continue;
+        }
+
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+
+        if ch == delimiter {
+            break;
+        }
+    }
+
+    cursor
+}
+
+fn starts_line_comment(text: &str, start: usize) -> bool {
+    let tail = &text[start..];
+    tail.starts_with("//") || tail.starts_with("&&")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -610,7 +718,7 @@ mod tests {
     fn resolves_includes_and_tracks_line_origins() {
         let resolver = MapIncludeResolver::default().with_file(
             PathBuf::from("fixtures/shared.ch"),
-            "#define GREETING \"hello\"\n? \"from include\"\n",
+            "#define GREETING \"hello\"\n? GREETING\n",
         );
         let source = SourceFile::new(
             PathBuf::from("fixtures/main.prg"),
@@ -620,10 +728,7 @@ mod tests {
         let output = Preprocessor::new(resolver).preprocess(source);
 
         assert!(output.errors.is_empty());
-        assert_eq!(
-            output.text,
-            "? \"from include\"\nPROCEDURE Main()\nRETURN\n"
-        );
+        assert_eq!(output.text, "? \"hello\"\nPROCEDURE Main()\nRETURN\n");
         assert_eq!(output.defines.len(), 2);
         assert_eq!(output.defines[0].name, "APP_NAME");
         assert_eq!(output.defines[1].name, "GREETING");
@@ -670,5 +775,41 @@ mod tests {
             output.errors[0].message,
             "expected valid define name after '#define'"
         );
+    }
+
+    #[test]
+    fn expands_object_like_defines_case_insensitively_in_normal_lines() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define APP_NAME \"harbour-rust\"\n#DEFINE GREETING \"hello\"\n? app_name\n? GREETING\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "? \"harbour-rust\"\n? \"hello\"\n");
+    }
+
+    #[test]
+    fn does_not_expand_defines_inside_strings_or_comments() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define APP_NAME \"harbour-rust\"\n? \"APP_NAME\"\n&& APP_NAME\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "? \"APP_NAME\"\n&& APP_NAME\n");
+    }
+
+    #[test]
+    fn does_not_expand_function_like_defines_in_normal_lines() {
+        let source = SourceFile::new(PathBuf::from("main.prg"), "#define WRAP(x) x\n? WRAP\n");
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "? WRAP\n");
     }
 }

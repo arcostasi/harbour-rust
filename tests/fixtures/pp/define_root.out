@@ -1,4 +1,6 @@
-? "hello"
 PROCEDURE Main()
    ? "harbour-rust"
+   ? "hello"
+   ? "APP_NAME"
+   && GREETING
 RETURN
