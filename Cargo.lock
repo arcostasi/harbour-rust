@@ -66,6 +66,11 @@ version = "0.1.0"
 [[package]]
 name = "harbour-rust-sema"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-hir",
+ "harbour-rust-lexer",
+ "harbour-rust-parser",
+]
 
 [[package]]
 name = "harbour-rust-tests"

@@ -1,14 +1,564 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use std::{collections::HashMap, fmt};
+
+use harbour_rust_hir as hir;
+use harbour_rust_lexer::Span;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SemanticError {
+    pub message: String,
+    pub span: Span,
+}
+
+impl SemanticError {
+    pub fn line(&self) -> usize {
+        self.span.start.line
+    }
+
+    pub fn column(&self) -> usize {
+        self.span.start.column
+    }
+}
+
+impl fmt::Display for SemanticError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} at line {}, column {}",
+            self.message,
+            self.line(),
+            self.column()
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Analysis {
+    pub routine_symbols: Vec<RoutineSymbol>,
+    pub routines: Vec<RoutineAnalysis>,
+    pub errors: Vec<SemanticError>,
+}
+
+pub fn analyze_program(program: &hir::Program) -> Analysis {
+    let mut errors = Vec::new();
+    let mut routine_lookup = HashMap::new();
+    let mut routine_symbols: Vec<RoutineSymbol> = Vec::with_capacity(program.routines.len());
+
+    for (id, routine) in program.routines.iter().enumerate() {
+        let symbol = RoutineSymbol {
+            id,
+            name: routine.name.text.clone(),
+            span: routine.name.span,
+        };
+        let key = normalize_name(&symbol.name);
+        if let Some(existing) = routine_lookup.insert(key, id) {
+            let previous = &routine_symbols[existing];
+            errors.push(SemanticError {
+                message: format!(
+                    "duplicate routine symbol `{}`; first declared at line {}, column {}",
+                    symbol.name, previous.span.start.line, previous.span.start.column
+                ),
+                span: symbol.span,
+            });
+        }
+        routine_symbols.push(symbol);
+    }
+
+    let routines = program
+        .routines
+        .iter()
+        .enumerate()
+        .map(|(routine_id, routine)| {
+            analyze_routine(
+                routine_id,
+                routine,
+                &routine_lookup,
+                &routine_symbols,
+                &mut errors,
+            )
+        })
+        .collect();
+
+    Analysis {
+        routine_symbols,
+        routines,
+        errors,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoutineSymbol {
+    pub id: usize,
+    pub name: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoutineAnalysis {
+    pub routine_id: usize,
+    pub locals: Vec<LocalSymbol>,
+    pub resolutions: Vec<SymbolResolution>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalSymbol {
+    pub id: usize,
+    pub kind: LocalSymbolKind,
+    pub name: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalSymbolKind {
+    Parameter,
+    Local,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SymbolResolution {
+    pub name: String,
+    pub span: Span,
+    pub binding: Binding,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Binding {
+    Routine(usize),
+    Local(usize),
+}
+
+struct RoutineAnalyzer<'a> {
+    routine_name: &'a str,
+    routine_lookup: &'a HashMap<String, usize>,
+    locals: Vec<LocalSymbol>,
+    local_lookup: HashMap<String, usize>,
+    resolutions: Vec<SymbolResolution>,
+    errors: &'a mut Vec<SemanticError>,
+}
+
+fn analyze_routine(
+    routine_id: usize,
+    routine: &hir::Routine,
+    routine_lookup: &HashMap<String, usize>,
+    routine_symbols: &[RoutineSymbol],
+    errors: &mut Vec<SemanticError>,
+) -> RoutineAnalysis {
+    let mut analyzer = RoutineAnalyzer {
+        routine_name: &routine_symbols[routine_id].name,
+        routine_lookup,
+        locals: Vec::new(),
+        local_lookup: HashMap::new(),
+        resolutions: Vec::new(),
+        errors,
+    };
+
+    for parameter in &routine.params {
+        analyzer.declare_local(parameter, LocalSymbolKind::Parameter);
+    }
+
+    for statement in &routine.body {
+        analyzer.analyze_statement(statement);
+    }
+
+    RoutineAnalysis {
+        routine_id,
+        locals: analyzer.locals,
+        resolutions: analyzer.resolutions,
+    }
+}
+
+impl<'a> RoutineAnalyzer<'a> {
+    fn declare_local(&mut self, symbol: &hir::Symbol, kind: LocalSymbolKind) {
+        let key = normalize_name(&symbol.text);
+        if let Some(existing) = self.local_lookup.get(&key) {
+            let previous = &self.locals[*existing];
+            self.errors.push(SemanticError {
+                message: format!(
+                    "duplicate local symbol `{}` in routine `{}`; first declared at line {}, column {}",
+                    symbol.text,
+                    self.routine_name,
+                    previous.span.start.line,
+                    previous.span.start.column
+                ),
+                span: symbol.span,
+            });
+            return;
+        }
+
+        let id = self.locals.len();
+        self.locals.push(LocalSymbol {
+            id,
+            kind,
+            name: symbol.text.clone(),
+            span: symbol.span,
+        });
+        self.local_lookup.insert(key, id);
+    }
+
+    fn analyze_statement(&mut self, statement: &hir::Statement) {
+        match statement {
+            hir::Statement::Local(statement) => {
+                for binding in &statement.bindings {
+                    if let Some(initializer) = &binding.initializer {
+                        self.analyze_expression(initializer, ExpressionContext::Value);
+                    }
+                    self.declare_local(&binding.name, LocalSymbolKind::Local);
+                }
+            }
+            hir::Statement::If(statement) => {
+                for branch in &statement.branches {
+                    self.analyze_expression(&branch.condition, ExpressionContext::Value);
+                    for statement in &branch.body {
+                        self.analyze_statement(statement);
+                    }
+                }
+                if let Some(else_branch) = &statement.else_branch {
+                    for statement in else_branch {
+                        self.analyze_statement(statement);
+                    }
+                }
+            }
+            hir::Statement::DoWhile(statement) => {
+                self.analyze_expression(&statement.condition, ExpressionContext::Value);
+                for statement in &statement.body {
+                    self.analyze_statement(statement);
+                }
+            }
+            hir::Statement::For(statement) => {
+                self.resolve_local_symbol(&statement.variable);
+                self.analyze_expression(&statement.initial_value, ExpressionContext::Value);
+                self.analyze_expression(&statement.limit, ExpressionContext::Value);
+                if let Some(step) = &statement.step {
+                    self.analyze_expression(step, ExpressionContext::Value);
+                }
+                for statement in &statement.body {
+                    self.analyze_statement(statement);
+                }
+            }
+            hir::Statement::Return(statement) => {
+                if let Some(value) = &statement.value {
+                    self.analyze_expression(value, ExpressionContext::Value);
+                }
+            }
+            hir::Statement::Print(statement) => {
+                for argument in &statement.arguments {
+                    self.analyze_expression(argument, ExpressionContext::Value);
+                }
+            }
+            hir::Statement::Evaluate(statement) => {
+                self.analyze_expression(&statement.expression, ExpressionContext::Value);
+            }
+        }
+    }
+
+    fn analyze_expression(&mut self, expression: &hir::Expression, context: ExpressionContext) {
+        match expression {
+            hir::Expression::Symbol(symbol) => match context {
+                ExpressionContext::Value => {
+                    self.resolve_local_symbol(symbol);
+                }
+                ExpressionContext::CallCallee => {
+                    self.resolve_callable_symbol(symbol);
+                }
+            },
+            hir::Expression::Nil(_)
+            | hir::Expression::Logical(_)
+            | hir::Expression::Integer(_)
+            | hir::Expression::Float(_)
+            | hir::Expression::String(_)
+            | hir::Expression::Error(_) => {}
+            hir::Expression::Call(expression) => {
+                self.analyze_expression(&expression.callee, ExpressionContext::CallCallee);
+                for argument in &expression.arguments {
+                    self.analyze_expression(argument, ExpressionContext::Value);
+                }
+            }
+            hir::Expression::Assign(expression) => {
+                self.resolve_local_symbol(&expression.target);
+                self.analyze_expression(&expression.value, ExpressionContext::Value);
+            }
+            hir::Expression::Binary(expression) => {
+                self.analyze_expression(&expression.left, ExpressionContext::Value);
+                self.analyze_expression(&expression.right, ExpressionContext::Value);
+            }
+            hir::Expression::Unary(expression) => {
+                self.analyze_expression(&expression.operand, ExpressionContext::Value);
+            }
+            hir::Expression::Postfix(expression) => {
+                self.analyze_expression(&expression.operand, ExpressionContext::Value);
+            }
+        }
+    }
+
+    fn resolve_local_symbol(&mut self, symbol: &hir::Symbol) {
+        let key = normalize_name(&symbol.text);
+        if let Some(local_id) = self.local_lookup.get(&key) {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::Local(*local_id),
+            });
+            return;
+        }
+
+        self.errors.push(SemanticError {
+            message: format!(
+                "unresolved local symbol `{}` in routine `{}`",
+                symbol.text, self.routine_name
+            ),
+            span: symbol.span,
+        });
+    }
+
+    fn resolve_callable_symbol(&mut self, symbol: &hir::Symbol) {
+        let local_key = normalize_name(&symbol.text);
+        if let Some(local_id) = self.local_lookup.get(&local_key) {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::Local(*local_id),
+            });
+            return;
+        }
+
+        if let Some(routine_id) = self.routine_lookup.get(&local_key) {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::Routine(*routine_id),
+            });
+            return;
+        }
+
+        self.errors.push(SemanticError {
+            message: format!(
+                "unresolved callable symbol `{}` in routine `{}`",
+                symbol.text, self.routine_name
+            ),
+            span: symbol.span,
+        });
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ExpressionContext {
+    Value,
+    CallCallee,
+}
+
+fn normalize_name(name: &str) -> String {
+    name.to_ascii_lowercase()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use harbour_rust_hir as hir;
+    use harbour_rust_lexer::{Position, Span};
+
+    use crate::{
+        Analysis, Binding, LocalSymbol, LocalSymbolKind, RoutineAnalysis, RoutineSymbol,
+        SemanticError, SymbolResolution, analyze_program,
+    };
+
+    fn span(
+        start_offset: usize,
+        start_line: usize,
+        start_column: usize,
+        end_offset: usize,
+        end_line: usize,
+        end_column: usize,
+    ) -> Span {
+        Span {
+            start: Position {
+                offset: start_offset,
+                line: start_line,
+                column: start_column,
+            },
+            end: Position {
+                offset: end_offset,
+                line: end_line,
+                column: end_column,
+            },
+        }
+    }
+
+    fn symbol(text: &str, span: Span) -> hir::Symbol {
+        hir::Symbol {
+            text: text.to_owned(),
+            span,
+        }
+    }
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn resolves_routine_calls_and_local_symbols() {
+        let program = hir::Program {
+            routines: vec![
+                hir::Routine {
+                    kind: hir::RoutineKind::Procedure,
+                    name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                    params: vec![symbol("Value", span(10, 1, 11, 15, 1, 16))],
+                    body: vec![
+                        hir::Statement::Evaluate(hir::ExpressionStatement {
+                            expression: hir::Expression::Call(hir::CallExpression {
+                                callee: Box::new(hir::Expression::Symbol(symbol(
+                                    "helper",
+                                    span(20, 2, 1, 26, 2, 7),
+                                ))),
+                                arguments: vec![hir::Expression::Symbol(symbol(
+                                    "value",
+                                    span(27, 2, 8, 32, 2, 13),
+                                ))],
+                                span: span(20, 2, 1, 33, 2, 14),
+                            }),
+                            span: span(20, 2, 1, 33, 2, 14),
+                        }),
+                        hir::Statement::Local(hir::LocalStatement {
+                            bindings: vec![hir::LocalBinding {
+                                name: symbol("total", span(40, 3, 7, 45, 3, 12)),
+                                initializer: Some(hir::Expression::Symbol(symbol(
+                                    "VALUE",
+                                    span(49, 3, 16, 54, 3, 21),
+                                ))),
+                                span: span(40, 3, 7, 54, 3, 21),
+                            }],
+                            span: span(34, 3, 1, 54, 3, 21),
+                        }),
+                        hir::Statement::Return(hir::ReturnStatement {
+                            value: Some(hir::Expression::Symbol(symbol(
+                                "Total",
+                                span(62, 4, 8, 67, 4, 13),
+                            ))),
+                            span: span(55, 4, 1, 67, 4, 13),
+                        }),
+                    ],
+                    span: span(0, 1, 1, 67, 4, 13),
+                },
+                hir::Routine {
+                    kind: hir::RoutineKind::Function,
+                    name: symbol("Helper", span(68, 6, 1, 74, 6, 7)),
+                    params: vec![symbol("x", span(75, 6, 8, 76, 6, 9))],
+                    body: Vec::new(),
+                    span: span(68, 6, 1, 76, 6, 9),
+                },
+            ],
+        };
+
+        let analysis = analyze_program(&program);
+
+        assert_eq!(
+            analysis,
+            Analysis {
+                routine_symbols: vec![
+                    RoutineSymbol {
+                        id: 0,
+                        name: "Main".to_owned(),
+                        span: span(0, 1, 1, 4, 1, 5),
+                    },
+                    RoutineSymbol {
+                        id: 1,
+                        name: "Helper".to_owned(),
+                        span: span(68, 6, 1, 74, 6, 7),
+                    },
+                ],
+                routines: vec![
+                    RoutineAnalysis {
+                        routine_id: 0,
+                        locals: vec![
+                            LocalSymbol {
+                                id: 0,
+                                kind: LocalSymbolKind::Parameter,
+                                name: "Value".to_owned(),
+                                span: span(10, 1, 11, 15, 1, 16),
+                            },
+                            LocalSymbol {
+                                id: 1,
+                                kind: LocalSymbolKind::Local,
+                                name: "total".to_owned(),
+                                span: span(40, 3, 7, 45, 3, 12),
+                            },
+                        ],
+                        resolutions: vec![
+                            SymbolResolution {
+                                name: "helper".to_owned(),
+                                span: span(20, 2, 1, 26, 2, 7),
+                                binding: Binding::Routine(1),
+                            },
+                            SymbolResolution {
+                                name: "value".to_owned(),
+                                span: span(27, 2, 8, 32, 2, 13),
+                                binding: Binding::Local(0),
+                            },
+                            SymbolResolution {
+                                name: "VALUE".to_owned(),
+                                span: span(49, 3, 16, 54, 3, 21),
+                                binding: Binding::Local(0),
+                            },
+                            SymbolResolution {
+                                name: "Total".to_owned(),
+                                span: span(62, 4, 8, 67, 4, 13),
+                                binding: Binding::Local(1),
+                            },
+                        ],
+                    },
+                    RoutineAnalysis {
+                        routine_id: 1,
+                        locals: vec![LocalSymbol {
+                            id: 0,
+                            kind: LocalSymbolKind::Parameter,
+                            name: "x".to_owned(),
+                            span: span(75, 6, 8, 76, 6, 9),
+                        }],
+                        resolutions: Vec::new(),
+                    },
+                ],
+                errors: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn reports_duplicate_and_unresolved_local_symbols() {
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: vec![symbol("value", span(5, 1, 6, 10, 1, 11))],
+                body: vec![
+                    hir::Statement::Local(hir::LocalStatement {
+                        bindings: vec![hir::LocalBinding {
+                            name: symbol("Value", span(11, 2, 7, 16, 2, 12)),
+                            initializer: None,
+                            span: span(11, 2, 7, 16, 2, 12),
+                        }],
+                        span: span(11, 2, 1, 16, 2, 12),
+                    }),
+                    hir::Statement::Return(hir::ReturnStatement {
+                        value: Some(hir::Expression::Symbol(symbol(
+                            "missing",
+                            span(17, 3, 8, 24, 3, 15),
+                        ))),
+                        span: span(17, 3, 1, 24, 3, 15),
+                    }),
+                ],
+                span: span(0, 1, 1, 24, 3, 15),
+            }],
+        };
+
+        let analysis = analyze_program(&program);
+
+        assert_eq!(
+            analysis.errors,
+            vec![
+                SemanticError {
+                    message:
+                        "duplicate local symbol `Value` in routine `Main`; first declared at line 1, column 6"
+                            .to_owned(),
+                    span: span(11, 2, 7, 16, 2, 12),
+                },
+                SemanticError {
+                    message: "unresolved local symbol `missing` in routine `Main`".to_owned(),
+                    span: span(17, 3, 8, 24, 3, 15),
+                },
+            ]
+        );
     }
 }

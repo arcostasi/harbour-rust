@@ -73,6 +73,17 @@ Na Fase 3, a HIR começa como lowering direto da AST procedural já suportada:
 
 Isso mantém a HIR útil para a semântica sem antecipar tabela de símbolos ou tipagem.
 
+### 1.2. Sema inicial com side tables
+
+O primeiro slice de `sema` trabalha sobre a HIR sem reescrevê-la:
+
+- tabela global de rotinas,
+- tabela local por rotina para parâmetros e `LOCAL`,
+- resolução básica case-insensitive de símbolos,
+- diagnósticos para símbolo ausente e duplicação local.
+
+As decisões de binding ficam em side tables para manter a HIR pequena e estável nesta fase.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:

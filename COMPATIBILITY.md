@@ -12,8 +12,8 @@ Status:
 | Recurso | Dialeto | Status | Fase | Oráculo upstream | Teste esperado | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
 | `PROCEDURE Main()` | Clipper | partial | 2 | `tests/hello.prg` | parser + snapshot | sintaxe procedural mínima e AST cobertas na Fase 2; integração e execução ainda pendentes |
-| `FUNCTION` | Clipper | partial | 2 | `src/compiler/harbour.y` | unit + snapshot | assinatura simples parseia; semântica e execução ainda pendentes |
-| `LOCAL` | Clipper | partial | 2/3 | `harbour.y` | parser + sema | sintaxe e AST cobertas na Fase 2; semântica ainda pendente |
+| `FUNCTION` | Clipper | partial | 2/3 | `src/compiler/harbour.y` | unit + snapshot | assinatura simples parseia; resolução básica de chamadas por nome entra na Fase 3 |
+| `LOCAL` | Clipper | partial | 2/3 | `harbour.y` | parser + sema | sintaxe e AST cobertas na Fase 2; resolução básica de parâmetros e `LOCAL` entra na Fase 3 |
 | `RETURN` | Clipper | partial | 2 | `tests/returns.prg` | parser + snapshot | `RETURN` vazio e com expressão parseiam; integração e runtime ainda pendentes |
 | `?` / `QOut()` | Clipper | partial | 2/4 | `doc/pcode.txt`, `tests/hello.prg` | parser + runtime | sintaxe de `?` coberta na Fase 2; builtin e execução seguem para runtime |
 | `IF / ELSE / ENDIF` | Clipper | partial | 2 | `harbour.y` | parser + run | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
