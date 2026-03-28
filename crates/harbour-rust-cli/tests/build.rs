@@ -66,3 +66,32 @@ fn build_command_reports_codegen_error_for_while_fixture() {
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
+
+#[test]
+fn run_command_executes_hello_example_with_host_compiler() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("examples/hello.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "Hello, world!\n");
+}
+
+#[test]
+fn run_command_reports_codegen_error_for_while_fixture() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/while.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(!output.status.success(), "expected failing run status");
+
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("codegen-c failed"));
+    assert!(stderr.contains("C emission for DO WHILE is not implemented yet"));
+}

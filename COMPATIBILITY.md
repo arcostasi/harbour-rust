@@ -11,11 +11,11 @@ Status:
 
 | Recurso | Dialeto | Status | Fase | Oráculo upstream | Teste esperado | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
-| `PROCEDURE Main()` | Clipper | partial | 2 | `tests/hello.prg` | parser + snapshot | sintaxe procedural mínima e AST cobertas na Fase 2; integração e execução ainda pendentes |
+| `PROCEDURE Main()` | Clipper | partial | 2/5 | `tests/hello.prg` | parser + snapshot + cli run | sintaxe procedural mínima e AST cobertas na Fase 2; `hello.prg` já compila e executa via CLI na Fase 5; cobertura ainda parcial fora do caminho feliz |
 | `FUNCTION` | Clipper | partial | 2/3 | `src/compiler/harbour.y` | unit + snapshot + sema | assinatura simples parseia; resolução básica de chamadas por nome coberta na Fase 3 |
 | `LOCAL` | Clipper | partial | 2/3 | `harbour.y` | parser + sema | sintaxe e AST cobertas na Fase 2; resolução básica de parâmetros e `LOCAL` coberta na Fase 3 |
-| `RETURN` | Clipper | partial | 2/4 | `tests/returns.prg` | parser + snapshot + runtime | `RETURN` vazio e com expressão parseiam; valores de retorno e surface de runtime existem; execução fim a fim ainda pendente |
-| `?` / `QOut()` | Clipper | partial | 2/4 | `doc/pcode.txt`, `tests/hello.prg` | parser + runtime | sintaxe de `?` coberta na Fase 2; formatter, `QOut()` mínimo e dispatch case-insensitive por nome entram na Fase 4; execução fim a fim ainda pendente |
+| `RETURN` | Clipper | partial | 2/4/5 | `tests/returns.prg` | parser + snapshot + runtime + cli run | `RETURN` vazio e com expressão parseiam; valores de retorno e surface de runtime existem; `RETURN` vazio participa do caminho executável de `hello.prg` na Fase 5 |
+| `?` / `QOut()` | Clipper | partial | 2/4/5 | `doc/pcode.txt`, `tests/hello.prg` | parser + runtime + cli run | sintaxe de `?` coberta na Fase 2; formatter, `QOut()` mínimo e dispatch case-insensitive por nome entram na Fase 4; `hello.prg` já executa `QOut()` via compilador C host na Fase 5 |
 | `IF / ELSE / ENDIF` | Clipper | partial | 2 | `harbour.y` | parser + run | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
 | `DO WHILE / ENDDO` | Clipper | partial | 2 | `tests/while.prg` | integração | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
 | `FOR / NEXT` | Clipper | partial | 2 | `harbour.y` | integração | sintaxe e AST cobertas na Fase 2; sem `FOR EACH` e sem execução ainda |

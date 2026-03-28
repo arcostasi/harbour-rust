@@ -75,7 +75,15 @@ Neste ponto, o primeiro slice de CLI para a Fase 5 já oferece geração de C:
 cargo run -p harbour-rust-cli -- build examples/hello.prg --out target/hello.c
 ```
 
-O pipeline atual valida parse, HIR, sema, IR e `codegen-c`, e escreve o `.c` gerado. A compilação com compilador C host entra na próxima slice.
+O pipeline atual valida parse, HIR, sema, IR e `codegen-c`, e escreve o `.c` gerado.
+
+O slice seguinte da CLI já executa `hello.prg` via compilador C host:
+
+```text
+cargo run -p harbour-rust-cli -- run examples/hello.prg
+```
+
+Nesta etapa o `run` detecta `clang`, `gcc` ou `cc`, compila o C gerado com um suporte mínimo de runtime e executa o binário resultante. O suporte de codegen continua parcial para controle de fluxo estruturado.
 
 ## Desenvolvimento
 
