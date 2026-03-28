@@ -103,7 +103,13 @@ impl Emitter {
         );
         self.emit_line("extern bool harbour_value_is_true(harbour_runtime_Value value);");
         self.emit_line(
+            "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);",
@@ -211,8 +217,35 @@ impl Emitter {
                 self.emit_line("}");
             }
             ir::Statement::For(statement) => {
-                self.push_error("C emission for FOR is not implemented yet", statement.span);
-                self.emit_line("/* TODO: emit FOR */");
+                let variable = mangle_symbol(&statement.variable.text);
+                let initial_value = self
+                    .emit_expression(&statement.initial_value)
+                    .unwrap_or_else(|| "harbour_value_nil()".to_owned());
+                let limit = self
+                    .emit_expression(&statement.limit)
+                    .unwrap_or_else(|| "harbour_value_nil()".to_owned());
+                let step = if let Some(step) = &statement.step {
+                    self.emit_expression(step)
+                        .unwrap_or_else(|| "harbour_value_nil()".to_owned())
+                } else {
+                    "harbour_value_from_integer(1LL)".to_owned()
+                };
+
+                self.emit_line(&format!("{} = {};", variable, initial_value));
+                self.emit_line(&format!(
+                    "while (harbour_value_is_true(harbour_value_less_than_or_equal({}, {}))) {{",
+                    variable, limit
+                ));
+                self.indent_level += 1;
+                for nested in &statement.body {
+                    self.emit_statement(nested);
+                }
+                self.emit_line(&format!(
+                    "{} = harbour_value_add({}, {});",
+                    variable, variable, step
+                ));
+                self.indent_level -= 1;
+                self.emit_line("}");
             }
             ir::Statement::Evaluate(statement) => {
                 self.push_error(
@@ -288,9 +321,16 @@ impl Emitter {
                 let right = self.emit_expression(&expression.right)?;
 
                 match expression.operator {
+                    ir::BinaryOperator::Add => {
+                        Some(format!("harbour_value_add({}, {})", left, right))
+                    }
                     ir::BinaryOperator::Less => {
                         Some(format!("harbour_value_less_than({}, {})", left, right))
                     }
+                    ir::BinaryOperator::LessEqual => Some(format!(
+                        "harbour_value_less_than_or_equal({}, {})",
+                        left, right
+                    )),
                     _ => {
                         self.push_error(
                             "C emission for this binary operator is not implemented yet",
@@ -511,7 +551,9 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_from_float(double value);\n",
                     "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);\n",
                     "extern bool harbour_value_is_true(harbour_runtime_Value value);\n",
+                    "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",
                     "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "\n",
@@ -601,6 +643,91 @@ mod tests {
             emitted
                 .source
                 .contains("harbour_builtin_qout((harbour_runtime_Value[]) { x }, 1);")
+        );
+    }
+
+    #[test]
+    fn emits_for_loop_with_assignment_updates() {
+        let for_span = span(12, 3, 4, 34, 5, 8);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    ir::Statement::Local(ir::LocalStatement {
+                        bindings: vec![
+                            ir::LocalBinding {
+                                name: symbol("n", span(8, 2, 5, 9, 2, 6)),
+                                initializer: Some(ir::Expression::Integer(ir::IntegerLiteral {
+                                    lexeme: "0".to_owned(),
+                                    span: span(13, 2, 10, 14, 2, 11),
+                                })),
+                                span: span(8, 2, 5, 14, 2, 11),
+                            },
+                            ir::LocalBinding {
+                                name: symbol("sum", span(16, 2, 13, 19, 2, 16)),
+                                initializer: Some(ir::Expression::Integer(ir::IntegerLiteral {
+                                    lexeme: "0".to_owned(),
+                                    span: span(23, 2, 20, 24, 2, 21),
+                                })),
+                                span: span(16, 2, 13, 24, 2, 21),
+                            },
+                        ],
+                        span: span(4, 2, 1, 24, 2, 21),
+                    }),
+                    ir::Statement::For(Box::new(ir::ForStatement {
+                        variable: symbol("n", span(12, 3, 8, 13, 3, 9)),
+                        initial_value: ir::Expression::Integer(ir::IntegerLiteral {
+                            lexeme: "1".to_owned(),
+                            span: span(18, 3, 14, 19, 3, 15),
+                        }),
+                        limit: ir::Expression::Integer(ir::IntegerLiteral {
+                            lexeme: "5".to_owned(),
+                            span: span(23, 3, 19, 24, 3, 20),
+                        }),
+                        step: None,
+                        body: vec![ir::Statement::Assign(ir::AssignStatement {
+                            target: symbol("sum", span(30, 4, 7, 33, 4, 10)),
+                            value: ir::Expression::Binary(ir::BinaryExpression {
+                                left: Box::new(ir::Expression::Symbol(symbol(
+                                    "sum",
+                                    span(37, 4, 14, 40, 4, 17),
+                                ))),
+                                operator: ir::BinaryOperator::Add,
+                                right: Box::new(ir::Expression::Symbol(symbol(
+                                    "n",
+                                    span(43, 4, 20, 44, 4, 21),
+                                ))),
+                                span: span(37, 4, 14, 44, 4, 21),
+                            }),
+                            span: span(30, 4, 7, 44, 4, 21),
+                        })],
+                        span: for_span,
+                    })),
+                ],
+                span: span(0, 1, 1, 34, 5, 8),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted
+                .source
+                .contains("n = harbour_value_from_integer(1LL);")
+        );
+        assert!(
+            emitted
+                .source
+                .contains("while (harbour_value_is_true(harbour_value_less_than_or_equal(n, harbour_value_from_integer(5LL)))) {")
+        );
+        assert!(emitted.source.contains("sum = harbour_value_add(sum, n);"));
+        assert!(
+            emitted
+                .source
+                .contains("n = harbour_value_add(n, harbour_value_from_integer(1LL));")
         );
     }
 }

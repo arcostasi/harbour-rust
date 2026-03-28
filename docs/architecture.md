@@ -113,6 +113,13 @@ Na slice seguinte, o backend C passa a cobrir o primeiro loop executável do pro
 - comparação `<` via helper de runtime,
 - `x++` em condição via helper de postfix increment.
 
+Na slice seguinte, o backend C passa a cobrir o primeiro `FOR` executável:
+
+- inicialização explícita da variável de loop,
+- condição `<=` via helper de runtime,
+- atualização do índice por passo implícito `1`,
+- atribuição `sum := sum + n` via helper de soma.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:

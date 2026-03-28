@@ -87,6 +87,8 @@ Nesta etapa o `run` detecta `clang`, `gcc` ou `cc`, compila o C gerado com um su
 
 Com a slice seguinte de `codegen-c`, `while.prg` também já entra no caminho executável inicial com `LOCAL`, `DO WHILE`, comparação `<` e `x++` em condição.
 
+Com a slice seguinte, `for_sum.prg` também já entra no caminho executável inicial com `FOR`, `sum := sum + n` e atualização de índice por passo implícito.
+
 ## Desenvolvimento
 
 Comandos principais do workspace:

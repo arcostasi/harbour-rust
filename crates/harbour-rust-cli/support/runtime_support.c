@@ -39,6 +39,34 @@ harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     return value;
 }
 
+harbour_runtime_Value harbour_value_add(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_integer(left.as.integer + right.as.integer);
+    }
+
+    if (
+        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
+        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
+    ) {
+        double left_number = left.kind == HARBOUR_VALUE_INTEGER
+            ? (double) left.as.integer
+            : left.as.floating;
+        double right_number = right.kind == HARBOUR_VALUE_INTEGER
+            ? (double) right.as.integer
+            : right.as.floating;
+        return harbour_value_from_float(left_number + right_number);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_string_literal("");
+    }
+
+    return harbour_value_nil();
+}
+
 _Bool harbour_value_is_true(harbour_runtime_Value value) {
     switch (value.kind) {
     case HARBOUR_VALUE_NIL:
@@ -79,6 +107,34 @@ harbour_runtime_Value harbour_value_less_than(
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) < 0);
+    }
+
+    return harbour_value_from_logical(0);
+}
+
+harbour_runtime_Value harbour_value_less_than_or_equal(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_logical(left.as.integer <= right.as.integer);
+    }
+
+    if (
+        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
+        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
+    ) {
+        double left_number = left.kind == HARBOUR_VALUE_INTEGER
+            ? (double) left.as.integer
+            : left.as.floating;
+        double right_number = right.kind == HARBOUR_VALUE_INTEGER
+            ? (double) right.as.integer
+            : right.as.floating;
+        return harbour_value_from_logical(left_number <= right_number);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) <= 0);
     }
 
     return harbour_value_from_logical(0);

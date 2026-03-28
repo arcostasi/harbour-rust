@@ -74,3 +74,22 @@ fn emits_while_fixture_as_c_with_runtime_loop_helpers() {
     );
     assert!(emitted.source.contains("harbour_value_less_than("));
 }
+
+#[test]
+fn emits_for_sum_fixture_as_c_with_for_loop_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/for_sum.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(emitted.source.contains("while (harbour_value_is_true("));
+    assert!(emitted.source.contains("harbour_value_less_than_or_equal("));
+    assert!(emitted.source.contains("sum = harbour_value_add(sum, n);"));
+    assert!(
+        emitted
+            .source
+            .contains("n = harbour_value_add(n, harbour_value_from_integer(1LL));")
+    );
+}

@@ -69,6 +69,30 @@ fn build_command_writes_c_output_for_while_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_for_sum_fixture() {
+    let temp_dir = unique_temp_dir("for-sum");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("for_sum.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/for_sum.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_value_less_than_or_equal("));
+    assert!(generated.contains("sum = harbour_value_add(sum, n);"));
+    assert!(generated.contains("n = harbour_value_add(n, harbour_value_from_integer(1LL));"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn run_command_executes_hello_example_with_host_compiler() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
@@ -96,4 +120,18 @@ fn run_command_executes_while_fixture_with_expected_output() {
     assert!(stdout.starts_with("1\n2\n3\n"));
     assert!(stdout.ends_with("998\n999\n1000\n"));
     assert_eq!(stdout.lines().count(), 1000);
+}
+
+#[test]
+fn run_command_executes_for_sum_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/for_sum.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "15\n");
 }

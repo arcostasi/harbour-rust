@@ -20,7 +20,15 @@ struct harbour_runtime_Value {
 };
 
 _Bool harbour_value_is_true(struct harbour_runtime_Value value);
+struct harbour_runtime_Value harbour_value_add(
+    struct harbour_runtime_Value left,
+    struct harbour_runtime_Value right
+);
 struct harbour_runtime_Value harbour_value_less_than(
+    struct harbour_runtime_Value left,
+    struct harbour_runtime_Value right
+);
+struct harbour_runtime_Value harbour_value_less_than_or_equal(
     struct harbour_runtime_Value left,
     struct harbour_runtime_Value right
 );
