@@ -30,3 +30,11 @@ fn while_fixture_matches_snapshot() {
         "tests/fixtures/parser/while.ast",
     );
 }
+
+#[test]
+fn static_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/static.prg",
+        "tests/fixtures/parser/static.ast",
+    );
+}

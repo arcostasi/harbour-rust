@@ -92,6 +92,14 @@ Primeira slice da Fase 7:
 
 Nesta etapa, o objetivo ainda não é parsear `STATIC`, mas estabilizar o modelo sintático para as slices seguintes de parser e semântica.
 
+Segunda slice da Fase 7:
+
+- `STATIC <id> [:= <expr>] [, ...]`
+- initializer list espelhando a surface de `LOCAL`
+- snapshot dedicada para `STATIC`
+
+Nesta etapa, `STATIC` já entra no parser e na AST concreta, mas o lowering e a semântica de storage continuam explícita e deliberadamente pendentes.
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:

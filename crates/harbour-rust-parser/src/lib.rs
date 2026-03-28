@@ -3,7 +3,8 @@ use harbour_rust_ast::{
     DoWhileStatement, Expression, ExpressionStatement, FloatLiteral, ForStatement, Identifier,
     IfStatement, IntegerLiteral, Item, LocalBinding, LocalStatement, LogicalLiteral, NilLiteral,
     PostfixExpression, PostfixOperator, PrintStatement, Program, ReturnStatement, Routine,
-    RoutineKind, Statement, StorageClass, StringLiteral, UnaryExpression, UnaryOperator,
+    RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass, StringLiteral,
+    UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 use std::fmt;
@@ -167,6 +168,10 @@ impl<'src> Parser<'src> {
             return self.parse_local_statement();
         }
 
+        if self.match_keyword(Keyword::Static) {
+            return self.parse_static_statement();
+        }
+
         if self.match_keyword(Keyword::If) {
             return self.parse_if_statement();
         }
@@ -229,6 +234,45 @@ impl<'src> Parser<'src> {
             .map_or(self.previous().span.end, |binding| binding.span.end);
         Some(Statement::Local(LocalStatement {
             storage_class: StorageClass::Local,
+            bindings,
+            span: Span { start, end },
+        }))
+    }
+
+    fn parse_static_statement(&mut self) -> Option<Statement> {
+        let start = self.previous().span.start;
+        let mut bindings = Vec::new();
+
+        loop {
+            let name = self.parse_identifier()?;
+            let binding_start = name.span.start;
+            let initializer = if self.match_token(TokenKind::InAssign) {
+                Some(self.parse_expression()?)
+            } else {
+                None
+            };
+            let end = initializer
+                .as_ref()
+                .map_or(name.span.end, |expression| expression.span().end);
+            bindings.push(StaticBinding {
+                name,
+                initializer,
+                span: Span {
+                    start: binding_start,
+                    end,
+                },
+            });
+
+            if !self.match_token(TokenKind::Comma) {
+                break;
+            }
+        }
+
+        let end = bindings
+            .last()
+            .map_or(self.previous().span.end, |binding| binding.span.end);
+        Some(Statement::Static(StaticStatement {
+            storage_class: StorageClass::Static,
             bindings,
             span: Span { start, end },
         }))
@@ -912,7 +956,9 @@ enum Terminator {
 
 #[cfg(test)]
 mod tests {
-    use harbour_rust_ast::{BinaryOperator, Expression, Item, RoutineKind, Statement};
+    use harbour_rust_ast::{
+        BinaryOperator, Expression, Item, RoutineKind, Statement, StorageClass,
+    };
 
     use crate::parse;
 
@@ -943,6 +989,52 @@ PROCEDURE Main()
         assert!(matches!(&routine.body[1], Statement::If(_)));
         assert!(matches!(&routine.body[2], Statement::DoWhile(_)));
         assert!(matches!(&routine.body[3], Statement::For(_)));
+    }
+
+    #[test]
+    fn parses_static_statement_with_initializer_list() {
+        let source = r#"
+PROCEDURE Main()
+   STATIC cache := "memo", hits := 0
+   RETURN
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0];
+        match &routine.body[0] {
+            Statement::Static(statement) => {
+                assert_eq!(statement.storage_class, StorageClass::Static);
+                assert_eq!(statement.bindings.len(), 2);
+                assert_eq!(statement.bindings[0].name.text, "cache");
+                assert!(matches!(
+                    statement.bindings[0].initializer,
+                    Some(Expression::String(_))
+                ));
+                assert_eq!(statement.bindings[1].name.text, "hits");
+                assert!(matches!(
+                    statement.bindings[1].initializer,
+                    Some(Expression::Integer(_))
+                ));
+            }
+            statement => panic!("expected static statement, found {statement:?}"),
+        }
+    }
+
+    #[test]
+    fn reports_missing_identifier_in_static_initializer_list() {
+        let source = r#"
+PROCEDURE Main()
+   STATIC cache := "memo",
+   RETURN
+"#;
+        let parsed = parse(source);
+
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected identifier at line 3, column 27"
+        );
     }
 
     #[test]
