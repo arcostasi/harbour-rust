@@ -1,4 +1,4 @@
-use harbour_rust_runtime::Value;
+use harbour_rust_runtime::{OutputBuffer, Value, qout};
 
 #[test]
 fn public_arithmetic_operations_cover_core_runtime_baseline() {
@@ -42,4 +42,18 @@ fn public_comparison_operations_cover_numeric_and_string_values() {
         Value::from("abc").greater_than(&Value::from("abb")),
         Ok(Value::from(true))
     );
+}
+
+#[test]
+fn public_qout_builtin_writes_expected_output_and_returns_nil() {
+    let mut output = OutputBuffer::new();
+
+    assert_eq!(
+        qout(
+            &[Value::from("sum"), Value::from(3_i64), Value::from(4.5_f64)],
+            &mut output,
+        ),
+        Ok(Value::Nil)
+    );
+    assert_eq!(output.into_string(), "sum 3 4.5\n");
 }

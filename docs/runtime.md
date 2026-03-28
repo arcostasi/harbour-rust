@@ -44,6 +44,14 @@ Na segunda slice da Fase 4, entram operações básicas:
 - igualdade e ordenação léxica básica para strings,
 - erro estruturado para combinações ainda não suportadas e divisão por zero.
 
+Na terceira slice da Fase 4, entram saída mínima e builtin inicial:
+
+- `to_print_string()` como formatter básico orientado a `QOut`,
+- `OutputBuffer` simples para testes e integração inicial,
+- `qout()` retornando `NIL`,
+- emissão de linha única com argumentos separados por espaço,
+- linha em branco quando chamado sem argumentos.
+
 ## Ambientes
 
 Precisaremos de pelo menos:

@@ -102,6 +102,10 @@ impl Value {
         }
     }
 
+    pub fn to_print_string(&self) -> String {
+        self.to_output_string()
+    }
+
     pub fn add(&self, rhs: &Self) -> Result<Self, RuntimeError> {
         match (self, rhs) {
             (Self::String(left), Self::String(right)) => {
@@ -225,6 +229,49 @@ impl Value {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OutputBuffer {
+    content: String,
+}
+
+impl OutputBuffer {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.content
+    }
+
+    pub fn into_string(self) -> String {
+        self.content
+    }
+
+    fn push_qout_line(&mut self, values: &[Value]) {
+        if values.is_empty() {
+            self.content.push('\n');
+            return;
+        }
+
+        let mut iter = values.iter();
+        if let Some(first) = iter.next() {
+            self.content.push_str(&first.to_print_string());
+        }
+
+        for value in iter {
+            self.content.push(' ');
+            self.content.push_str(&value.to_print_string());
+        }
+
+        self.content.push('\n');
+    }
+}
+
+pub fn qout(values: &[Value], output: &mut OutputBuffer) -> Result<Value, RuntimeError> {
+    output.push_qout_line(values);
+    Ok(Value::Nil)
 }
 
 impl From<()> for Value {
@@ -371,7 +418,7 @@ impl Error for RuntimeError {}
 
 #[cfg(test)]
 mod tests {
-    use crate::{RuntimeError, Value, ValueKind};
+    use crate::{OutputBuffer, RuntimeError, Value, ValueKind, qout};
 
     #[test]
     fn value_kind_and_type_name_match_variants() {
@@ -491,5 +538,33 @@ mod tests {
                 actual: None,
             })
         );
+    }
+
+    #[test]
+    fn qout_formats_arguments_as_a_single_print_line() {
+        let mut output = OutputBuffer::new();
+
+        assert_eq!(
+            qout(
+                &[
+                    Value::from("hello"),
+                    Value::from(2_i64),
+                    Value::from(true),
+                    Value::Nil,
+                ],
+                &mut output,
+            ),
+            Ok(Value::Nil)
+        );
+
+        assert_eq!(output.as_str(), "hello 2 .T. NIL\n");
+    }
+
+    #[test]
+    fn qout_without_arguments_emits_blank_line() {
+        let mut output = OutputBuffer::new();
+
+        assert_eq!(qout(&[], &mut output), Ok(Value::Nil));
+        assert_eq!(output.as_str(), "\n");
     }
 }
