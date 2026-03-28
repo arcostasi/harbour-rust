@@ -59,6 +59,13 @@ Na quarta slice da Fase 4, entra o dispatch mínimo de builtins de impressão:
 - `call_builtin()` como superfície inicial para integração com parser/codegen,
 - erro estruturado para builtin desconhecido.
 
+Na primeira slice de arrays da Fase 7, entra a superfície mínima de coleção:
+
+- `ValueKind::Array` e `Value::Array(Vec<Value>)`,
+- `Value::array(...)`, `Value::empty_array()` e `Value::array_with_len(...)`,
+- acesso estrito com `as_array()` e `TryFrom<&Value> for Vec<Value>`,
+- formatter basal `"{ Array(n) }"` para tornar snapshots e diagnósticos previsíveis.
+
 ## Ambientes
 
 Precisaremos de pelo menos:
@@ -89,6 +96,8 @@ Implementar por prioridade e sempre com teste de compatibilidade:
 3. aritmética e comparação
 4. strings
 5. arrays
+
+Nesta primeira entrada de arrays, o objetivo ainda não é semântica completa de xBase. O runtime só materializa o contêiner, seu tamanho inicial e uma surface pública pequena o bastante para parser, builtins e testes evoluírem sem inventar indexação, mutação ou comparação antes da hora.
 
 ### Erros de runtime
 

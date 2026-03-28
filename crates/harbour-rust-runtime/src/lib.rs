@@ -7,6 +7,7 @@ pub enum ValueKind {
     Integer,
     Float,
     String,
+    Array,
 }
 
 impl ValueKind {
@@ -17,6 +18,7 @@ impl ValueKind {
             Self::Integer => "Integer",
             Self::Float => "Float",
             Self::String => "String",
+            Self::Array => "Array",
         }
     }
 }
@@ -29,6 +31,7 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     String(String),
+    Array(Vec<Value>),
 }
 
 impl Value {
@@ -39,6 +42,7 @@ impl Value {
             Self::Integer(_) => ValueKind::Integer,
             Self::Float(_) => ValueKind::Float,
             Self::String(_) => ValueKind::String,
+            Self::Array(_) => ValueKind::Array,
         }
     }
 
@@ -91,6 +95,28 @@ impl Value {
         }
     }
 
+    pub fn as_array(&self) -> Result<&[Value], RuntimeError> {
+        match self {
+            Self::Array(values) => Ok(values),
+            _ => Err(RuntimeError::type_mismatch(
+                "convert value to array",
+                self.kind(),
+            )),
+        }
+    }
+
+    pub fn array(values: Vec<Value>) -> Self {
+        Self::Array(values)
+    }
+
+    pub fn empty_array() -> Self {
+        Self::Array(Vec::new())
+    }
+
+    pub fn array_with_len(len: usize) -> Self {
+        Self::Array(vec![Self::Nil; len])
+    }
+
     pub fn to_output_string(&self) -> String {
         match self {
             Self::Nil => "NIL".to_owned(),
@@ -99,6 +125,7 @@ impl Value {
             Self::Integer(value) => value.to_string(),
             Self::Float(value) => value.to_string(),
             Self::String(value) => value.clone(),
+            Self::Array(values) => format!("{{ Array({}) }}", values.len()),
         }
     }
 
@@ -359,6 +386,12 @@ impl From<&str> for Value {
     }
 }
 
+impl From<Vec<Value>> for Value {
+    fn from(value: Vec<Value>) -> Self {
+        Self::Array(value)
+    }
+}
+
 impl TryFrom<&Value> for bool {
     type Error = RuntimeError;
 
@@ -388,6 +421,14 @@ impl TryFrom<&Value> for String {
 
     fn try_from(value: &Value) -> Result<Self, Self::Error> {
         value.as_str().map(ToOwned::to_owned)
+    }
+}
+
+impl TryFrom<&Value> for Vec<Value> {
+    type Error = RuntimeError;
+
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        value.as_array().map(ToOwned::to_owned)
     }
 }
 
@@ -484,6 +525,7 @@ mod tests {
         assert_eq!(Value::from(1_i64).kind(), ValueKind::Integer);
         assert_eq!(Value::from(1.5_f64).kind(), ValueKind::Float);
         assert_eq!(Value::from("abc").kind(), ValueKind::String);
+        assert_eq!(Value::empty_array().kind(), ValueKind::Array);
         assert_eq!(Value::from("abc").type_name(), "String");
     }
 
@@ -494,6 +536,10 @@ mod tests {
         assert_eq!(Value::from(42_i64).as_float(), Ok(42.0));
         assert_eq!(Value::from(1.5_f64).as_float(), Ok(1.5));
         assert_eq!(Value::from("harbour").as_str(), Ok("harbour"));
+        assert_eq!(
+            Value::array(vec![Value::from(1_i64)]).as_array(),
+            Ok([Value::from(1_i64)].as_slice())
+        );
     }
 
     #[test]
@@ -502,6 +548,14 @@ mod tests {
             Value::from("nope").as_integer(),
             Err(RuntimeError {
                 message: "convert value to integer".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            Value::from("nope").as_array(),
+            Err(RuntimeError {
+                message: "convert value to array".to_owned(),
                 expected: None,
                 actual: Some(ValueKind::String),
             })
@@ -515,6 +569,23 @@ mod tests {
         assert_eq!(Value::from(false).to_output_string(), ".F.");
         assert_eq!(Value::from(12_i64).to_output_string(), "12");
         assert_eq!(Value::from("abc").to_output_string(), "abc");
+        assert_eq!(
+            Value::array(vec![Value::from(1_i64), Value::from(2_i64)]).to_output_string(),
+            "{ Array(2) }"
+        );
+    }
+
+    #[test]
+    fn array_constructors_produce_expected_baseline_values() {
+        assert_eq!(Value::empty_array(), Value::Array(Vec::new()));
+        assert_eq!(
+            Value::array_with_len(3),
+            Value::Array(vec![Value::Nil, Value::Nil, Value::Nil])
+        );
+        assert_eq!(
+            Value::array(vec![Value::from(1_i64), Value::from("x")]),
+            Value::Array(vec![Value::from(1_i64), Value::from("x")])
+        );
     }
 
     #[test]
