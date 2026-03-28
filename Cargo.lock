@@ -17,6 +17,9 @@ version = "0.1.0"
 [[package]]
 name = "harbour-rust-compat"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-lexer",
+]
 
 [[package]]
 name = "harbour-rust-hir"
