@@ -52,6 +52,13 @@ Na terceira slice da Fase 4, entram saída mínima e builtin inicial:
 - emissão de linha única com argumentos separados por espaço,
 - linha em branco quando chamado sem argumentos.
 
+Na quarta slice da Fase 4, entra o dispatch mínimo de builtins de impressão:
+
+- `RuntimeContext` com saída explícita e testável,
+- `Builtin::lookup()` case-insensitive para `QOut`,
+- `call_builtin()` como superfície inicial para integração com parser/codegen,
+- erro estruturado para builtin desconhecido.
+
 ## Ambientes
 
 Precisaremos de pelo menos:

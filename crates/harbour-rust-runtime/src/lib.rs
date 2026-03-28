@@ -269,9 +269,58 @@ impl OutputBuffer {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RuntimeContext {
+    output: OutputBuffer,
+}
+
+impl RuntimeContext {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn output(&self) -> &OutputBuffer {
+        &self.output
+    }
+
+    pub fn output_mut(&mut self) -> &mut OutputBuffer {
+        &mut self.output
+    }
+
+    pub fn into_output(self) -> OutputBuffer {
+        self.output
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Builtin {
+    QOut,
+}
+
+impl Builtin {
+    pub fn lookup(name: &str) -> Option<Self> {
+        if name.eq_ignore_ascii_case("QOUT") {
+            Some(Self::QOut)
+        } else {
+            None
+        }
+    }
+}
+
 pub fn qout(values: &[Value], output: &mut OutputBuffer) -> Result<Value, RuntimeError> {
     output.push_qout_line(values);
     Ok(Value::Nil)
+}
+
+pub fn call_builtin(
+    name: &str,
+    arguments: &[Value],
+    context: &mut RuntimeContext,
+) -> Result<Value, RuntimeError> {
+    match Builtin::lookup(name) {
+        Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        None => Err(RuntimeError::unknown_builtin(name)),
+    }
 }
 
 impl From<()> for Value {
@@ -386,6 +435,14 @@ impl RuntimeError {
             actual: None,
         }
     }
+
+    pub fn unknown_builtin(name: &str) -> Self {
+        Self {
+            message: format!("unknown builtin {}", name),
+            expected: None,
+            actual: None,
+        }
+    }
 }
 
 enum NumericPair {
@@ -418,7 +475,7 @@ impl Error for RuntimeError {}
 
 #[cfg(test)]
 mod tests {
-    use crate::{OutputBuffer, RuntimeError, Value, ValueKind, qout};
+    use crate::{OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, call_builtin, qout};
 
     #[test]
     fn value_kind_and_type_name_match_variants() {
@@ -566,5 +623,34 @@ mod tests {
 
         assert_eq!(qout(&[], &mut output), Ok(Value::Nil));
         assert_eq!(output.as_str(), "\n");
+    }
+
+    #[test]
+    fn builtin_dispatch_invokes_qout_case_insensitively() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin(
+                "qout",
+                &[Value::from("hello"), Value::from(7_i64)],
+                &mut context,
+            ),
+            Ok(Value::Nil)
+        );
+        assert_eq!(context.output().as_str(), "hello 7\n");
+    }
+
+    #[test]
+    fn unknown_builtin_reports_runtime_error() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("MissingBuiltin", &[], &mut context),
+            Err(RuntimeError {
+                message: "unknown builtin MissingBuiltin".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
     }
 }
