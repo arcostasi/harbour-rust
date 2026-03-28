@@ -27,6 +27,12 @@ Na Fase 5, o baseline executável passa a validar o pipeline completo:
 - compilação do C gerado com compilador host,
 - comparação de sucesso/erro no nível do CLI.
 
+Na Fase 6, o baseline de PP passa a validar também:
+
+- `source -> pp -> parser` antes do restante do pipeline,
+- `build/run` com `-I/--include-dir`,
+- erro explícito de preprocessamento quando o include não é resolvido.
+
 ### Snapshot/golden
 
 - tokens

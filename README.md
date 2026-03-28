@@ -49,7 +49,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4 e 5 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5 e 6 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -69,11 +69,15 @@ As Fases 0, 1, 2, 3, 4 e 5 estão concluídas:
 - IR procedural inicial implementada com lowering HIR -> IR,
 - backend C inicial implementado para rotinas procedurais, `RETURN`, `QOut()`, `DO WHILE` e `FOR` simples,
 - CLI com `build` e `run` fim a fim via compilador C host,
-- caminhos executáveis curados para `examples/hello.prg`, `tests/fixtures/parser/while.prg` e `tests/fixtures/parser/for_sum.prg`.
+- caminhos executáveis curados para `examples/hello.prg`, `tests/fixtures/parser/while.prg` e `tests/fixtures/parser/for_sum.prg`,
+- pré-processador inicial com `#define` e `#include`,
+- expansão recursiva case-insensitive de macros objeto com diagnóstico de ciclo,
+- resolução de includes com quoted include, angle-bracket include e search paths configuráveis,
+- handoff explícito `pp -> parser` no CLI com `-I/--include-dir`.
 
-O próximo passo técnico é iniciar a Fase 6 com o pré-processador inicial (`#define` e `#include`).
+O próximo passo técnico é iniciar a Fase 7 com compatibilidade procedural ampliada (`STATIC`, arrays, operadores compostos e builtins essenciais).
 
-O baseline fim a fim da Fase 5 oferece geração de C:
+O baseline fim a fim atual oferece geração de C:
 
 ```text
 cargo run -p harbour-rust-cli -- build examples/hello.prg --out target/hello.c
@@ -88,6 +92,13 @@ cargo run -p harbour-rust-cli -- run examples/hello.prg
 ```
 
 Nesta etapa o `run` detecta `clang`, `gcc` ou `cc`, compila o C gerado com um suporte mínimo de runtime e executa o binário resultante. O suporte de codegen continua parcial fora do subconjunto procedural já coberto, mas a Fase 5 já atende o aceite com `hello.prg` e um programa com `FOR` simples executáveis.
+
+Na Fase 6, o mesmo pipeline já aceita preprocessamento configurável no CLI:
+
+```text
+cargo run -p harbour-rust-cli -- build tests/fixtures/pp/angle_search_path_root.prg --include-dir tests/fixtures/pp/include-path --out target/angle_search.c
+cargo run -p harbour-rust-cli -- run tests/fixtures/pp/angle_search_path_root.prg -I tests/fixtures/pp/include-path
+```
 
 ## Desenvolvimento
 

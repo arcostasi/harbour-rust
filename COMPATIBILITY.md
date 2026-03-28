@@ -48,6 +48,12 @@ O aceite da Fase 5 está fechado com o pipeline procedural fim a fim:
 - `tests/fixtures/parser/while.prg` cobre o primeiro caminho executável com `DO WHILE`,
 - `tests/fixtures/parser/for_sum.prg` cobre o primeiro caminho executável com `FOR` simples.
 
+O aceite da Fase 6 está fechado com o baseline inicial de pré-processamento:
+
+- `#define` objeto já expande em linhas normais, inclusive de forma recursiva,
+- ciclos de macro objeto geram diagnóstico explícito,
+- `#include "..."` e `#include <...>` já entram no caminho `pp -> parser` do CLI com `-I/--include-dir`.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.
