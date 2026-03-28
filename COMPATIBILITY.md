@@ -13,12 +13,12 @@ Status:
 | --- | --- | --- | --- | --- | --- | --- |
 | `PROCEDURE Main()` | Clipper | planned | 2 | `tests/hello.prg` | integração | ponto de entrada mínimo |
 | `FUNCTION` | Clipper | planned | 2 | `src/compiler/harbour.y` | unit + snapshot | suportar assinatura simples primeiro |
-| `LOCAL` | Clipper | planned | 2/3 | `harbour.y` | parser + sema | sem inferência estática forte |
+| `LOCAL` | Clipper | partial | 2/3 | `harbour.y` | parser + sema | sintaxe e AST cobertas na Fase 2; semântica ainda pendente |
 | `RETURN` | Clipper | planned | 2 | `tests/returns.prg` | integração | `RETURN` vazio e com expressão |
 | `?` / `QOut()` | Clipper | planned | 2/4 | `doc/pcode.txt`, `tests/hello.prg` | integração | builtin central do bootstrap |
-| `IF / ELSE / ENDIF` | Clipper | planned | 2 | `harbour.y` | parser + run | |
-| `DO WHILE / ENDDO` | Clipper | planned | 2 | `tests/while.prg` | integração | usar como caso de loop inicial |
-| `FOR / NEXT` | Clipper | planned | 2 | `harbour.y` | integração | sem `FOR EACH` no começo |
+| `IF / ELSE / ENDIF` | Clipper | partial | 2 | `harbour.y` | parser + run | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
+| `DO WHILE / ENDDO` | Clipper | partial | 2 | `tests/while.prg` | integração | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
+| `FOR / NEXT` | Clipper | partial | 2 | `harbour.y` | integração | sintaxe e AST cobertas na Fase 2; sem `FOR EACH` e sem execução ainda |
 | operadores básicos | Clipper | partial | 1/2/4 | `ppcore.c`, `harbour.y` | unit + runtime | tokenização base e multi-caractere cobertas na Fase 1; semântica ainda pendente |
 | strings | Clipper | partial | 1/4 | `doc/pp.txt` | unit + golden | literais e erro de string não terminada cobertos na Fase 1; `[]` segue para PP |
 | números | Clipper | partial | 1/4 | `doc/pp.txt` | unit + runtime | inteiros e floats decimais tokenizados na Fase 1; semântica e corner cases pendentes |

@@ -104,6 +104,17 @@ Segunda slice já coberta pelo parser:
   - chamada,
   - atribuição com `:=`
 
+Terceira slice já coberta pelo parser:
+
+- `LOCAL <id> [:= <expr>] [, ...]`
+- `IF <expr> ... [ELSE ...] ENDIF`
+- `DO WHILE <expr> ... ENDDO`
+- `FOR <id> := <expr> TO <expr> [STEP <expr>] ... NEXT`
+- expressões adicionais:
+  - binárias para comparação, aritmética básica e `AND`/`OR`
+  - unárias para `+`, `-`, `NOT`
+  - pós-fixas para `++` e `--`
+
 ## Casos sensíveis
 
 - `?` como sugar de saída.

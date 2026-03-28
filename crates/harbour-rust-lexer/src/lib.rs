@@ -43,6 +43,8 @@ pub enum Keyword {
     EndDo,
     For,
     Next,
+    To,
+    Step,
     Static,
     Public,
     Private,
@@ -726,6 +728,10 @@ fn match_keyword(text: &str) -> Option<Keyword> {
         Some(Keyword::For)
     } else if text.eq_ignore_ascii_case("NEXT") {
         Some(Keyword::Next)
+    } else if text.eq_ignore_ascii_case("TO") {
+        Some(Keyword::To)
+    } else if text.eq_ignore_ascii_case("STEP") {
+        Some(Keyword::Step)
     } else if text.eq_ignore_ascii_case("STATIC") {
         Some(Keyword::Static)
     } else if text.eq_ignore_ascii_case("PUBLIC") {
@@ -809,6 +815,27 @@ mod tests {
         assert_eq!(lexed.tokens[1].kind, TokenKind::Identifier);
         assert_eq!(lexed.tokens[2].kind, TokenKind::Keyword(Keyword::Return));
         assert_eq!(lexed.tokens[3].kind, TokenKind::Keyword(Keyword::Nil));
+    }
+
+    #[test]
+    fn lexer_recognizes_for_keywords() {
+        let lexed = lex("FOR i := 1 TO 10 STEP 2");
+        assert!(lexed.errors.is_empty());
+        let kinds: Vec<_> = lexed.tokens.into_iter().map(|token| token.kind).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::Keyword(Keyword::For),
+                TokenKind::Identifier,
+                TokenKind::InAssign,
+                TokenKind::Integer,
+                TokenKind::Keyword(Keyword::To),
+                TokenKind::Integer,
+                TokenKind::Keyword(Keyword::Step),
+                TokenKind::Integer,
+                TokenKind::Eof,
+            ]
+        );
     }
 
     #[test]

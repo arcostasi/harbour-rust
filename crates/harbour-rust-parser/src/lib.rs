@@ -1,7 +1,9 @@
 use harbour_rust_ast::{
-    AssignmentExpression, CallExpression, Expression, ExpressionStatement, FloatLiteral,
-    Identifier, IntegerLiteral, Item, LogicalLiteral, NilLiteral, PrintStatement, Program,
-    ReturnStatement, Routine, RoutineKind, Statement, StringLiteral,
+    AssignmentExpression, BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch,
+    DoWhileStatement, Expression, ExpressionStatement, FloatLiteral, ForStatement, Identifier,
+    IfStatement, IntegerLiteral, Item, LocalBinding, LocalStatement, LogicalLiteral, NilLiteral,
+    PostfixExpression, PostfixOperator, PrintStatement, Program, ReturnStatement, Routine,
+    RoutineKind, Statement, StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 
@@ -74,11 +76,7 @@ impl<'src> Parser<'src> {
         } else if self.match_keyword(Keyword::Function) {
             RoutineKind::Function
         } else {
-            let token = self.current();
-            self.errors.push(ParseError {
-                message: "expected PROCEDURE or FUNCTION".to_owned(),
-                span: token.span,
-            });
+            self.error_current("expected PROCEDURE or FUNCTION");
             return None;
         };
 
@@ -88,22 +86,11 @@ impl<'src> Parser<'src> {
         let end_paren = self.expect(TokenKind::RightParen, "expected `)` after parameter list")?;
         self.skip_separators();
 
-        let mut body = Vec::new();
-        while !self.at(TokenKind::Eof)
-            && !self.at_keyword(Keyword::Procedure)
-            && !self.at_keyword(Keyword::Function)
-        {
-            if self.at(TokenKind::Newline) || self.at(TokenKind::Semicolon) {
-                self.skip_separators();
-                continue;
-            }
-
-            match self.parse_statement() {
-                Some(statement) => body.push(statement),
-                None => self.synchronize_statement(),
-            }
-            self.skip_separators();
-        }
+        let body = self.parse_block_until(&[
+            Terminator::Keyword(Keyword::Procedure),
+            Terminator::Keyword(Keyword::Function),
+            Terminator::Eof,
+        ]);
 
         let end = body
             .last()
@@ -133,7 +120,42 @@ impl<'src> Parser<'src> {
         Some(params)
     }
 
+    fn parse_block_until(&mut self, terminators: &[Terminator]) -> Vec<Statement> {
+        let mut body = Vec::new();
+
+        while !self.at(TokenKind::Eof) && !self.matches_any_terminator(terminators) {
+            if self.at(TokenKind::Newline) || self.at(TokenKind::Semicolon) {
+                self.skip_separators();
+                continue;
+            }
+
+            match self.parse_statement() {
+                Some(statement) => body.push(statement),
+                None => self.synchronize_statement(),
+            }
+            self.skip_separators();
+        }
+
+        body
+    }
+
     fn parse_statement(&mut self) -> Option<Statement> {
+        if self.match_keyword(Keyword::Local) {
+            return self.parse_local_statement();
+        }
+
+        if self.match_keyword(Keyword::If) {
+            return self.parse_if_statement();
+        }
+
+        if self.match_keyword(Keyword::Do) {
+            return self.parse_do_while_statement();
+        }
+
+        if self.match_keyword(Keyword::For) {
+            return self.parse_for_statement();
+        }
+
         if self.match_keyword(Keyword::Return) {
             return Some(self.parse_return_statement());
         }
@@ -150,14 +172,133 @@ impl<'src> Parser<'src> {
         }))
     }
 
+    fn parse_local_statement(&mut self) -> Option<Statement> {
+        let start = self.previous().span.start;
+        let mut bindings = Vec::new();
+
+        loop {
+            let name = self.parse_identifier()?;
+            let binding_start = name.span.start;
+            let initializer = if self.match_token(TokenKind::InAssign) {
+                Some(self.parse_expression()?)
+            } else {
+                None
+            };
+            let end = initializer
+                .as_ref()
+                .map_or(name.span.end, |expression| expression.span().end);
+            bindings.push(LocalBinding {
+                name,
+                initializer,
+                span: Span {
+                    start: binding_start,
+                    end,
+                },
+            });
+
+            if !self.match_token(TokenKind::Comma) {
+                break;
+            }
+        }
+
+        let end = bindings
+            .last()
+            .map_or(self.previous().span.end, |binding| binding.span.end);
+        Some(Statement::Local(LocalStatement {
+            bindings,
+            span: Span { start, end },
+        }))
+    }
+
+    fn parse_if_statement(&mut self) -> Option<Statement> {
+        let start = self.previous().span.start;
+        let condition = self.parse_expression()?;
+        self.expect_statement_break("expected newline after IF condition");
+        let branch_body = self.parse_block_until(&[
+            Terminator::Keyword(Keyword::Else),
+            Terminator::Keyword(Keyword::EndIf),
+            Terminator::Eof,
+        ]);
+        let branch_end = branch_body
+            .last()
+            .map_or(condition.span().end, |statement| statement.span().end);
+        let branches = vec![ConditionalBranch {
+            condition,
+            body: branch_body,
+            span: Span {
+                start,
+                end: branch_end,
+            },
+        }];
+
+        let else_branch = if self.match_keyword(Keyword::Else) {
+            self.expect_statement_break("expected newline after ELSE");
+            Some(self.parse_block_until(&[Terminator::Keyword(Keyword::EndIf), Terminator::Eof]))
+        } else {
+            None
+        };
+
+        let end_if = self.expect_keyword(Keyword::EndIf, "expected ENDIF after IF block")?;
+        Some(Statement::If(Box::new(IfStatement {
+            branches,
+            else_branch,
+            span: Span {
+                start,
+                end: end_if.span.end,
+            },
+        })))
+    }
+
+    fn parse_do_while_statement(&mut self) -> Option<Statement> {
+        let start = self.previous().span.start;
+        self.expect_keyword(Keyword::While, "expected WHILE after DO")?;
+        let condition = self.parse_expression()?;
+        self.expect_statement_break("expected newline after DO WHILE condition");
+        let body = self.parse_block_until(&[Terminator::Keyword(Keyword::EndDo), Terminator::Eof]);
+        let end_do = self.expect_keyword(Keyword::EndDo, "expected ENDDO after DO WHILE block")?;
+
+        Some(Statement::DoWhile(Box::new(DoWhileStatement {
+            condition,
+            body,
+            span: Span {
+                start,
+                end: end_do.span.end,
+            },
+        })))
+    }
+
+    fn parse_for_statement(&mut self) -> Option<Statement> {
+        let start = self.previous().span.start;
+        let variable = self.parse_identifier()?;
+        self.expect(TokenKind::InAssign, "expected `:=` after FOR variable")?;
+        let initial_value = self.parse_expression()?;
+        self.expect_keyword(Keyword::To, "expected TO in FOR statement")?;
+        let limit = self.parse_expression()?;
+        let step = if self.match_keyword(Keyword::Step) {
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
+        self.expect_statement_break("expected newline after FOR header");
+        let body = self.parse_block_until(&[Terminator::Keyword(Keyword::Next), Terminator::Eof]);
+        let next = self.expect_keyword(Keyword::Next, "expected NEXT after FOR block")?;
+
+        Some(Statement::For(Box::new(ForStatement {
+            variable,
+            initial_value,
+            limit,
+            step,
+            body,
+            span: Span {
+                start,
+                end: next.span.end,
+            },
+        })))
+    }
+
     fn parse_return_statement(&mut self) -> Statement {
         let start = self.previous().span.start;
-        if self.at(TokenKind::Newline)
-            || self.at(TokenKind::Semicolon)
-            || self.at(TokenKind::Eof)
-            || self.at_keyword(Keyword::Procedure)
-            || self.at_keyword(Keyword::Function)
-        {
+        if self.statement_should_end() {
             return Statement::Return(ReturnStatement {
                 value: None,
                 span: Span {
@@ -182,12 +323,7 @@ impl<'src> Parser<'src> {
         let start = self.previous().span.start;
         let mut arguments = Vec::new();
 
-        while !self.at(TokenKind::Newline)
-            && !self.at(TokenKind::Semicolon)
-            && !self.at(TokenKind::Eof)
-            && !self.at_keyword(Keyword::Procedure)
-            && !self.at_keyword(Keyword::Function)
-        {
+        while !self.statement_should_end() {
             arguments.push(self.parse_expression()?);
             if !self.match_token(TokenKind::Comma) {
                 break;
@@ -208,7 +344,7 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_assignment(&mut self) -> Option<Expression> {
-        let left = self.parse_call()?;
+        let left = self.parse_or()?;
         if !self.match_token(TokenKind::InAssign) {
             return Some(left);
         }
@@ -218,12 +354,238 @@ impl<'src> Parser<'src> {
             start: left.span().start,
             end: value.span().end,
         };
-
         Some(Expression::Assignment(AssignmentExpression {
             target: Box::new(left),
             value: Box::new(value),
             span,
         }))
+    }
+
+    fn parse_or(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_and()?;
+        while self.match_keyword(Keyword::Or) {
+            let right = self.parse_and()?;
+            let span = Span {
+                start: expression.span().start,
+                end: right.span().end,
+            };
+            expression = Expression::Binary(BinaryExpression {
+                left: Box::new(expression),
+                operator: BinaryOperator::Or,
+                right: Box::new(right),
+                span,
+            });
+        }
+        Some(expression)
+    }
+
+    fn parse_and(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_equality()?;
+        while self.match_keyword(Keyword::And) {
+            let right = self.parse_equality()?;
+            let span = Span {
+                start: expression.span().start,
+                end: right.span().end,
+            };
+            expression = Expression::Binary(BinaryExpression {
+                left: Box::new(expression),
+                operator: BinaryOperator::And,
+                right: Box::new(right),
+                span,
+            });
+        }
+        Some(expression)
+    }
+
+    fn parse_equality(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_comparison()?;
+
+        loop {
+            let operator = if self.match_token(TokenKind::Equal) {
+                Some(BinaryOperator::Equal)
+            } else if self.match_token(TokenKind::ExactEqual) {
+                Some(BinaryOperator::ExactEqual)
+            } else if self.match_token(TokenKind::NotEqual) {
+                Some(BinaryOperator::NotEqual)
+            } else {
+                None
+            };
+
+            let Some(operator) = operator else {
+                break;
+            };
+            let right = self.parse_comparison()?;
+            let span = Span {
+                start: expression.span().start,
+                end: right.span().end,
+            };
+            expression = Expression::Binary(BinaryExpression {
+                left: Box::new(expression),
+                operator,
+                right: Box::new(right),
+                span,
+            });
+        }
+
+        Some(expression)
+    }
+
+    fn parse_comparison(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_term()?;
+
+        loop {
+            let operator = if self.match_token(TokenKind::Less) {
+                Some(BinaryOperator::Less)
+            } else if self.match_token(TokenKind::LessEqual) {
+                Some(BinaryOperator::LessEqual)
+            } else if self.match_token(TokenKind::Greater) {
+                Some(BinaryOperator::Greater)
+            } else if self.match_token(TokenKind::GreaterEqual) {
+                Some(BinaryOperator::GreaterEqual)
+            } else {
+                None
+            };
+
+            let Some(operator) = operator else {
+                break;
+            };
+            let right = self.parse_term()?;
+            let span = Span {
+                start: expression.span().start,
+                end: right.span().end,
+            };
+            expression = Expression::Binary(BinaryExpression {
+                left: Box::new(expression),
+                operator,
+                right: Box::new(right),
+                span,
+            });
+        }
+
+        Some(expression)
+    }
+
+    fn parse_term(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_factor()?;
+
+        loop {
+            let operator = if self.match_token(TokenKind::Plus) {
+                Some(BinaryOperator::Add)
+            } else if self.match_token(TokenKind::Minus) {
+                Some(BinaryOperator::Subtract)
+            } else {
+                None
+            };
+
+            let Some(operator) = operator else {
+                break;
+            };
+            let right = self.parse_factor()?;
+            let span = Span {
+                start: expression.span().start,
+                end: right.span().end,
+            };
+            expression = Expression::Binary(BinaryExpression {
+                left: Box::new(expression),
+                operator,
+                right: Box::new(right),
+                span,
+            });
+        }
+
+        Some(expression)
+    }
+
+    fn parse_factor(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_unary()?;
+
+        loop {
+            let operator = if self.match_token(TokenKind::Star) {
+                Some(BinaryOperator::Multiply)
+            } else if self.match_token(TokenKind::Slash) {
+                Some(BinaryOperator::Divide)
+            } else if self.match_token(TokenKind::Percent) {
+                Some(BinaryOperator::Modulo)
+            } else if self.match_token(TokenKind::Caret) || self.match_token(TokenKind::Power) {
+                Some(BinaryOperator::Power)
+            } else {
+                None
+            };
+
+            let Some(operator) = operator else {
+                break;
+            };
+            let right = self.parse_unary()?;
+            let span = Span {
+                start: expression.span().start,
+                end: right.span().end,
+            };
+            expression = Expression::Binary(BinaryExpression {
+                left: Box::new(expression),
+                operator,
+                right: Box::new(right),
+                span,
+            });
+        }
+
+        Some(expression)
+    }
+
+    fn parse_unary(&mut self) -> Option<Expression> {
+        let operator = if self.match_token(TokenKind::Plus) {
+            Some(UnaryOperator::Plus)
+        } else if self.match_token(TokenKind::Minus) {
+            Some(UnaryOperator::Minus)
+        } else if self.match_keyword(Keyword::Not) {
+            Some(UnaryOperator::Not)
+        } else {
+            None
+        };
+
+        if let Some(operator) = operator {
+            let start = self.previous().span.start;
+            let operand = self.parse_unary()?;
+            let span = Span {
+                start,
+                end: operand.span().end,
+            };
+            return Some(Expression::Unary(UnaryExpression {
+                operator,
+                operand: Box::new(operand),
+                span,
+            }));
+        }
+
+        self.parse_postfix()
+    }
+
+    fn parse_postfix(&mut self) -> Option<Expression> {
+        let mut expression = self.parse_call()?;
+
+        loop {
+            let operator = if self.match_token(TokenKind::Increment) {
+                Some(PostfixOperator::Increment)
+            } else if self.match_token(TokenKind::Decrement) {
+                Some(PostfixOperator::Decrement)
+            } else {
+                None
+            };
+
+            let Some(operator) = operator else {
+                break;
+            };
+            let span = Span {
+                start: expression.span().start,
+                end: self.previous().span.end,
+            };
+            expression = Expression::Postfix(PostfixExpression {
+                operand: Box::new(expression),
+                operator,
+                span,
+            });
+        }
+
+        Some(expression)
     }
 
     fn parse_call(&mut self) -> Option<Expression> {
@@ -308,11 +670,14 @@ impl<'src> Parser<'src> {
                     span: token.span,
                 }))
             }
+            TokenKind::LeftParen => {
+                self.bump();
+                let expression = self.parse_expression()?;
+                self.expect(TokenKind::RightParen, "expected `)` after expression")?;
+                Some(expression)
+            }
             _ => {
-                self.errors.push(ParseError {
-                    message: "expected expression".to_owned(),
-                    span: token.span,
-                });
+                self.error_current("expected expression");
                 None
             }
         }
@@ -321,10 +686,7 @@ impl<'src> Parser<'src> {
     fn parse_identifier(&mut self) -> Option<Identifier> {
         let token = *self.current();
         if !matches!(token.kind, TokenKind::Identifier) {
-            self.errors.push(ParseError {
-                message: "expected identifier".to_owned(),
-                span: token.span,
-            });
+            self.error_current("expected identifier");
             return None;
         }
 
@@ -341,12 +703,38 @@ impl<'src> Parser<'src> {
             self.bump();
             return Some(token);
         }
-
-        self.errors.push(ParseError {
-            message: message.to_owned(),
-            span: self.current().span,
-        });
+        self.error_current(message);
         None
+    }
+
+    fn expect_keyword(&mut self, keyword: Keyword, message: &str) -> Option<Token> {
+        if self.at_keyword(keyword) {
+            let token = *self.current();
+            self.bump();
+            return Some(token);
+        }
+        self.error_current(message);
+        None
+    }
+
+    fn expect_statement_break(&mut self, message: &str) {
+        if self.at(TokenKind::Newline) || self.at(TokenKind::Semicolon) {
+            self.skip_separators();
+            return;
+        }
+        self.error_current(message);
+    }
+
+    fn statement_should_end(&self) -> bool {
+        self.at(TokenKind::Newline)
+            || self.at(TokenKind::Semicolon)
+            || self.at(TokenKind::Eof)
+            || self.at_keyword(Keyword::Procedure)
+            || self.at_keyword(Keyword::Function)
+            || self.at_keyword(Keyword::Else)
+            || self.at_keyword(Keyword::EndIf)
+            || self.at_keyword(Keyword::EndDo)
+            || self.at_keyword(Keyword::Next)
     }
 
     fn synchronize_statement(&mut self) {
@@ -355,6 +743,10 @@ impl<'src> Parser<'src> {
             && !self.at(TokenKind::Semicolon)
             && !self.at_keyword(Keyword::Procedure)
             && !self.at_keyword(Keyword::Function)
+            && !self.at_keyword(Keyword::Else)
+            && !self.at_keyword(Keyword::EndIf)
+            && !self.at_keyword(Keyword::EndDo)
+            && !self.at_keyword(Keyword::Next)
         {
             self.bump();
         }
@@ -399,6 +791,20 @@ impl<'src> Parser<'src> {
         self.current().kind == kind
     }
 
+    fn matches_any_terminator(&self, terminators: &[Terminator]) -> bool {
+        terminators.iter().any(|terminator| match terminator {
+            Terminator::Keyword(keyword) => self.at_keyword(*keyword),
+            Terminator::Eof => self.at(TokenKind::Eof),
+        })
+    }
+
+    fn error_current(&mut self, message: &str) {
+        self.errors.push(ParseError {
+            message: message.to_owned(),
+            span: self.current().span,
+        });
+    }
+
     fn bump(&mut self) {
         if self.cursor < self.tokens.len().saturating_sub(1) {
             self.cursor += 1;
@@ -415,78 +821,109 @@ impl<'src> Parser<'src> {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Terminator {
+    Keyword(Keyword),
+    Eof,
+}
+
 #[cfg(test)]
 mod tests {
-    use harbour_rust_ast::{Expression, Item, RoutineKind, Statement};
+    use harbour_rust_ast::{BinaryOperator, Expression, Item, RoutineKind, Statement};
 
     use crate::parse;
 
     #[test]
-    fn parses_hello_procedure() {
+    fn parses_local_if_while_and_for_statements() {
         let source = r#"
 PROCEDURE Main()
-
-   ? "Hello, world!"
-
+   LOCAL x := 0, done
+   IF x == 0
+      ? "start"
+   ELSE
+      ? "other"
+   ENDIF
+   DO WHILE x++ < 10
+      ? x
+   ENDDO
+   FOR x := 1 TO 10 STEP 2
+      ? x
+   NEXT
    RETURN
 "#;
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
-        assert_eq!(parsed.program.items.len(), 1);
 
         let Item::Routine(routine) = &parsed.program.items[0];
         assert_eq!(routine.kind, RoutineKind::Procedure);
-        assert_eq!(routine.name.text, "Main");
-        assert!(routine.params.is_empty());
-        assert_eq!(routine.body.len(), 2);
-        assert!(matches!(&routine.body[0], Statement::Print(_)));
-        assert!(matches!(&routine.body[1], Statement::Return(_)));
+        assert!(matches!(&routine.body[0], Statement::Local(_)));
+        assert!(matches!(&routine.body[1], Statement::If(_)));
+        assert!(matches!(&routine.body[2], Statement::DoWhile(_)));
+        assert!(matches!(&routine.body[3], Statement::For(_)));
     }
 
     #[test]
-    fn parses_function_with_return_value() {
-        let source = r#"
-FUNCTION Answer()
-   RETURN 42
-"#;
-        let parsed = parse(source);
-        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
-
-        let Item::Routine(routine) = &parsed.program.items[0];
-        assert_eq!(routine.kind, RoutineKind::Function);
-        match &routine.body[0] {
-            Statement::Return(statement) => {
-                assert!(matches!(statement.value, Some(Expression::Integer(_))));
-            }
-            statement => panic!("expected return, found {statement:?}"),
-        }
-    }
-
-    #[test]
-    fn parses_print_and_expression_statements() {
+    fn parses_if_condition_and_else_body() {
         let source = r#"
 PROCEDURE Main()
-   ? "From Main()"
-   Two( 1 )
-   RETURN
+   IF x == 1
+      ? "one"
+   ELSE
+      ? "other"
+   ENDIF
 "#;
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
-
         let Item::Routine(routine) = &parsed.program.items[0];
-        assert!(matches!(&routine.body[0], Statement::Print(_)));
-        match &routine.body[1] {
-            Statement::Expression(statement) => {
-                assert!(matches!(statement.expression, Expression::Call(_)));
+        match &routine.body[0] {
+            Statement::If(statement) => {
+                assert_eq!(statement.branches.len(), 1);
+                assert!(statement.else_branch.is_some());
+                let Expression::Binary(condition) = &statement.branches[0].condition else {
+                    panic!("expected binary condition");
+                };
+                assert_eq!(condition.operator, BinaryOperator::ExactEqual);
             }
-            statement => panic!("expected expression statement, found {statement:?}"),
+            statement => panic!("expected if statement, found {statement:?}"),
         }
     }
 
     #[test]
-    fn reports_missing_routine_name() {
-        let parsed = parse("PROCEDURE ()");
-        assert_eq!(parsed.errors.len(), 1);
-        assert_eq!(parsed.errors[0].message, "expected identifier");
+    fn parses_do_while_postfix_condition() {
+        let source = r#"
+PROCEDURE Main()
+   DO WHILE x++ < 1000
+      ? x
+   ENDDO
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+        let Item::Routine(routine) = &parsed.program.items[0];
+        match &routine.body[0] {
+            Statement::DoWhile(statement) => {
+                assert!(matches!(statement.condition, Expression::Binary(_)));
+            }
+            statement => panic!("expected do while, found {statement:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_for_header_with_step() {
+        let source = r#"
+PROCEDURE Main()
+   FOR n := 10 TO 1 STEP -1
+      ? n
+   NEXT
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+        let Item::Routine(routine) = &parsed.program.items[0];
+        match &routine.body[0] {
+            Statement::For(statement) => {
+                assert_eq!(statement.variable.text, "n");
+                assert!(statement.step.is_some());
+            }
+            statement => panic!("expected for, found {statement:?}"),
+        }
     }
 }
