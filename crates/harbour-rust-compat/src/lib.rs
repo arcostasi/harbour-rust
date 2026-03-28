@@ -1,14 +1,32 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use harbour_rust_lexer::{LexedSource, lex};
+
+pub fn render_lexed(source: &str) -> String {
+    let lexed = lex(source);
+    render_lexed_source(source, &lexed)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub fn render_lexed_source(source: &str, lexed: &LexedSource) -> String {
+    let mut out = String::new();
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    for token in &lexed.tokens {
+        let text = token.text(source).escape_default().to_string();
+        out.push_str(&format!(
+            "{}:{}-{}:{} {:?} \"{}\"\n",
+            token.span.start.line,
+            token.span.start.column,
+            token.span.end.line,
+            token.span.end.column,
+            token.kind,
+            text
+        ));
     }
+
+    if !lexed.errors.is_empty() {
+        out.push_str("-- errors --\n");
+        for error in &lexed.errors {
+            out.push_str(&format!("{error}\n"));
+        }
+    }
+
+    out
 }
