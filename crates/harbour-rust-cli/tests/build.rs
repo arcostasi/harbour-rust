@@ -93,6 +93,49 @@ fn build_command_writes_c_output_for_for_sum_fixture() {
 }
 
 #[test]
+fn build_command_uses_configured_include_directory_for_preprocess_handoff() {
+    let temp_dir = unique_temp_dir("pp-include");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("angle_search.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/pp/angle_search_path_root.prg",
+        ))
+        .arg("--include-dir")
+        .arg(workspace_path("tests/fixtures/pp/include-path"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_value_from_string_literal(\"angle search path\")"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn build_command_reports_preprocess_error_for_missing_include_search_path() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/pp/angle_search_path_root.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(!output.status.success(), "expected failing build status");
+
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("preprocess failed"));
+    assert!(stderr.contains("failed to resolve include"));
+}
+
+#[test]
 fn run_command_executes_hello_example_with_host_compiler() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
@@ -134,4 +177,22 @@ fn run_command_executes_for_sum_fixture_with_expected_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "15\n");
+}
+
+#[test]
+fn run_command_uses_configured_include_directory_for_preprocess_handoff() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/pp/angle_search_path_root.prg",
+        ))
+        .arg("-I")
+        .arg(workspace_path("tests/fixtures/pp/include-path"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "angle search path\n");
 }

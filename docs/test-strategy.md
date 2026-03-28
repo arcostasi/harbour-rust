@@ -89,6 +89,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/pp/cyclic_define_root.prg` -> erro de ciclo em expansão recursiva
 - `tests/fixtures/pp/quoted_search_path_root.prg` -> `#include "..."` com fallback para search path
 - `tests/fixtures/pp/angle_search_path_root.prg` -> `#include <...>` resolvido por search path
+- `tests/fixtures/pp/angle_search_path_root.prg` -> `harbour-rust-cli build/run` com `-I/--include-dir`
 
 ## Critérios por PR
 

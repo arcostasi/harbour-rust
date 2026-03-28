@@ -170,6 +170,12 @@ Na slice seguinte, o resolver de includes ganha política inicial de busca:
 - `#include <x.ch>` usa search paths configuráveis como primeira política,
 - a lógica de busca continua isolada em `FileSystemIncludeResolver`.
 
+Na slice seguinte, o `harbour-rust-cli` ganha a primeira superfície de handoff do PP:
+
+- `build` e `run` aceitam `-I/--include-dir`,
+- o CLI materializa um `preprocess -> parse` explícito antes do restante do pipeline,
+- a integração continua mínima: options de PP no CLI, sem dialetos nem `#command`.
+
 ### 4. Compatibilidade incremental por dialeto
 
 - baseline inicial: subconjunto Clipper procedural,

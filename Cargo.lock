@@ -17,6 +17,7 @@ dependencies = [
  "harbour-rust-hir",
  "harbour-rust-ir",
  "harbour-rust-parser",
+ "harbour-rust-pp",
  "harbour-rust-sema",
 ]
 

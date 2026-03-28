@@ -8,13 +8,15 @@ use std::{
 use harbour_rust_codegen_c::emit_program;
 use harbour_rust_hir::lower_program as lower_hir_program;
 use harbour_rust_ir::lower_program as lower_ir_program;
-use harbour_rust_parser::parse;
+use harbour_rust_parser::{ParseOutput, parse};
+use harbour_rust_pp::{FileSystemIncludeResolver, PreprocessOutput, Preprocessor, SourceFile};
 use harbour_rust_sema::analyze_program;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildOptions {
     pub input_path: PathBuf,
     pub output_path: Option<PathBuf>,
+    pub include_directories: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +27,7 @@ pub struct BuildResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunOptions {
     pub input_path: PathBuf,
+    pub include_directories: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,7 +87,8 @@ where
 }
 
 pub fn build_to_c(options: &BuildOptions) -> Result<BuildResult, CliError> {
-    let emitted = compile_to_c_source(&options.input_path)?;
+    let emitted =
+        compile_to_c_source_with_options(&options.input_path, &options.include_directories)?;
 
     let output_path = options
         .output_path
@@ -106,7 +110,8 @@ pub fn build_to_c(options: &BuildOptions) -> Result<BuildResult, CliError> {
 
 pub fn run_with_host_compiler(options: &RunOptions) -> Result<RunResult, CliError> {
     let compilers = detect_host_compilers()?;
-    let generated_c = compile_to_c_source(&options.input_path)?;
+    let generated_c =
+        compile_to_c_source_with_options(&options.input_path, &options.include_directories)?;
     let temp_dir = unique_temp_dir("run");
     fs::create_dir_all(&temp_dir).map_err(|error| CliError {
         message: format!("failed to create {}: {}", temp_dir.display(), error),
@@ -182,7 +187,7 @@ pub fn run_with_host_compiler(options: &RunOptions) -> Result<RunResult, CliErro
 }
 
 pub fn usage() -> &'static str {
-    "Usage:\n  harbour-rust-cli build <input.prg> [--out <output.c>]\n  harbour-rust-cli run <input.prg>"
+    "Usage:\n  harbour-rust-cli build <input.prg> [--out <output.c>] [-I <dir> | --include-dir <dir>]...\n  harbour-rust-cli run <input.prg> [-I <dir> | --include-dir <dir>]..."
 }
 
 fn parse_build_options(args: &[String]) -> Result<BuildOptions, CliError> {
@@ -191,6 +196,7 @@ fn parse_build_options(args: &[String]) -> Result<BuildOptions, CliError> {
     };
 
     let mut output_path = None;
+    let mut include_directories = Vec::new();
     let mut cursor = 1;
 
     while cursor < args.len() {
@@ -201,6 +207,15 @@ fn parse_build_options(args: &[String]) -> Result<BuildOptions, CliError> {
                     return Err(CliError::usage("expected a path after --out"));
                 };
                 output_path = Some(PathBuf::from(path));
+            }
+            "-I" | "--include-dir" => {
+                cursor += 1;
+                let Some(path) = args.get(cursor) else {
+                    return Err(CliError::usage(
+                        "expected a path after include directory option",
+                    ));
+                };
+                include_directories.push(PathBuf::from(path));
             }
             flag => {
                 return Err(CliError::usage(&format!(
@@ -214,6 +229,7 @@ fn parse_build_options(args: &[String]) -> Result<BuildOptions, CliError> {
     Ok(BuildOptions {
         input_path: PathBuf::from(input),
         output_path,
+        include_directories,
     })
 }
 
@@ -222,12 +238,29 @@ fn parse_run_options(args: &[String]) -> Result<RunOptions, CliError> {
         return Err(CliError::usage("run requires an input .prg file"));
     };
 
-    if args.len() > 1 {
-        return Err(CliError::usage("run does not accept extra options yet"));
+    let mut include_directories = Vec::new();
+    let mut cursor = 1;
+    while cursor < args.len() {
+        match args[cursor].as_str() {
+            "-I" | "--include-dir" => {
+                cursor += 1;
+                let Some(path) = args.get(cursor) else {
+                    return Err(CliError::usage(
+                        "expected a path after include directory option",
+                    ));
+                };
+                include_directories.push(PathBuf::from(path));
+            }
+            flag => {
+                return Err(CliError::usage(&format!("unsupported run option `{flag}`")));
+            }
+        }
+        cursor += 1;
     }
 
     Ok(RunOptions {
         input_path: PathBuf::from(input),
+        include_directories,
     })
 }
 
@@ -235,12 +268,13 @@ fn default_output_path(input_path: &Path) -> PathBuf {
     input_path.with_extension("c")
 }
 
-fn compile_to_c_source(input_path: &Path) -> Result<String, CliError> {
-    let source = fs::read_to_string(input_path).map_err(|error| CliError {
-        message: format!("failed to read {}: {}", input_path.display(), error),
-    })?;
-
-    let parsed = parse(&source);
+fn compile_to_c_source_with_options(
+    input_path: &Path,
+    include_directories: &[PathBuf],
+) -> Result<String, CliError> {
+    let handoff = preprocess_and_parse(input_path, include_directories)?;
+    let _preprocessed = &handoff.preprocessed;
+    let parsed = handoff.parsed;
     if !parsed.errors.is_empty() {
         return Err(CliError {
             message: render_stage_errors(
@@ -291,6 +325,45 @@ fn compile_to_c_source(input_path: &Path) -> Result<String, CliError> {
     }
 
     Ok(emitted.source)
+}
+
+fn preprocess_and_parse(
+    input_path: &Path,
+    include_directories: &[PathBuf],
+) -> Result<PreprocessHandoff, CliError> {
+    let source = SourceFile::from_path(input_path).map_err(|error| CliError {
+        message: format!("failed to read {}: {}", input_path.display(), error),
+    })?;
+
+    let resolver = include_directories.iter().fold(
+        FileSystemIncludeResolver::new(),
+        |resolver, include_directory| resolver.with_search_path(include_directory.clone()),
+    );
+    let preprocessed = Preprocessor::new(resolver).preprocess(source);
+    if !preprocessed.errors.is_empty() {
+        return Err(CliError {
+            message: render_stage_errors(
+                "preprocess",
+                preprocessed
+                    .errors
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
+            ),
+        });
+    }
+
+    let parsed = parse(&preprocessed.text);
+    Ok(PreprocessHandoff {
+        preprocessed,
+        parsed,
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreprocessHandoff {
+    preprocessed: PreprocessOutput,
+    parsed: ParseOutput,
 }
 
 fn render_stage_errors(stage: &str, errors: Vec<String>) -> String {
@@ -404,6 +477,31 @@ mod tests {
             BuildOptions {
                 input_path: PathBuf::from("examples/hello.prg"),
                 output_path: Some(PathBuf::from("target/hello.c")),
+                include_directories: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn parses_build_options_with_include_directories() {
+        let options = parse_build_options(&[
+            "examples/hello.prg".to_owned(),
+            "-I".to_owned(),
+            "tests/fixtures/pp/include-path".to_owned(),
+            "--include-dir".to_owned(),
+            "tests/includes".to_owned(),
+        ])
+        .expect("build options");
+
+        assert_eq!(
+            options,
+            BuildOptions {
+                input_path: PathBuf::from("examples/hello.prg"),
+                output_path: None,
+                include_directories: vec![
+                    PathBuf::from("tests/fixtures/pp/include-path"),
+                    PathBuf::from("tests/includes"),
+                ],
             }
         );
     }
@@ -422,6 +520,25 @@ mod tests {
             options,
             crate::RunOptions {
                 input_path: PathBuf::from("examples/hello.prg"),
+                include_directories: Vec::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn parses_run_options_with_include_directories() {
+        let options = parse_run_options(&[
+            "examples/hello.prg".to_owned(),
+            "--include-dir".to_owned(),
+            "tests/fixtures/pp/include-path".to_owned(),
+        ])
+        .expect("run options");
+
+        assert_eq!(
+            options,
+            crate::RunOptions {
+                input_path: PathBuf::from("examples/hello.prg"),
+                include_directories: vec![PathBuf::from("tests/fixtures/pp/include-path")],
             }
         );
     }
