@@ -50,3 +50,22 @@ Este repositório começa pela governança e pelo plano de execução. O código
 ## Estado atual
 
 O repositório está preparado para iniciar a Fase 0. O plano completo está em `ROADMAP.md` e nos arquivos de `docs/`.
+
+## Desenvolvimento
+
+Comandos principais do workspace:
+
+```text
+cargo fmt --all
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test
+```
+
+Estrutura inicial criada na Fase 0:
+
+- `crates/`: crates do compilador, runtime, compat e testes
+- `examples/`: programas `.prg` mínimos para smoke tests
+- `tests/`: fixtures e testes de integração do projeto
+- `tools/`: ferramentas auxiliares e comparadores
+
+Veja também `CONTRIBUTING.md` para o fluxo de contribuição local.
