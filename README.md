@@ -69,6 +69,14 @@ As Fases 0, 1, 2, 3 e 4 estão concluídas:
 
 O próximo passo técnico é iniciar a Fase 5 com IR e backend C para integração fim a fim.
 
+Neste ponto, o primeiro slice de CLI para a Fase 5 já oferece geração de C:
+
+```text
+cargo run -p harbour-rust-cli -- build examples/hello.prg --out target/hello.c
+```
+
+O pipeline atual valida parse, HIR, sema, IR e `codegen-c`, e escreve o `.c` gerado. A compilação com compilador C host entra na próxima slice.
+
 ## Desenvolvimento
 
 Comandos principais do workspace:

@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+harbour-rust-codegen-c = { path = "../harbour-rust-codegen-c" }
+harbour-rust-hir = { path = "../harbour-rust-hir" }
+harbour-rust-ir = { path = "../harbour-rust-ir" }
+harbour-rust-parser = { path = "../harbour-rust-parser" }
+harbour-rust-sema = { path = "../harbour-rust-sema" }

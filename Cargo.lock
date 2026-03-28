@@ -12,6 +12,13 @@ dependencies = [
 [[package]]
 name = "harbour-rust-cli"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-codegen-c",
+ "harbour-rust-hir",
+ "harbour-rust-ir",
+ "harbour-rust-parser",
+ "harbour-rust-sema",
+]
 
 [[package]]
 name = "harbour-rust-codegen-c"
