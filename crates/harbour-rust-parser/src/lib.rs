@@ -1,10 +1,10 @@
 use harbour_rust_ast::{
-    AssignmentExpression, BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch,
-    DoWhileStatement, Expression, ExpressionStatement, FloatLiteral, ForStatement, Identifier,
-    IfStatement, IntegerLiteral, Item, LocalBinding, LocalStatement, LogicalLiteral, NilLiteral,
-    PostfixExpression, PostfixOperator, PrintStatement, Program, ReturnStatement, Routine,
-    RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass, StringLiteral,
-    UnaryExpression, UnaryOperator,
+    ArrayLiteral, AssignmentExpression, BinaryExpression, BinaryOperator, CallExpression,
+    ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement, FloatLiteral,
+    ForStatement, Identifier, IfStatement, IntegerLiteral, Item, LocalBinding, LocalStatement,
+    LogicalLiteral, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement, Program,
+    ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass,
+    StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 use std::fmt;
@@ -763,6 +763,7 @@ impl<'src> Parser<'src> {
                     span: token.span,
                 }))
             }
+            TokenKind::LeftBrace => self.parse_array_literal(),
             TokenKind::LeftParen => {
                 self.bump();
                 let expression = self.parse_expression()?;
@@ -774,6 +775,30 @@ impl<'src> Parser<'src> {
                 None
             }
         }
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Expression> {
+        let start = self.current().span.start;
+        self.bump();
+
+        let mut elements = Vec::new();
+        if !self.at(TokenKind::RightBrace) {
+            loop {
+                elements.push(self.parse_expression()?);
+                if !self.match_token(TokenKind::Comma) {
+                    break;
+                }
+            }
+        }
+
+        let right_brace = self.expect(TokenKind::RightBrace, "expected `}` after array literal")?;
+        Some(Expression::Array(ArrayLiteral {
+            elements,
+            span: Span {
+                start,
+                end: right_brace.span.end,
+            },
+        }))
     }
 
     fn parse_identifier(&mut self) -> Option<Identifier> {
@@ -1019,6 +1044,47 @@ PROCEDURE Main()
             }
             statement => panic!("expected static statement, found {statement:?}"),
         }
+    }
+
+    #[test]
+    fn parses_empty_and_comma_separated_array_literals() {
+        let source = r#"
+FUNCTION Build()
+   RETURN { {}, { 1, "x", cache } }
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0];
+        let Statement::Return(statement) = &routine.body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Array(outer)) = &statement.value else {
+            panic!("expected array literal");
+        };
+
+        assert_eq!(outer.elements.len(), 2);
+        assert!(
+            matches!(outer.elements[0], Expression::Array(ref array) if array.elements.is_empty())
+        );
+        assert!(
+            matches!(outer.elements[1], Expression::Array(ref array) if array.elements.len() == 3)
+        );
+    }
+
+    #[test]
+    fn reports_missing_right_brace_in_array_literal() {
+        let source = r#"
+FUNCTION Build()
+   RETURN { 1, 2
+"#;
+        let parsed = parse(source);
+
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected `}` after array literal; found `\\n` at line 3, column 17"
+        );
     }
 
     #[test]

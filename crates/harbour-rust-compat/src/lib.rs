@@ -282,6 +282,21 @@ fn render_expression(out: &mut String, expression: &Expression, level: usize) {
                 &format!("String {} [{}]", literal.lexeme, format_span(literal.span)),
             );
         }
+        Expression::Array(expression) => {
+            push_line(
+                out,
+                level,
+                &format!("Array [{}]", format_span(expression.span)),
+            );
+            if expression.elements.is_empty() {
+                push_line(out, level + 1, "Elements []");
+            } else {
+                push_line(out, level + 1, "Elements");
+                for element in &expression.elements {
+                    render_expression(out, element, level + 2);
+                }
+            }
+        }
         Expression::Call(expression) => render_call_expression(out, expression, level),
         Expression::Assignment(expression) => {
             push_line(

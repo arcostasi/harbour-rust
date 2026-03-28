@@ -38,3 +38,11 @@ fn static_fixture_matches_snapshot() {
         "tests/fixtures/parser/static.ast",
     );
 }
+
+#[test]
+fn arrays_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/arrays.prg",
+        "tests/fixtures/parser/arrays.ast",
+    );
+}

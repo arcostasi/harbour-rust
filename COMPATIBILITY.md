@@ -24,7 +24,7 @@ Status:
 | números | Clipper | partial | 1/4 | `doc/pp.txt` | unit + runtime | inteiros e floats decimais tokenizados na Fase 1; aritmética, promoção numérica e formatação básica entram na Fase 4; corner cases ainda pendentes |
 | comentários | Clipper | partial | 1 | `tests/hello.prg`, `tests/while.prg` | unit + golden | `//`, `&&`, `/* */` e `*` em início de linha cobertos pelo lexer |
 | `STATIC` | Clipper | partial | 7 | `doc/statics.txt`, `tests/statics*.prg` | parser + hir + sema | `STATIC` já parseia com lista inicial de inicializadores, baixa para HIR com placeholder de storage class e recebe diagnóstico semântico explícito; storage persistente, runtime e codegen ainda pendentes |
-| arrays | Clipper | partial | 7 | `src/vm/arrays.c` | runtime | `Value::Array` e construtores básicos já existem no runtime; indexação, mutação, comparação e integração com parser/codegen ainda pendentes |
+| arrays | Clipper | partial | 7 | `src/vm/arrays.c` | parser + snapshot + runtime | `Value::Array` e construtores básicos já existem no runtime; literais `{}` e `{ expr, ... }` já parseiam com snapshot dedicada; indexação, mutação, comparação e integração com HIR/codegen ainda pendentes |
 | builtins de string | Clipper | planned | 7 | `src/rtl`, `utils/hbtest/rt_str.prg` | compat | por prioridade, não em lote |
 | builtins matemáticos | Clipper | planned | 7 | `utils/hbtest/rt_math.prg` | compat | |
 | `#define` | Clipper | partial | 6 | `doc/pp.txt`, `tests/pp.prg` | unit + integração | parsing inicial de diretiva, registro de defines e expansão recursiva case-insensitive de macros objeto em linhas normais, com diagnóstico de ciclo; macros parametrizadas e expansão token-based ainda pendentes |

@@ -457,6 +457,15 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
             lexeme: literal.lexeme.clone(),
             span: literal.span,
         }),
+        ast::Expression::Array(expression) => {
+            errors.push(LoweringError {
+                message: "array literals are not supported in HIR yet".to_owned(),
+                span: expression.span,
+            });
+            Expression::Error(ErrorExpression {
+                span: expression.span,
+            })
+        }
         ast::Expression::Call(expression) => Expression::Call(CallExpression {
             callee: Box::new(lower_expression(&expression.callee, errors)),
             arguments: expression

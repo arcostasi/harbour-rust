@@ -100,6 +100,15 @@ Segunda slice da Fase 7:
 
 Nesta etapa, `STATIC` já entra no parser e na AST concreta, mas o lowering e a semântica de storage continuam explícita e deliberadamente pendentes.
 
+Terceira slice da Fase 7:
+
+- array literal vazio: `{}`
+- array literal com elementos: `{ expr, expr, ... }`
+- elementos como expressões arbitrárias do subconjunto atual
+- snapshot dedicada para arrays
+
+Nesta etapa, arrays já entram na AST e no parser como literal explícito, mas lowering, semântica de acesso/indexação e execução continuam pendentes.
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:

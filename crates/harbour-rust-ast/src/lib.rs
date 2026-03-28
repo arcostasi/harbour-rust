@@ -162,6 +162,7 @@ pub enum Expression {
     Integer(IntegerLiteral),
     Float(FloatLiteral),
     String(StringLiteral),
+    Array(ArrayLiteral),
     Call(CallExpression),
     Assignment(AssignmentExpression),
     Binary(BinaryExpression),
@@ -178,6 +179,7 @@ impl Expression {
             Self::Integer(expression) => expression.span,
             Self::Float(expression) => expression.span,
             Self::String(expression) => expression.span,
+            Self::Array(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Assignment(expression) => expression.span,
             Self::Binary(expression) => expression.span,
@@ -219,6 +221,12 @@ pub struct FloatLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringLiteral {
     pub lexeme: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArrayLiteral {
+    pub elements: Vec<Expression>,
     pub span: Span,
 }
 
@@ -295,11 +303,11 @@ mod tests {
     use harbour_rust_lexer::{Position, Span};
 
     use crate::{
-        BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch, DoWhileStatement,
-        Expression, ExpressionStatement, ForStatement, Identifier, IfStatement, Item, LocalBinding,
-        LocalStatement, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement, Program,
-        ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement,
-        StorageClass, StringLiteral,
+        ArrayLiteral, BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch,
+        DoWhileStatement, Expression, ExpressionStatement, ForStatement, Identifier, IfStatement,
+        Item, LocalBinding, LocalStatement, NilLiteral, PostfixExpression, PostfixOperator,
+        PrintStatement, Program, ReturnStatement, Routine, RoutineKind, Statement, StaticBinding,
+        StaticStatement, StorageClass, StringLiteral,
     };
 
     fn span(
@@ -508,5 +516,24 @@ mod tests {
         });
 
         assert_eq!(expression.span(), span(0, 1, 1, 8, 1, 9));
+    }
+
+    #[test]
+    fn array_expression_uses_outer_span() {
+        let expression = Expression::Array(ArrayLiteral {
+            elements: vec![
+                Expression::Integer(super::IntegerLiteral {
+                    lexeme: "1".to_owned(),
+                    span: span(1, 1, 2, 2, 1, 3),
+                }),
+                Expression::Identifier(Identifier {
+                    text: "x".to_owned(),
+                    span: span(4, 1, 5, 5, 1, 6),
+                }),
+            ],
+            span: span(0, 1, 1, 6, 1, 7),
+        });
+
+        assert_eq!(expression.span(), span(0, 1, 1, 6, 1, 7));
     }
 }

@@ -85,6 +85,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/hello.prg` -> `hello.ast`
 - `tests/fixtures/parser/while.prg` -> `while.ast`
 - `tests/fixtures/parser/static.prg` -> `static.ast`
+- `tests/fixtures/parser/arrays.prg` -> `arrays.ast`
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
 - `tests/fixtures/parser/static.prg` -> `tests/fixtures/sema/static_unsupported.errors`
