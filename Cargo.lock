@@ -39,6 +39,10 @@ version = "0.1.0"
 [[package]]
 name = "harbour-rust-parser"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-ast",
+ "harbour-rust-lexer",
+]
 
 [[package]]
 name = "harbour-rust-pp"

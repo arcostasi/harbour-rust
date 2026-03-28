@@ -78,6 +78,26 @@ Primeira slice da AST procedural:
 
 Esses nós existem para sustentar o parser inicial sem acoplar semântica ou runtime.
 
+## Parser baseline da Fase 2
+
+Segunda slice já coberta pelo parser:
+
+- `PROCEDURE <id>(...)`
+- `FUNCTION <id>(...)`
+- `RETURN`
+- `RETURN <expr>`
+- `? <expr-list>`
+- statement de expressão para chamadas simples
+- expressões primárias:
+  - identificador,
+  - `NIL`,
+  - lógico,
+  - inteiro,
+  - float,
+  - string,
+  - chamada,
+  - atribuição com `:=`
+
 ## Casos sensíveis
 
 - `?` como sugar de saída.
