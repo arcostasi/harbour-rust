@@ -119,6 +119,7 @@ pub struct LocalSymbol {
 pub enum LocalSymbolKind {
     Parameter,
     Local,
+    Static,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -205,11 +206,26 @@ impl<'a> RoutineAnalyzer<'a> {
     fn analyze_statement(&mut self, statement: &hir::Statement) {
         match statement {
             hir::Statement::Local(statement) => {
+                if statement.storage_class == hir::StorageClass::Static {
+                    self.errors.push(SemanticError {
+                        message: format!(
+                            "STATIC storage is not supported in routine `{}` yet",
+                            self.routine_name
+                        ),
+                        span: statement.span,
+                    });
+                }
+
+                let local_kind = match statement.storage_class {
+                    hir::StorageClass::Local => LocalSymbolKind::Local,
+                    hir::StorageClass::Static => LocalSymbolKind::Static,
+                };
+
                 for binding in &statement.bindings {
                     if let Some(initializer) = &binding.initializer {
                         self.analyze_expression(initializer, ExpressionContext::Value);
                     }
-                    self.declare_local(&binding.name, LocalSymbolKind::Local);
+                    self.declare_local(&binding.name, local_kind);
                 }
             }
             hir::Statement::If(statement) => {
@@ -420,6 +436,7 @@ mod tests {
                             span: span(20, 2, 1, 33, 2, 14),
                         }),
                         hir::Statement::Local(hir::LocalStatement {
+                            storage_class: hir::StorageClass::Local,
                             bindings: vec![hir::LocalBinding {
                                 name: symbol("total", span(40, 3, 7, 45, 3, 12)),
                                 initializer: Some(hir::Expression::Symbol(symbol(
@@ -532,6 +549,7 @@ mod tests {
                 params: vec![symbol("value", span(5, 1, 6, 10, 1, 11))],
                 body: vec![
                     hir::Statement::Local(hir::LocalStatement {
+                        storage_class: hir::StorageClass::Local,
                         bindings: vec![hir::LocalBinding {
                             name: symbol("Value", span(11, 2, 7, 16, 2, 12)),
                             initializer: None,
@@ -567,6 +585,66 @@ mod tests {
                     span: span(17, 3, 8, 24, 3, 15),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn reports_static_storage_as_unsupported_but_declares_symbols() {
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    hir::Statement::Local(hir::LocalStatement {
+                        storage_class: hir::StorageClass::Static,
+                        bindings: vec![hir::LocalBinding {
+                            name: symbol("cache", span(11, 2, 11, 16, 2, 16)),
+                            initializer: Some(hir::Expression::String(hir::StringLiteral {
+                                lexeme: "memo".to_owned(),
+                                span: span(20, 2, 20, 26, 2, 26),
+                            })),
+                            span: span(11, 2, 11, 26, 2, 26),
+                        }],
+                        span: span(5, 2, 1, 26, 2, 26),
+                    }),
+                    hir::Statement::Return(hir::ReturnStatement {
+                        value: Some(hir::Expression::Symbol(symbol(
+                            "cache",
+                            span(34, 3, 8, 39, 3, 13),
+                        ))),
+                        span: span(27, 3, 1, 39, 3, 13),
+                    }),
+                ],
+                span: span(0, 1, 1, 39, 3, 13),
+            }],
+        };
+
+        let analysis = analyze_program(&program);
+
+        assert_eq!(
+            analysis.routines[0].locals,
+            vec![LocalSymbol {
+                id: 0,
+                kind: LocalSymbolKind::Static,
+                name: "cache".to_owned(),
+                span: span(11, 2, 11, 16, 2, 16),
+            }]
+        );
+        assert_eq!(
+            analysis.routines[0].resolutions,
+            vec![SymbolResolution {
+                name: "cache".to_owned(),
+                span: span(34, 3, 8, 39, 3, 13),
+                binding: Binding::Local(0),
+            }]
+        );
+        assert_eq!(
+            analysis.errors,
+            vec![SemanticError {
+                message: "STATIC storage is not supported in routine `Main` yet".to_owned(),
+                span: span(5, 2, 1, 26, 2, 26),
+            }]
         );
     }
 }

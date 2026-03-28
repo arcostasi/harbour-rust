@@ -73,6 +73,12 @@ Na Fase 3, a HIR começa como lowering direto da AST procedural já suportada:
 
 Isso mantém a HIR útil para a semântica sem antecipar tabela de símbolos ou tipagem.
 
+Na Fase 7, `STATIC` entra nessa mesma superfície como placeholder explícito:
+
+- o lowering preserva `storage_class` em declarações lowered,
+- `STATIC` não é mais confundido silenciosamente com `LOCAL`,
+- a semântica ainda não implementa storage persistente, mas já emite diagnóstico explícito e mantém os símbolos declarados para evitar falsos `unresolved`.
+
 ### 1.2. Sema inicial com side tables
 
 O primeiro slice de `sema` trabalha sobre a HIR sem reescrevê-la:

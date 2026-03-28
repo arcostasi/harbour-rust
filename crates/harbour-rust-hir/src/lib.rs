@@ -98,8 +98,15 @@ impl Statement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalStatement {
+    pub storage_class: StorageClass,
     pub bindings: Vec<LocalBinding>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageClass {
+    Local,
+    Static,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -331,6 +338,7 @@ fn lower_routine_kind(kind: ast::RoutineKind) -> RoutineKind {
 fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) -> Statement {
     match statement {
         ast::Statement::Local(statement) => Statement::Local(LocalStatement {
+            storage_class: lower_storage_class(statement.storage_class),
             bindings: statement
                 .bindings
                 .iter()
@@ -345,27 +353,22 @@ fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) 
                 .collect(),
             span: statement.span,
         }),
-        ast::Statement::Static(statement) => {
-            errors.push(LoweringError {
-                message: "STATIC declarations are not supported in HIR yet".to_owned(),
-                span: statement.span,
-            });
-            Statement::Local(LocalStatement {
-                bindings: statement
-                    .bindings
-                    .iter()
-                    .map(|binding| LocalBinding {
-                        name: lower_identifier(&binding.name),
-                        initializer: binding
-                            .initializer
-                            .as_ref()
-                            .map(|expression| lower_expression(expression, errors)),
-                        span: binding.span,
-                    })
-                    .collect(),
-                span: statement.span,
-            })
-        }
+        ast::Statement::Static(statement) => Statement::Local(LocalStatement {
+            storage_class: lower_storage_class(statement.storage_class),
+            bindings: statement
+                .bindings
+                .iter()
+                .map(|binding| LocalBinding {
+                    name: lower_identifier(&binding.name),
+                    initializer: binding
+                        .initializer
+                        .as_ref()
+                        .map(|expression| lower_expression(expression, errors)),
+                    span: binding.span,
+                })
+                .collect(),
+            span: statement.span,
+        }),
         ast::Statement::If(statement) => Statement::If(Box::new(IfStatement {
             branches: statement
                 .branches
@@ -541,6 +544,13 @@ fn lower_postfix_operator(operator: ast::PostfixOperator) -> PostfixOperator {
     }
 }
 
+fn lower_storage_class(storage_class: ast::StorageClass) -> StorageClass {
+    match storage_class {
+        ast::StorageClass::Local => StorageClass::Local,
+        ast::StorageClass::Static => StorageClass::Static,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use harbour_rust_ast as ast;
@@ -548,7 +558,7 @@ mod tests {
 
     use crate::{
         Expression, ExpressionStatement, LocalBinding, LocalStatement, LoweringOutput,
-        ReturnStatement, Routine, RoutineKind, Statement, Symbol, lower_program,
+        ReturnStatement, Routine, RoutineKind, Statement, StorageClass, Symbol, lower_program,
     };
 
     fn span(
@@ -629,6 +639,7 @@ mod tests {
                 }],
                 body: vec![
                     Statement::Local(LocalStatement {
+                        storage_class: StorageClass::Local,
                         bindings: vec![LocalBinding {
                             name: Symbol {
                                 text: "x".to_owned(),
@@ -714,5 +725,50 @@ mod tests {
                 }],
             }
         );
+    }
+
+    #[test]
+    fn lowers_static_declarations_to_local_surface_with_static_storage_class() {
+        let program = ast::Program {
+            items: vec![ast::Item::Routine(ast::Routine {
+                kind: ast::RoutineKind::Procedure,
+                name: identifier("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    ast::Statement::Static(ast::StaticStatement {
+                        storage_class: ast::StorageClass::Static,
+                        bindings: vec![ast::StaticBinding {
+                            name: identifier("cache", span(20, 2, 11, 25, 2, 16)),
+                            initializer: Some(ast::Expression::String(ast::StringLiteral {
+                                lexeme: "memo".to_owned(),
+                                span: span(29, 2, 20, 35, 2, 26),
+                            })),
+                            span: span(20, 2, 11, 35, 2, 26),
+                        }],
+                        span: span(10, 2, 1, 35, 2, 26),
+                    }),
+                    ast::Statement::Return(ast::ReturnStatement {
+                        value: Some(ast::Expression::Identifier(identifier(
+                            "cache",
+                            span(43, 3, 8, 48, 3, 13),
+                        ))),
+                        span: span(36, 3, 1, 48, 3, 13),
+                    }),
+                ],
+                span: span(0, 1, 1, 48, 3, 13),
+            })],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        match &lowered.program.routines[0].body[0] {
+            Statement::Local(statement) => {
+                assert_eq!(statement.storage_class, StorageClass::Static);
+                assert_eq!(statement.bindings.len(), 1);
+                assert_eq!(statement.bindings[0].name.text, "cache");
+            }
+            statement => panic!("expected lowered local declaration, found {statement:?}"),
+        }
     }
 }

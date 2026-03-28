@@ -85,3 +85,11 @@ fn reports_unresolved_callables_across_control_flow_fixture() {
         "tests/fixtures/sema/control_flow_missing_callables.errors",
     );
 }
+
+#[test]
+fn reports_static_storage_placeholder_diagnostics() {
+    assert_fixture_errors(
+        "tests/fixtures/parser/static.prg",
+        "tests/fixtures/sema/static_unsupported.errors",
+    );
+}
