@@ -28,6 +28,14 @@ enum Value {
 
 O conjunto acima é incremental. `Array` e `Codeblock` entram em fases posteriores, mas o enum deve ser desenhado para isso desde o início.
 
+Na primeira slice da Fase 4, o runtime cobre:
+
+- `Value::{Nil, Logical, Integer, Float, String}`,
+- `ValueKind` para diagnóstico e dispatch leve,
+- conversões estritas por tipo,
+- promoção de `Integer` para `Float`,
+- formatação básica de saída para `NIL`, `.T.`, `.F.`, números e strings.
+
 ## Ambientes
 
 Precisaremos de pelo menos:
@@ -64,6 +72,8 @@ Implementar por prioridade e sempre com teste de compatibilidade:
 - nada de `panic!` para erro de usuário,
 - usar tipo de erro estruturado,
 - superfície amigável para CLI e testes.
+
+Na base inicial, erros de conversão usam `RuntimeError` com mensagem e tipo real encontrado.
 
 ## Integração com codegen C
 
