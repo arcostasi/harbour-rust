@@ -66,6 +66,18 @@ Espelhar a ordem histórica observada em `harbour.y`:
 - Parser não resolve símbolo.
 - Recuperação de erro deve permitir múltiplos diagnósticos por arquivo.
 
+## AST baseline da Fase 2
+
+Primeira slice da AST procedural:
+
+- `Program`
+- `Item::Routine`
+- `RoutineKind::{Procedure, Function}`
+- `Statement::{Return, Print, Expression}`
+- `Expression::{Identifier, Nil, Logical, Integer, Float, String, Call, Assignment}`
+
+Esses nós existem para sustentar o parser inicial sem acoplar semântica ou runtime.
+
 ## Casos sensíveis
 
 - `?` como sugar de saída.

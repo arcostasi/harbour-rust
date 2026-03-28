@@ -5,6 +5,9 @@ version = 4
 [[package]]
 name = "harbour-rust-ast"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-lexer",
+]
 
 [[package]]
 name = "harbour-rust-cli"
