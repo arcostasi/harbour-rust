@@ -144,6 +144,14 @@ Mas a implementação em Rust deve privilegiar:
 - spans do PP devem ser preservados para diagnóstico,
 - `#define` e `#include` entram antes de `#command` e `#translate`.
 
+Na primeira slice da Fase 6, `harbour-rust-pp` começa com uma superfície explícita de source graph:
+
+- `SourceFile` como unidade de entrada do PP,
+- resolver de includes separado da lógica principal,
+- registro estruturado de `#define`,
+- mapeamento de linhas de saída para o arquivo e a linha de origem,
+- inclusão textual simples antes da futura expansão token-based.
+
 ### 4. Compatibilidade incremental por dialeto
 
 - baseline inicial: subconjunto Clipper procedural,
