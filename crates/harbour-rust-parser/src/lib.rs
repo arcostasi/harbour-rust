@@ -6,11 +6,34 @@ use harbour_rust_ast::{
     RoutineKind, Statement, StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
     pub message: String,
     pub span: Span,
+}
+
+impl ParseError {
+    pub fn line(&self) -> usize {
+        self.span.start.line
+    }
+
+    pub fn column(&self) -> usize {
+        self.span.start.column
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} at line {}, column {}",
+            self.message,
+            self.line(),
+            self.column()
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -218,6 +241,8 @@ impl<'src> Parser<'src> {
             Terminator::Keyword(Keyword::Else),
             Terminator::Keyword(Keyword::EndIf),
             Terminator::Eof,
+            Terminator::Keyword(Keyword::Procedure),
+            Terminator::Keyword(Keyword::Function),
         ]);
         let branch_end = branch_body
             .last()
@@ -233,19 +258,28 @@ impl<'src> Parser<'src> {
 
         let else_branch = if self.match_keyword(Keyword::Else) {
             self.expect_statement_break("expected newline after ELSE");
-            Some(self.parse_block_until(&[Terminator::Keyword(Keyword::EndIf), Terminator::Eof]))
+            Some(self.parse_block_until(&[
+                Terminator::Keyword(Keyword::EndIf),
+                Terminator::Eof,
+                Terminator::Keyword(Keyword::Procedure),
+                Terminator::Keyword(Keyword::Function),
+            ]))
         } else {
             None
         };
 
-        let end_if = self.expect_keyword(Keyword::EndIf, "expected ENDIF after IF block")?;
+        let end = self.expect_keyword_or_recover(
+            Keyword::EndIf,
+            "expected ENDIF after IF block",
+            else_branch
+                .as_ref()
+                .and_then(|branch| branch.last().map(|statement| statement.span().end))
+                .unwrap_or(branch_end),
+        );
         Some(Statement::If(Box::new(IfStatement {
             branches,
             else_branch,
-            span: Span {
-                start,
-                end: end_if.span.end,
-            },
+            span: Span { start, end },
         })))
     }
 
@@ -254,16 +288,23 @@ impl<'src> Parser<'src> {
         self.expect_keyword(Keyword::While, "expected WHILE after DO")?;
         let condition = self.parse_expression()?;
         self.expect_statement_break("expected newline after DO WHILE condition");
-        let body = self.parse_block_until(&[Terminator::Keyword(Keyword::EndDo), Terminator::Eof]);
-        let end_do = self.expect_keyword(Keyword::EndDo, "expected ENDDO after DO WHILE block")?;
+        let body = self.parse_block_until(&[
+            Terminator::Keyword(Keyword::EndDo),
+            Terminator::Eof,
+            Terminator::Keyword(Keyword::Procedure),
+            Terminator::Keyword(Keyword::Function),
+        ]);
+        let end = self.expect_keyword_or_recover(
+            Keyword::EndDo,
+            "expected ENDDO after DO WHILE block",
+            body.last()
+                .map_or(condition.span().end, |statement| statement.span().end),
+        );
 
         Some(Statement::DoWhile(Box::new(DoWhileStatement {
             condition,
             body,
-            span: Span {
-                start,
-                end: end_do.span.end,
-            },
+            span: Span { start, end },
         })))
     }
 
@@ -280,8 +321,18 @@ impl<'src> Parser<'src> {
             None
         };
         self.expect_statement_break("expected newline after FOR header");
-        let body = self.parse_block_until(&[Terminator::Keyword(Keyword::Next), Terminator::Eof]);
-        let next = self.expect_keyword(Keyword::Next, "expected NEXT after FOR block")?;
+        let body = self.parse_block_until(&[
+            Terminator::Keyword(Keyword::Next),
+            Terminator::Eof,
+            Terminator::Keyword(Keyword::Procedure),
+            Terminator::Keyword(Keyword::Function),
+        ]);
+        let end = self.expect_keyword_or_recover(
+            Keyword::Next,
+            "expected NEXT after FOR block",
+            body.last()
+                .map_or(limit.span().end, |statement| statement.span().end),
+        );
 
         Some(Statement::For(Box::new(ForStatement {
             variable,
@@ -289,10 +340,7 @@ impl<'src> Parser<'src> {
             limit,
             step,
             body,
-            span: Span {
-                start,
-                end: next.span.end,
-            },
+            span: Span { start, end },
         })))
     }
 
@@ -703,7 +751,7 @@ impl<'src> Parser<'src> {
             self.bump();
             return Some(token);
         }
-        self.error_current(message);
+        self.error_expected(message);
         None
     }
 
@@ -713,7 +761,7 @@ impl<'src> Parser<'src> {
             self.bump();
             return Some(token);
         }
-        self.error_current(message);
+        self.error_expected(message);
         None
     }
 
@@ -722,7 +770,7 @@ impl<'src> Parser<'src> {
             self.skip_separators();
             return;
         }
-        self.error_current(message);
+        self.error_expected(message);
     }
 
     fn statement_should_end(&self) -> bool {
@@ -803,6 +851,40 @@ impl<'src> Parser<'src> {
             message: message.to_owned(),
             span: self.current().span,
         });
+    }
+
+    fn error_expected(&mut self, message: &str) {
+        let token = *self.current();
+        self.errors.push(ParseError {
+            message: format!("{message}; found {}", self.describe_token(token)),
+            span: token.span,
+        });
+    }
+
+    fn expect_keyword_or_recover(
+        &mut self,
+        keyword: Keyword,
+        message: &str,
+        fallback_end: harbour_rust_lexer::Position,
+    ) -> harbour_rust_lexer::Position {
+        if let Some(token) = self.expect_keyword(keyword, message) {
+            token.span.end
+        } else {
+            fallback_end
+        }
+    }
+
+    fn describe_token(&self, token: Token) -> String {
+        match token.kind {
+            TokenKind::Identifier
+            | TokenKind::Integer
+            | TokenKind::Float
+            | TokenKind::String
+            | TokenKind::Newline => format!("`{}`", token.text(self.source).escape_default()),
+            TokenKind::Keyword(keyword) => format!("keyword {:?}", keyword),
+            TokenKind::Eof => "end of file".to_owned(),
+            other => format!("token {:?}", other),
+        }
     }
 
     fn bump(&mut self) {
@@ -925,5 +1007,62 @@ PROCEDURE Main()
             }
             statement => panic!("expected for, found {statement:?}"),
         }
+    }
+
+    #[test]
+    fn recovers_from_missing_endif_before_next_routine() {
+        let source = r#"
+PROCEDURE Main()
+   IF x == 1
+      ? "one"
+
+PROCEDURE NextProc()
+   RETURN
+"#;
+        let parsed = parse(source);
+        assert_eq!(parsed.program.items.len(), 2);
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected ENDIF after IF block; found keyword Procedure at line 6, column 1"
+        );
+    }
+
+    #[test]
+    fn recovers_from_missing_enddo_before_next_routine() {
+        let source = r#"
+PROCEDURE Main()
+   DO WHILE x < 3
+      ? x
+
+FUNCTION NextFunc()
+   RETURN NIL
+"#;
+        let parsed = parse(source);
+        assert_eq!(parsed.program.items.len(), 2);
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected ENDDO after DO WHILE block; found keyword Function at line 6, column 1"
+        );
+    }
+
+    #[test]
+    fn recovers_from_missing_next_before_next_routine() {
+        let source = r#"
+PROCEDURE Main()
+   FOR n := 1 TO 3
+      ? n
+
+PROCEDURE Tail()
+   RETURN
+"#;
+        let parsed = parse(source);
+        assert_eq!(parsed.program.items.len(), 2);
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected NEXT after FOR block; found keyword Procedure at line 6, column 1"
+        );
     }
 }

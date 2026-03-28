@@ -115,6 +115,12 @@ Terceira slice já coberta pelo parser:
   - unárias para `+`, `-`, `NOT`
   - pós-fixas para `++` e `--`
 
+Slice de recovery e diagnósticos já coberta:
+
+- recuperação de `IF`, `DO WHILE` e `FOR` quando `ENDIF`, `ENDDO` ou `NEXT` faltam antes da próxima rotina
+- mensagens sintáticas no formato `expected ...; found ...`
+- linha e coluna expostas diretamente em `ParseError`
+
 ## Casos sensíveis
 
 - `?` como sugar de saída.

@@ -40,6 +40,7 @@ struct Diagnostic {
 - spans corretos,
 - linha/coluna,
 - mensagem primária legível.
+- parser recupera blocos procedurais básicos ao encontrar a próxima rotina ou `EOF`.
 
 ### Intermediária
 
