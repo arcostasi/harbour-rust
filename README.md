@@ -49,7 +49,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1 e 2 estão concluídas:
+As Fases 0, 1, 2 e 3 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -59,9 +59,12 @@ As Fases 0, 1 e 2 estão concluídas:
 - baselines léxicos curados para `hello.prg` e `while.prg`,
 - AST procedural inicial implementada para `PROCEDURE`, `FUNCTION`, `LOCAL`, `RETURN`, `IF`, `DO WHILE`, `FOR` e `?`,
 - parser inicial com recuperação básica de blocos e diagnósticos sintáticos melhores,
-- snapshots de AST curados para `hello.prg` e `while.prg`.
+- snapshots de AST curados para `hello.prg` e `while.prg`,
+- HIR procedural inicial implementada com lowering AST -> HIR para rotinas, statements e expressões básicas,
+- análise semântica mínima implementada com tabela global de rotinas, tabela local por rotina, resolução case-insensitive e diagnósticos de símbolo ausente,
+- regressões de sema curadas para símbolos locais e callables ausentes em `IF`, `DO WHILE` e `FOR`.
 
-O próximo passo técnico é iniciar a Fase 3 com HIR e análise semântica mínima.
+O próximo passo técnico é iniciar a Fase 4 com runtime mínimo.
 
 ## Desenvolvimento
 

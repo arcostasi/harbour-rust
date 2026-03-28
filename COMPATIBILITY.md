@@ -12,14 +12,14 @@ Status:
 | Recurso | Dialeto | Status | Fase | Oráculo upstream | Teste esperado | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
 | `PROCEDURE Main()` | Clipper | partial | 2 | `tests/hello.prg` | parser + snapshot | sintaxe procedural mínima e AST cobertas na Fase 2; integração e execução ainda pendentes |
-| `FUNCTION` | Clipper | partial | 2/3 | `src/compiler/harbour.y` | unit + snapshot | assinatura simples parseia; resolução básica de chamadas por nome entra na Fase 3 |
-| `LOCAL` | Clipper | partial | 2/3 | `harbour.y` | parser + sema | sintaxe e AST cobertas na Fase 2; resolução básica de parâmetros e `LOCAL` entra na Fase 3 |
+| `FUNCTION` | Clipper | partial | 2/3 | `src/compiler/harbour.y` | unit + snapshot + sema | assinatura simples parseia; resolução básica de chamadas por nome coberta na Fase 3 |
+| `LOCAL` | Clipper | partial | 2/3 | `harbour.y` | parser + sema | sintaxe e AST cobertas na Fase 2; resolução básica de parâmetros e `LOCAL` coberta na Fase 3 |
 | `RETURN` | Clipper | partial | 2 | `tests/returns.prg` | parser + snapshot | `RETURN` vazio e com expressão parseiam; integração e runtime ainda pendentes |
 | `?` / `QOut()` | Clipper | partial | 2/4 | `doc/pcode.txt`, `tests/hello.prg` | parser + runtime | sintaxe de `?` coberta na Fase 2; builtin e execução seguem para runtime |
 | `IF / ELSE / ENDIF` | Clipper | partial | 2 | `harbour.y` | parser + run | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
 | `DO WHILE / ENDDO` | Clipper | partial | 2 | `tests/while.prg` | integração | sintaxe e AST cobertas na Fase 2; execução ainda pendente |
 | `FOR / NEXT` | Clipper | partial | 2 | `harbour.y` | integração | sintaxe e AST cobertas na Fase 2; sem `FOR EACH` e sem execução ainda |
-| operadores básicos | Clipper | partial | 1/2/4 | `ppcore.c`, `harbour.y` | unit + runtime | tokenização base e multi-caractere cobertas na Fase 1; semântica ainda pendente |
+| operadores básicos | Clipper | partial | 1/2/3/4 | `ppcore.c`, `harbour.y` | unit + sema + runtime | tokenização base e multi-caractere cobertas na Fase 1; parsing e resolução básica cobertas até a Fase 3; execução ainda pendente |
 | strings | Clipper | partial | 1/4 | `doc/pp.txt` | unit + golden | literais e erro de string não terminada cobertos na Fase 1; `[]` segue para PP |
 | números | Clipper | partial | 1/4 | `doc/pp.txt` | unit + runtime | inteiros e floats decimais tokenizados na Fase 1; semântica e corner cases pendentes |
 | comentários | Clipper | partial | 1 | `tests/hello.prg`, `tests/while.prg` | unit + golden | `//`, `&&`, `/* */` e `*` em início de linha cobertos pelo lexer |
