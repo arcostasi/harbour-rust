@@ -40,6 +40,14 @@ Status:
 | `WITH OBJECT` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | |
 | RDD/DBF | Clipper/Harbour | planned | 10 | `src/rdd`, `tests/rddtest` | integração | só após frontend estável |
 
+## Marco atual
+
+O aceite da Fase 5 está fechado com o pipeline procedural fim a fim:
+
+- `examples/hello.prg` compila e executa via CLI,
+- `tests/fixtures/parser/while.prg` cobre o primeiro caminho executável com `DO WHILE`,
+- `tests/fixtures/parser/for_sum.prg` cobre o primeiro caminho executável com `FOR` simples.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.

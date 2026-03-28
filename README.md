@@ -49,7 +49,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3 e 4 estão concluídas:
+As Fases 0, 1, 2, 3, 4 e 5 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -65,11 +65,15 @@ As Fases 0, 1, 2, 3 e 4 estão concluídas:
 - regressões de sema curadas para símbolos locais e callables ausentes em `IF`, `DO WHILE` e `FOR`,
 - runtime mínimo implementado com `Value::{Nil, Logical, Integer, Float, String}`,
 - conversões básicas, aritmética e comparação com erros estruturados,
-- formatação orientada a impressão com `QOut()` mínimo e dispatch case-insensitive de builtins de saída.
+- formatação orientada a impressão com `QOut()` mínimo e dispatch case-insensitive de builtins de saída,
+- IR procedural inicial implementada com lowering HIR -> IR,
+- backend C inicial implementado para rotinas procedurais, `RETURN`, `QOut()`, `DO WHILE` e `FOR` simples,
+- CLI com `build` e `run` fim a fim via compilador C host,
+- caminhos executáveis curados para `examples/hello.prg`, `tests/fixtures/parser/while.prg` e `tests/fixtures/parser/for_sum.prg`.
 
-O próximo passo técnico é iniciar a Fase 5 com IR e backend C para integração fim a fim.
+O próximo passo técnico é iniciar a Fase 6 com o pré-processador inicial (`#define` e `#include`).
 
-Neste ponto, o primeiro slice de CLI para a Fase 5 já oferece geração de C:
+O baseline fim a fim da Fase 5 oferece geração de C:
 
 ```text
 cargo run -p harbour-rust-cli -- build examples/hello.prg --out target/hello.c
@@ -77,17 +81,13 @@ cargo run -p harbour-rust-cli -- build examples/hello.prg --out target/hello.c
 
 O pipeline atual valida parse, HIR, sema, IR e `codegen-c`, e escreve o `.c` gerado.
 
-O slice seguinte da CLI já executa `hello.prg` via compilador C host:
+O mesmo baseline já executa `hello.prg` via compilador C host:
 
 ```text
 cargo run -p harbour-rust-cli -- run examples/hello.prg
 ```
 
-Nesta etapa o `run` detecta `clang`, `gcc` ou `cc`, compila o C gerado com um suporte mínimo de runtime e executa o binário resultante. O suporte de codegen continua parcial para controle de fluxo estruturado.
-
-Com a slice seguinte de `codegen-c`, `while.prg` também já entra no caminho executável inicial com `LOCAL`, `DO WHILE`, comparação `<` e `x++` em condição.
-
-Com a slice seguinte, `for_sum.prg` também já entra no caminho executável inicial com `FOR`, `sum := sum + n` e atualização de índice por passo implícito.
+Nesta etapa o `run` detecta `clang`, `gcc` ou `cc`, compila o C gerado com um suporte mínimo de runtime e executa o binário resultante. O suporte de codegen continua parcial fora do subconjunto procedural já coberto, mas a Fase 5 já atende o aceite com `hello.prg` e um programa com `FOR` simples executáveis.
 
 ## Desenvolvimento
 

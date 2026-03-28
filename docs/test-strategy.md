@@ -21,6 +21,12 @@ Compatibilidade não será assumida; será medida.
 - `.prg -> C`
 - `.prg -> binário -> stdout/stderr`
 
+Na Fase 5, o baseline executável passa a validar o pipeline completo:
+
+- `parser -> hir -> sema -> ir -> codegen-c`,
+- compilação do C gerado com compilador host,
+- comparação de sucesso/erro no nível do CLI.
+
 ### Snapshot/golden
 
 - tokens
@@ -74,6 +80,9 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/while.prg` -> `while.ast`
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
+- `examples/hello.prg` -> `harbour-rust-cli build/run`
+- `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
+- `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`
 
 ## Critérios por PR
 
