@@ -1,0 +1,5 @@
+unresolved local symbol `missing_flag` in routine `Main` at line 4, column 7
+unresolved local symbol `missing_limit` in routine `Main` at line 8, column 23
+unresolved local symbol `final_value` in routine `Main` at line 13, column 24
+unresolved local symbol `inner_value` in routine `Main` at line 14, column 9
+unresolved local symbol `missing_result` in routine `Main` at line 17, column 11

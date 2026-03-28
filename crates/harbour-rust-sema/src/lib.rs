@@ -85,6 +85,14 @@ pub fn analyze_program(program: &hir::Program) -> Analysis {
     }
 }
 
+pub fn render_errors(analysis: &Analysis) -> String {
+    let mut out = String::new();
+    for error in &analysis.errors {
+        out.push_str(&format!("{error}\n"));
+    }
+    out
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutineSymbol {
     pub id: usize,

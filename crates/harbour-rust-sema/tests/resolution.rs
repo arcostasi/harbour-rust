@@ -28,6 +28,12 @@ fn analyze_fixture(path: &str) -> harbour_rust_sema::Analysis {
     analyze_program(&lowered.program)
 }
 
+fn assert_fixture_errors(source_path: &str, expected_path: &str) {
+    let analysis = analyze_fixture(source_path);
+    let expected = fs::read_to_string(workspace_fixture(expected_path)).expect("fixture snapshot");
+    assert_eq!(harbour_rust_sema::render_errors(&analysis), expected);
+}
+
 #[test]
 fn analyzes_hello_fixture_without_semantic_errors() {
     let analysis = analyze_fixture("tests/fixtures/parser/hello.prg");
@@ -61,5 +67,21 @@ fn analyzes_while_fixture_resolving_local_x() {
     assert_eq!(
         analysis.routines[0].resolutions[1].binding,
         Binding::Local(0)
+    );
+}
+
+#[test]
+fn reports_unresolved_locals_across_control_flow_fixture() {
+    assert_fixture_errors(
+        "tests/fixtures/sema/control_flow_missing_locals.prg",
+        "tests/fixtures/sema/control_flow_missing_locals.errors",
+    );
+}
+
+#[test]
+fn reports_unresolved_callables_across_control_flow_fixture() {
+    assert_fixture_errors(
+        "tests/fixtures/sema/control_flow_missing_callables.prg",
+        "tests/fixtures/sema/control_flow_missing_callables.errors",
     );
 }

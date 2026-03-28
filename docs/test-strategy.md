@@ -72,6 +72,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/lexer/while.prg` -> `while.tokens`
 - `tests/fixtures/parser/hello.prg` -> `hello.ast`
 - `tests/fixtures/parser/while.prg` -> `while.ast`
+- `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
+- `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
 
 ## Critérios por PR
 
