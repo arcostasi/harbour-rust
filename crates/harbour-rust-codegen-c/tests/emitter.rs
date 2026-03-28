@@ -58,12 +58,19 @@ fn emits_hello_fixture_as_c_with_qout_and_main_wrapper() {
 }
 
 #[test]
-fn reports_while_fixture_as_not_yet_emittable() {
+fn emits_while_fixture_as_c_with_runtime_loop_helpers() {
     let emitted = emit_fixture("tests/fixtures/parser/while.prg");
 
-    assert_eq!(emitted.errors.len(), 1);
-    assert_eq!(
-        emitted.errors[0].message,
-        "C emission for DO WHILE is not implemented yet"
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
     );
+    assert!(emitted.source.contains("while (harbour_value_is_true("));
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_postfix_increment(&x)")
+    );
+    assert!(emitted.source.contains("harbour_value_less_than("));
 }

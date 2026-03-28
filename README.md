@@ -85,6 +85,8 @@ cargo run -p harbour-rust-cli -- run examples/hello.prg
 
 Nesta etapa o `run` detecta `clang`, `gcc` ou `cc`, compila o C gerado com um suporte mínimo de runtime e executa o binário resultante. O suporte de codegen continua parcial para controle de fluxo estruturado.
 
+Com a slice seguinte de `codegen-c`, `while.prg` também já entra no caminho executável inicial com `LOCAL`, `DO WHILE`, comparação `<` e `x++` em condição.
+
 ## Desenvolvimento
 
 Comandos principais do workspace:

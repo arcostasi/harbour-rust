@@ -106,6 +106,13 @@ Na segunda slice da Fase 5, `harbour-rust-codegen-c` começa emitindo C legível
 
 Controle de fluxo estruturado e expressões mais ricas ainda produzem diagnóstico explícito de codegen nesta etapa, em vez de expansão parcial silenciosa.
 
+Na slice seguinte, o backend C passa a cobrir o primeiro loop executável do projeto:
+
+- `LOCAL` com inicializador inteiro,
+- `DO WHILE` emitido como `while`,
+- comparação `<` via helper de runtime,
+- `x++` em condição via helper de postfix increment.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:

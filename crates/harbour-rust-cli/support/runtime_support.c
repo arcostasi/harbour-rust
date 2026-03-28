@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "runtime_support.h"
 
@@ -36,6 +37,63 @@ harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     value.kind = HARBOUR_VALUE_STRING;
     value.as.string = string;
     return value;
+}
+
+_Bool harbour_value_is_true(harbour_runtime_Value value) {
+    switch (value.kind) {
+    case HARBOUR_VALUE_NIL:
+        return 0;
+    case HARBOUR_VALUE_LOGICAL:
+        return value.as.logical;
+    case HARBOUR_VALUE_INTEGER:
+        return value.as.integer != 0;
+    case HARBOUR_VALUE_FLOAT:
+        return value.as.floating != 0.0;
+    case HARBOUR_VALUE_STRING:
+        return value.as.string != NULL && value.as.string[0] != '\0';
+    default:
+        return 0;
+    }
+}
+
+harbour_runtime_Value harbour_value_less_than(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_logical(left.as.integer < right.as.integer);
+    }
+
+    if (
+        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
+        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
+    ) {
+        double left_number = left.kind == HARBOUR_VALUE_INTEGER
+            ? (double) left.as.integer
+            : left.as.floating;
+        double right_number = right.kind == HARBOUR_VALUE_INTEGER
+            ? (double) right.as.integer
+            : right.as.floating;
+        return harbour_value_from_logical(left_number < right_number);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) < 0);
+    }
+
+    return harbour_value_from_logical(0);
+}
+
+harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value) {
+    harbour_runtime_Value previous = *value;
+
+    if (value->kind == HARBOUR_VALUE_INTEGER) {
+        value->as.integer += 1;
+    } else if (value->kind == HARBOUR_VALUE_FLOAT) {
+        value->as.floating += 1.0;
+    }
+
+    return previous;
 }
 
 static void harbour_print_value(const harbour_runtime_Value *value) {

@@ -45,24 +45,25 @@ fn build_command_writes_c_output_for_hello_example() {
 }
 
 #[test]
-fn build_command_reports_codegen_error_for_while_fixture() {
+fn build_command_writes_c_output_for_while_fixture() {
     let temp_dir = unique_temp_dir("while");
     fs::create_dir_all(&temp_dir).expect("temp dir");
     let output_path = temp_dir.join("while.c");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("build")
         .arg(workspace_path("tests/fixtures/parser/while.prg"))
         .arg("--out")
         .arg(&output_path)
-        .output()
+        .status()
         .expect("run cli");
 
-    assert!(!output.status.success(), "expected failing build status");
+    assert!(status.success(), "expected successful build status");
 
-    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
-    assert!(stderr.contains("codegen-c failed"));
-    assert!(stderr.contains("C emission for DO WHILE is not implemented yet"));
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("while (harbour_value_is_true("));
+    assert!(generated.contains("harbour_value_postfix_increment(&x)"));
+    assert!(generated.contains("harbour_value_less_than("));
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
@@ -82,16 +83,17 @@ fn run_command_executes_hello_example_with_host_compiler() {
 }
 
 #[test]
-fn run_command_reports_codegen_error_for_while_fixture() {
+fn run_command_executes_while_fixture_with_expected_output() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
         .arg(workspace_path("tests/fixtures/parser/while.prg"))
         .output()
         .expect("run cli");
 
-    assert!(!output.status.success(), "expected failing run status");
+    assert!(output.status.success(), "expected successful run status");
 
-    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
-    assert!(stderr.contains("codegen-c failed"));
-    assert!(stderr.contains("C emission for DO WHILE is not implemented yet"));
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(stdout.starts_with("1\n2\n3\n"));
+    assert!(stdout.ends_with("998\n999\n1000\n"));
+    assert_eq!(stdout.lines().count(), 1000);
 }

@@ -101,6 +101,13 @@ impl Emitter {
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);",
         );
+        self.emit_line("extern bool harbour_value_is_true(harbour_runtime_Value value);");
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);",
+        );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
@@ -192,11 +199,16 @@ impl Emitter {
                 self.emit_line("/* TODO: emit IF */");
             }
             ir::Statement::DoWhile(statement) => {
-                self.push_error(
-                    "C emission for DO WHILE is not implemented yet",
-                    statement.span,
-                );
-                self.emit_line("/* TODO: emit DO WHILE */");
+                let condition = self
+                    .emit_expression(&statement.condition)
+                    .unwrap_or_else(|| "harbour_value_from_logical(false)".to_owned());
+                self.emit_line(&format!("while (harbour_value_is_true({})) {{", condition));
+                self.indent_level += 1;
+                for nested in &statement.body {
+                    self.emit_statement(nested);
+                }
+                self.indent_level -= 1;
+                self.emit_line("}");
             }
             ir::Statement::For(statement) => {
                 self.push_error("C emission for FOR is not implemented yet", statement.span);
@@ -272,11 +284,21 @@ impl Emitter {
                 }
             }
             Expression::Binary(expression) => {
-                self.push_error(
-                    "C emission for binary expressions is not implemented yet",
-                    expression.span,
-                );
-                None
+                let left = self.emit_expression(&expression.left)?;
+                let right = self.emit_expression(&expression.right)?;
+
+                match expression.operator {
+                    ir::BinaryOperator::Less => {
+                        Some(format!("harbour_value_less_than({}, {})", left, right))
+                    }
+                    _ => {
+                        self.push_error(
+                            "C emission for this binary operator is not implemented yet",
+                            expression.span,
+                        );
+                        None
+                    }
+                }
             }
             Expression::Unary(expression) => {
                 self.push_error(
@@ -286,11 +308,19 @@ impl Emitter {
                 None
             }
             Expression::Postfix(expression) => {
-                self.push_error(
-                    "C emission for postfix expressions is not implemented yet",
-                    expression.span,
-                );
-                None
+                match (expression.operator, expression.operand.as_ref()) {
+                    (ir::PostfixOperator::Increment, Expression::Symbol(symbol)) => Some(format!(
+                        "harbour_value_postfix_increment(&{})",
+                        mangle_symbol(&symbol.text)
+                    )),
+                    _ => {
+                        self.push_error(
+                            "C emission for this postfix expression is not implemented yet",
+                            expression.span,
+                        );
+                        None
+                    }
+                }
             }
             Expression::Error(expression) => {
                 self.push_error("cannot emit invalid IR expression", expression.span);
@@ -480,6 +510,9 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_from_integer(long long value);\n",
                     "extern harbour_runtime_Value harbour_value_from_float(double value);\n",
                     "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);\n",
+                    "extern bool harbour_value_is_true(harbour_runtime_Value value);\n",
+                    "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",
                     "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "\n",
                     "static harbour_runtime_Value harbour_routine_main(void);\n",
@@ -502,32 +535,72 @@ mod tests {
     }
 
     #[test]
-    fn reports_unimplemented_control_flow_emission() {
+    fn emits_do_while_using_runtime_condition_helpers() {
         let loop_span = span(12, 2, 4, 24, 4, 9);
         let program = ir::Program {
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
                 params: Vec::new(),
-                body: vec![ir::Statement::DoWhile(Box::new(ir::DoWhileStatement {
-                    condition: ir::Expression::Logical(ir::LogicalLiteral {
-                        value: true,
-                        span: span(15, 2, 7, 18, 2, 10),
+                body: vec![
+                    ir::Statement::Local(ir::LocalStatement {
+                        bindings: vec![ir::LocalBinding {
+                            name: symbol("x", span(8, 2, 5, 9, 2, 6)),
+                            initializer: Some(ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "0".to_owned(),
+                                span: span(13, 2, 10, 14, 2, 11),
+                            })),
+                            span: span(8, 2, 5, 14, 2, 11),
+                        }],
+                        span: span(4, 2, 1, 14, 2, 11),
                     }),
-                    body: Vec::new(),
-                    span: loop_span,
-                }))],
+                    ir::Statement::DoWhile(Box::new(ir::DoWhileStatement {
+                        condition: ir::Expression::Binary(ir::BinaryExpression {
+                            left: Box::new(ir::Expression::Postfix(ir::PostfixExpression {
+                                operand: Box::new(ir::Expression::Symbol(symbol(
+                                    "x",
+                                    span(18, 3, 8, 19, 3, 9),
+                                ))),
+                                operator: ir::PostfixOperator::Increment,
+                                span: span(18, 3, 8, 21, 3, 11),
+                            })),
+                            operator: ir::BinaryOperator::Less,
+                            right: Box::new(ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "10".to_owned(),
+                                span: span(24, 3, 14, 26, 3, 16),
+                            })),
+                            span: span(18, 3, 8, 26, 3, 16),
+                        }),
+                        body: vec![ir::Statement::BuiltinCall(ir::BuiltinCallStatement {
+                            builtin: ir::Builtin::QOut,
+                            arguments: vec![ir::Expression::Symbol(symbol(
+                                "x",
+                                span(32, 4, 6, 33, 4, 7),
+                            ))],
+                            span: span(30, 4, 4, 33, 4, 7),
+                        })],
+                        span: loop_span,
+                    })),
+                ],
                 span: span(0, 1, 1, 24, 4, 9),
             }],
         };
 
         let emitted = emit_program(&program);
 
-        assert_eq!(emitted.errors.len(), 1);
-        assert_eq!(
-            emitted.errors[0].message,
-            "C emission for DO WHILE is not implemented yet"
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted
+                .source
+                .contains("harbour_runtime_Value x = harbour_value_from_integer(0LL);")
         );
-        assert!(emitted.source.contains("/* TODO: emit DO WHILE */"));
+        assert!(emitted.source.contains(
+            "while (harbour_value_is_true(harbour_value_less_than(harbour_value_postfix_increment(&x), harbour_value_from_integer(10LL)))) {"
+        ));
+        assert!(
+            emitted
+                .source
+                .contains("harbour_builtin_qout((harbour_runtime_Value[]) { x }, 1);")
+        );
     }
 }
