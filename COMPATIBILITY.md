@@ -19,9 +19,10 @@ Status:
 | `IF / ELSE / ENDIF` | Clipper | planned | 2 | `harbour.y` | parser + run | |
 | `DO WHILE / ENDDO` | Clipper | planned | 2 | `tests/while.prg` | integração | usar como caso de loop inicial |
 | `FOR / NEXT` | Clipper | planned | 2 | `harbour.y` | integração | sem `FOR EACH` no começo |
-| operadores básicos | Clipper | planned | 1/2/4 | `ppcore.c`, `harbour.y` | unit + runtime | incluir multi-caractere |
-| strings | Clipper | planned | 1/4 | `doc/pp.txt` | unit + golden | atenção a `[]` no PP |
-| números | Clipper | planned | 1/4 | `doc/pp.txt` | unit + runtime | preservar forma léxica quando necessário |
+| operadores básicos | Clipper | partial | 1/2/4 | `ppcore.c`, `harbour.y` | unit + runtime | tokenização base e multi-caractere cobertas na Fase 1; semântica ainda pendente |
+| strings | Clipper | partial | 1/4 | `doc/pp.txt` | unit + golden | literais e erro de string não terminada cobertos na Fase 1; `[]` segue para PP |
+| números | Clipper | partial | 1/4 | `doc/pp.txt` | unit + runtime | inteiros e floats decimais tokenizados na Fase 1; semântica e corner cases pendentes |
+| comentários | Clipper | partial | 1 | `tests/hello.prg`, `tests/while.prg` | unit + golden | `//`, `&&`, `/* */` e `*` em início de linha cobertos pelo lexer |
 | `STATIC` | Clipper | planned | 7 | `doc/statics.txt`, `tests/statics*.prg` | compat | modelar storage separado |
 | arrays | Clipper | planned | 7 | `src/vm/arrays.c` | runtime + compat | depois do procedural mínimo |
 | builtins de string | Clipper | planned | 7 | `src/rtl`, `utils/hbtest/rt_str.prg` | compat | por prioridade, não em lote |
