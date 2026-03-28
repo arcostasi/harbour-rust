@@ -101,3 +101,16 @@ Na base inicial, erros de conversão usam `RuntimeError` com mensagem e tipo rea
 ## Integração com codegen C
 
 No estágio inicial, o backend C deve gerar chamadas simples e legíveis, evitando um runtime mágico demais. O alvo é depuração fácil, não otimização.
+
+## Fechamento da Fase 4
+
+Com a quarta slice, a Fase 4 fecha no nível do crate de runtime com:
+
+- modelo básico de `Value`,
+- conversões públicas e diagnósticos estruturados,
+- aritmética e comparação para o subconjunto procedural inicial,
+- formatação de saída,
+- `QOut()` mínimo,
+- dispatch de builtin de impressão por nome.
+
+Continua pendente para a Fase 5 a integração fim a fim entre parser, HIR, IR, backend C e execução observável de `RETURN` e `?`.

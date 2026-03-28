@@ -49,7 +49,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2 e 3 estão concluídas:
+As Fases 0, 1, 2, 3 e 4 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -62,9 +62,12 @@ As Fases 0, 1, 2 e 3 estão concluídas:
 - snapshots de AST curados para `hello.prg` e `while.prg`,
 - HIR procedural inicial implementada com lowering AST -> HIR para rotinas, statements e expressões básicas,
 - análise semântica mínima implementada com tabela global de rotinas, tabela local por rotina, resolução case-insensitive e diagnósticos de símbolo ausente,
-- regressões de sema curadas para símbolos locais e callables ausentes em `IF`, `DO WHILE` e `FOR`.
+- regressões de sema curadas para símbolos locais e callables ausentes em `IF`, `DO WHILE` e `FOR`,
+- runtime mínimo implementado com `Value::{Nil, Logical, Integer, Float, String}`,
+- conversões básicas, aritmética e comparação com erros estruturados,
+- formatação orientada a impressão com `QOut()` mínimo e dispatch case-insensitive de builtins de saída.
 
-O próximo passo técnico é iniciar a Fase 4 com runtime mínimo.
+O próximo passo técnico é iniciar a Fase 5 com IR e backend C para integração fim a fim.
 
 ## Desenvolvimento
 
