@@ -178,14 +178,14 @@ impl<'src> Lexer<'src> {
                 ':' => self.lex_colon_or_assign(),
                 '+' => self.lex_plus_family(),
                 '-' => self.lex_minus_family(),
-                '*' => self.lex_star_family(),
+                '*' => self.lex_star_or_comment(),
                 '/' => self.lex_slash_family(),
                 '%' => self.lex_percent_family(),
                 '^' => self.lex_caret_family(),
                 '$' => self.push_single_char(TokenKind::Dollar),
                 '#' => self.push_single_char(TokenKind::Hash),
                 '@' => self.push_single_char(TokenKind::At),
-                '&' => self.push_single_char(TokenKind::Ampersand),
+                '&' => self.lex_ampersand_or_comment(),
                 '|' => self.push_single_char(TokenKind::Pipe),
                 '!' => self.lex_bang_family(),
                 '<' => self.lex_less_family(),
@@ -318,6 +318,41 @@ impl<'src> Lexer<'src> {
             },
             message: "unterminated string literal".to_owned(),
         });
+    }
+
+    fn lex_line_comment(&mut self) {
+        while let Some(ch) = self.peek_char() {
+            if ch == '\r' || ch == '\n' {
+                break;
+            }
+            self.bump_char();
+        }
+    }
+
+    fn lex_block_comment(&mut self, start: Position) {
+        loop {
+            match self.peek_char() {
+                Some('*') if self.peek_second_char() == Some('/') => {
+                    self.bump_char();
+                    self.bump_char();
+                    return;
+                }
+                Some(_) => {
+                    self.bump_char();
+                }
+                None => {
+                    self.errors.push(LexError {
+                        kind: LexErrorKind::UnterminatedBlockComment,
+                        span: Span {
+                            start,
+                            end: self.position,
+                        },
+                        message: "unterminated block comment".to_owned(),
+                    });
+                    return;
+                }
+            }
+        }
     }
 
     fn lex_invalid_character(&mut self, ch: char) {
@@ -465,10 +500,29 @@ impl<'src> Lexer<'src> {
         self.push_consumed(kind, start);
     }
 
+    fn lex_star_or_comment(&mut self) {
+        if self.is_at_line_start() {
+            self.lex_line_comment();
+            return;
+        }
+
+        self.lex_star_family();
+    }
+
     fn lex_slash_family(&mut self) {
         let start = self.position;
         self.bump_char();
         let kind = match self.peek_char() {
+            Some('/') => {
+                self.bump_char();
+                self.lex_line_comment();
+                return;
+            }
+            Some('*') => {
+                self.bump_char();
+                self.lex_block_comment(start);
+                return;
+            }
             Some('=') => {
                 self.bump_char();
                 TokenKind::SlashEq
@@ -476,6 +530,19 @@ impl<'src> Lexer<'src> {
             _ => TokenKind::Slash,
         };
         self.push_consumed(kind, start);
+    }
+
+    fn lex_ampersand_or_comment(&mut self) {
+        let start = self.position;
+        self.bump_char();
+
+        if self.peek_char() == Some('&') {
+            self.bump_char();
+            self.lex_line_comment();
+            return;
+        }
+
+        self.push_consumed(TokenKind::Ampersand, start);
     }
 
     fn lex_percent_family(&mut self) {
@@ -564,6 +631,12 @@ impl<'src> Lexer<'src> {
         self.source[self.position.offset..].chars().next()
     }
 
+    fn peek_second_char(&self) -> Option<char> {
+        let mut chars = self.source[self.position.offset..].chars();
+        chars.next()?;
+        chars.next()
+    }
+
     fn bump_char(&mut self) -> Option<char> {
         let ch = self.peek_char()?;
         self.position.offset += ch.len_utf8();
@@ -585,6 +658,14 @@ impl<'src> Lexer<'src> {
             .expect("rewind requested on empty prefix");
         self.position.offset -= ch.len_utf8();
         self.position.column -= 1;
+    }
+
+    fn is_at_line_start(&self) -> bool {
+        let prefix = &self.source[..self.position.offset];
+        let line_start = prefix.rfind(['\n', '\r']).map_or(0, |index| index + 1);
+        prefix[line_start..]
+            .chars()
+            .all(|ch| ch == ' ' || ch == '\t')
     }
 }
 
@@ -755,6 +836,42 @@ mod tests {
                 TokenKind::Keyword(Keyword::And),
                 TokenKind::Keyword(Keyword::Or),
                 TokenKind::Keyword(Keyword::Not),
+                TokenKind::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn lexes_integer_float_and_strings() {
+        let source = "42 10.5 \"hello\" `clipper'";
+        let lexed = lex(source);
+        assert!(lexed.errors.is_empty());
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Integer);
+        assert_eq!(lexed.tokens[0].text(source), "42");
+        assert_eq!(lexed.tokens[1].kind, TokenKind::Float);
+        assert_eq!(lexed.tokens[1].text(source), "10.5");
+        assert_eq!(lexed.tokens[2].kind, TokenKind::String);
+        assert_eq!(lexed.tokens[2].text(source), "\"hello\"");
+        assert_eq!(lexed.tokens[3].kind, TokenKind::String);
+        assert_eq!(lexed.tokens[3].text(source), "`clipper'");
+    }
+
+    #[test]
+    fn skips_line_and_block_comments_but_keeps_newlines() {
+        let source = "// hello\r\n&& world\r\n/* block */\r\n   * note\r\nx";
+        let kinds: Vec<_> = lex(source)
+            .tokens
+            .into_iter()
+            .map(|token| token.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::Newline,
+                TokenKind::Newline,
+                TokenKind::Newline,
+                TokenKind::Newline,
+                TokenKind::Identifier,
                 TokenKind::Eof,
             ]
         );
