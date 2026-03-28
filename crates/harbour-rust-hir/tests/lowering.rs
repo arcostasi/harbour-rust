@@ -64,3 +64,32 @@ fn lowers_static_fixture_with_static_storage_placeholder() {
     assert_eq!(declaration.bindings[0].name.text, "cache");
     assert_eq!(declaration.bindings[1].name.text, "hits");
 }
+
+#[test]
+fn lowers_arrays_fixture_without_hir_errors() {
+    let lowered = lower_fixture("tests/fixtures/parser/arrays.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let return_value = match &lowered.program.routines[0].body[0] {
+        harbour_rust_hir::Statement::Return(statement) => statement.value.as_ref(),
+        statement => panic!("expected return statement, found {statement:?}"),
+    };
+
+    let Some(harbour_rust_hir::Expression::Array(array)) = return_value else {
+        panic!("expected array literal in lowered HIR");
+    };
+
+    assert_eq!(array.elements.len(), 2);
+    assert!(matches!(
+        array.elements[0],
+        harbour_rust_hir::Expression::Array(ref nested) if nested.elements.is_empty()
+    ));
+    assert!(matches!(
+        array.elements[1],
+        harbour_rust_hir::Expression::Array(ref nested) if nested.elements.len() == 3
+    ));
+}

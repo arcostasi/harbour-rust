@@ -64,3 +64,13 @@ fn lowers_while_fixture_without_ir_errors() {
         Statement::DoWhile(_)
     ));
 }
+
+#[test]
+fn reports_arrays_fixture_as_ir_placeholder_error() {
+    let lowered = lower_fixture("tests/fixtures/parser/arrays.prg");
+    assert_eq!(lowered.errors.len(), 1);
+    assert_eq!(
+        lowered.errors[0].message,
+        "array literals are not supported in IR yet"
+    );
+}

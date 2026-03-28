@@ -173,6 +173,7 @@ pub enum Expression {
     Integer(IntegerLiteral),
     Float(FloatLiteral),
     String(StringLiteral),
+    Array(ArrayLiteral),
     Call(CallExpression),
     Assign(AssignExpression),
     Binary(BinaryExpression),
@@ -190,6 +191,7 @@ impl Expression {
             Self::Integer(literal) => literal.span,
             Self::Float(literal) => literal.span,
             Self::String(literal) => literal.span,
+            Self::Array(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Assign(expression) => expression.span,
             Self::Binary(expression) => expression.span,
@@ -232,6 +234,12 @@ pub struct FloatLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringLiteral {
     pub lexeme: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArrayLiteral {
+    pub elements: Vec<Expression>,
     pub span: Span,
 }
 
@@ -457,15 +465,14 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
             lexeme: literal.lexeme.clone(),
             span: literal.span,
         }),
-        ast::Expression::Array(expression) => {
-            errors.push(LoweringError {
-                message: "array literals are not supported in HIR yet".to_owned(),
-                span: expression.span,
-            });
-            Expression::Error(ErrorExpression {
-                span: expression.span,
-            })
-        }
+        ast::Expression::Array(expression) => Expression::Array(ArrayLiteral {
+            elements: expression
+                .elements
+                .iter()
+                .map(|element| lower_expression(element, errors))
+                .collect(),
+            span: expression.span,
+        }),
         ast::Expression::Call(expression) => Expression::Call(CallExpression {
             callee: Box::new(lower_expression(&expression.callee, errors)),
             arguments: expression
@@ -779,5 +786,48 @@ mod tests {
             }
             statement => panic!("expected lowered local declaration, found {statement:?}"),
         }
+    }
+
+    #[test]
+    fn lowers_array_literals_without_placeholder_errors() {
+        let array_span = span(18, 2, 8, 31, 2, 21);
+        let program = ast::Program {
+            items: vec![ast::Item::Routine(ast::Routine {
+                kind: ast::RoutineKind::Function,
+                name: identifier("Build", span(0, 1, 1, 5, 1, 6)),
+                params: Vec::new(),
+                body: vec![ast::Statement::Return(ast::ReturnStatement {
+                    value: Some(ast::Expression::Array(ast::ArrayLiteral {
+                        elements: vec![
+                            ast::Expression::Integer(ast::IntegerLiteral {
+                                lexeme: "1".to_owned(),
+                                span: span(20, 2, 10, 21, 2, 11),
+                            }),
+                            ast::Expression::Identifier(identifier(
+                                "cache",
+                                span(23, 2, 13, 28, 2, 18),
+                            )),
+                        ],
+                        span: array_span,
+                    })),
+                    span: span(11, 2, 1, 31, 2, 21),
+                })],
+                span: span(0, 1, 1, 31, 2, 21),
+            })],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Return(statement) = &lowered.program.routines[0].body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Array(array)) = &statement.value else {
+            panic!("expected lowered array literal");
+        };
+        assert_eq!(array.elements.len(), 2);
+        assert!(matches!(array.elements[0], Expression::Integer(_)));
+        assert!(matches!(array.elements[1], Expression::Symbol(_)));
+        assert_eq!(array.span, array_span);
     }
 }

@@ -86,9 +86,11 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/while.prg` -> `while.ast`
 - `tests/fixtures/parser/static.prg` -> `static.ast`
 - `tests/fixtures/parser/arrays.prg` -> `arrays.ast`
+- `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
 - `tests/fixtures/parser/static.prg` -> `tests/fixtures/sema/static_unsupported.errors`
+- `tests/fixtures/parser/arrays.prg` -> diagnóstico estável de IR para array ainda não suportado
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`

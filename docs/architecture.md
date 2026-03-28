@@ -79,6 +79,12 @@ Na Fase 7, `STATIC` entra nessa mesma superfície como placeholder explícito:
 - `STATIC` não é mais confundido silenciosamente com `LOCAL`,
 - a semântica ainda não implementa storage persistente, mas já emite diagnóstico explícito e mantém os símbolos declarados para evitar falsos `unresolved`.
 
+Na slice seguinte da Fase 7, arrays deixam de morrer cedo no lowering:
+
+- literais de array entram como nó explícito da HIR,
+- a semântica passa a caminhar pelos elementos para preservar resolução e regressões,
+- a IR ainda não executa arrays, mas produz diagnóstico estável e explícito em vez de perder a informação já no AST -> HIR.
+
 ### 1.2. Sema inicial com side tables
 
 O primeiro slice de `sema` trabalha sobre a HIR sem reescrevê-la:

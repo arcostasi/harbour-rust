@@ -448,6 +448,15 @@ fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError
             lexeme: literal.lexeme.clone(),
             span: literal.span,
         }),
+        hir::Expression::Array(expression) => {
+            errors.push(LoweringError {
+                message: "array literals are not supported in IR yet".to_owned(),
+                span: expression.span,
+            });
+            Expression::Error(ErrorExpression {
+                span: expression.span,
+            })
+        }
         hir::Expression::Call(expression) => Expression::Call(CallExpression {
             callee: Box::new(lower_expression(&expression.callee, errors)),
             arguments: expression
@@ -708,5 +717,45 @@ mod tests {
                 }],
             }
         );
+    }
+
+    #[test]
+    fn reports_array_literals_as_unsupported_in_ir_lowering() {
+        let expression_span = span(15, 2, 6, 24, 2, 15);
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![hir::Statement::Evaluate(hir::ExpressionStatement {
+                    expression: hir::Expression::Array(hir::ArrayLiteral {
+                        elements: vec![hir::Expression::Integer(hir::IntegerLiteral {
+                            lexeme: "1".to_owned(),
+                            span: span(17, 2, 8, 18, 2, 9),
+                        })],
+                        span: expression_span,
+                    }),
+                    span: expression_span,
+                })],
+                span: span(0, 1, 1, 24, 2, 15),
+            }],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(
+            lowered.errors,
+            vec![LoweringError {
+                message: "array literals are not supported in IR yet".to_owned(),
+                span: expression_span,
+            }]
+        );
+        assert!(matches!(
+            lowered.program.routines[0].body[0],
+            Statement::Evaluate(crate::ExpressionStatement {
+                expression: Expression::Error(ErrorExpression { span }),
+                span: _
+            }) if span == expression_span
+        ));
     }
 }

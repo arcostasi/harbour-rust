@@ -290,6 +290,11 @@ impl<'a> RoutineAnalyzer<'a> {
             | hir::Expression::Float(_)
             | hir::Expression::String(_)
             | hir::Expression::Error(_) => {}
+            hir::Expression::Array(expression) => {
+                for element in &expression.elements {
+                    self.analyze_expression(element, ExpressionContext::Value);
+                }
+            }
             hir::Expression::Call(expression) => {
                 self.analyze_expression(&expression.callee, ExpressionContext::CallCallee);
                 for argument in &expression.arguments {
@@ -644,6 +649,60 @@ mod tests {
             vec![SemanticError {
                 message: "STATIC storage is not supported in routine `Main` yet".to_owned(),
                 span: span(5, 2, 1, 26, 2, 26),
+            }]
+        );
+    }
+
+    #[test]
+    fn resolves_symbols_inside_array_literals() {
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    hir::Statement::Local(hir::LocalStatement {
+                        storage_class: hir::StorageClass::Local,
+                        bindings: vec![hir::LocalBinding {
+                            name: symbol("cache", span(11, 2, 7, 16, 2, 12)),
+                            initializer: Some(hir::Expression::Array(hir::ArrayLiteral {
+                                elements: vec![
+                                    hir::Expression::Integer(hir::IntegerLiteral {
+                                        lexeme: "1".to_owned(),
+                                        span: span(22, 2, 18, 23, 2, 19),
+                                    }),
+                                    hir::Expression::Symbol(symbol(
+                                        "seed",
+                                        span(25, 2, 21, 29, 2, 25),
+                                    )),
+                                ],
+                                span: span(20, 2, 16, 30, 2, 26),
+                            })),
+                            span: span(11, 2, 7, 30, 2, 26),
+                        }],
+                        span: span(5, 2, 1, 30, 2, 26),
+                    }),
+                    hir::Statement::Local(hir::LocalStatement {
+                        storage_class: hir::StorageClass::Local,
+                        bindings: vec![hir::LocalBinding {
+                            name: symbol("seed", span(38, 3, 7, 42, 3, 11)),
+                            initializer: None,
+                            span: span(38, 3, 7, 42, 3, 11),
+                        }],
+                        span: span(32, 3, 1, 42, 3, 11),
+                    }),
+                ],
+                span: span(0, 1, 1, 42, 3, 11),
+            }],
+        };
+
+        let analysis = analyze_program(&program);
+
+        assert_eq!(
+            analysis.errors,
+            vec![SemanticError {
+                message: "unresolved local symbol `seed` in routine `Main`".to_owned(),
+                span: span(25, 2, 21, 29, 2, 25),
             }]
         );
     }
