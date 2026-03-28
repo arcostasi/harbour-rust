@@ -78,6 +78,12 @@ Primeira slice da AST procedural:
 
 Esses nós existem para sustentar o parser inicial sem acoplar semântica ou runtime.
 
+Extensão da terceira slice:
+
+- `Statement::{Local, If, DoWhile, For}`
+- `Expression::{Binary, Unary, Postfix}`
+- operadores binários, unários e pós-fixos mínimos para controle de fluxo procedural
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:
