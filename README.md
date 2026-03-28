@@ -49,16 +49,19 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0 e 1 estão concluídas:
+As Fases 0, 1 e 2 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
 - estrutura base de `examples/`, `tests/` e `tools/` criada,
 - workflow de CI configurado para `fmt`, `clippy` e `test`,
 - lexer inicial implementado com spans, posições, keywords, operadores, strings, números, comentários e diagnósticos básicos,
-- baselines léxicos curados para `hello.prg` e `while.prg`.
+- baselines léxicos curados para `hello.prg` e `while.prg`,
+- AST procedural inicial implementada para `PROCEDURE`, `FUNCTION`, `LOCAL`, `RETURN`, `IF`, `DO WHILE`, `FOR` e `?`,
+- parser inicial com recuperação básica de blocos e diagnósticos sintáticos melhores,
+- snapshots de AST curados para `hello.prg` e `while.prg`.
 
-O próximo passo técnico é iniciar a Fase 2 com AST e parser do subconjunto procedural mínimo.
+O próximo passo técnico é iniciar a Fase 3 com HIR e análise semântica mínima.
 
 ## Desenvolvimento
 

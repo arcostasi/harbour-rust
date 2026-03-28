@@ -66,6 +66,13 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/memvar.prg` quando a fase chegar
 - `tests/hbpp/_pp_test.prg` por recorte, não inteiro de uma vez
 
+## Baselines já curados
+
+- `tests/fixtures/lexer/hello.prg` -> `hello.tokens`
+- `tests/fixtures/lexer/while.prg` -> `while.tokens`
+- `tests/fixtures/parser/hello.prg` -> `hello.ast`
+- `tests/fixtures/parser/while.prg` -> `while.ast`
+
 ## Critérios por PR
 
 - ao menos um teste novo ou atualizado,
