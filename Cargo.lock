@@ -38,6 +38,11 @@ dependencies = [
 [[package]]
 name = "harbour-rust-ir"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-hir",
+ "harbour-rust-lexer",
+ "harbour-rust-parser",
+]
 
 [[package]]
 name = "harbour-rust-lexer"

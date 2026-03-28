@@ -84,6 +84,17 @@ O primeiro slice de `sema` trabalha sobre a HIR sem reescrevê-la:
 
 As decisões de binding ficam em side tables para manter a HIR pequena e estável nesta fase.
 
+### 1.3. IR inicial ainda estruturada
+
+Na primeira slice da Fase 5, a IR começa como lowering de HIR para uma forma mais próxima do backend:
+
+- rotinas ainda preservam estrutura de `IF`, `DO WHILE` e `FOR`,
+- `?` já baixa para `BuiltinCall(QOut)`,
+- atribuição em posição de statement já baixa para `Assign`,
+- expressões inválidas da HIR viram erro explícito de lowering.
+
+O objetivo desta etapa é estabilizar a superfície de lowering antes de introduzir flattening de controle de fluxo ou detalhes de codegen C.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:
