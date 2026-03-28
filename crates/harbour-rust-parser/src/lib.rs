@@ -438,20 +438,25 @@ impl<'src> Parser<'src> {
 
     fn parse_assignment(&mut self) -> Option<Expression> {
         let left = self.parse_or()?;
-        if !self.match_token(TokenKind::InAssign) {
-            return Some(left);
+        if self.match_token(TokenKind::InAssign) {
+            let value = self.parse_assignment()?;
+            let span = Span {
+                start: left.span().start,
+                end: value.span().end,
+            };
+            return Some(Expression::Assignment(AssignmentExpression {
+                target: Box::new(left),
+                value: Box::new(value),
+                span,
+            }));
         }
 
-        let value = self.parse_assignment()?;
-        let span = Span {
-            start: left.span().start,
-            end: value.span().end,
-        };
-        Some(Expression::Assignment(AssignmentExpression {
-            target: Box::new(left),
-            value: Box::new(value),
-            span,
-        }))
+        if let Some(operator) = self.match_compound_assignment_operator() {
+            let value = self.parse_assignment()?;
+            return self.lower_compound_assignment(left, operator, value);
+        }
+
+        Some(left)
     }
 
     fn parse_or(&mut self) -> Option<Expression> {
@@ -801,6 +806,57 @@ impl<'src> Parser<'src> {
         }))
     }
 
+    fn lower_compound_assignment(
+        &mut self,
+        left: Expression,
+        operator: BinaryOperator,
+        value: Expression,
+    ) -> Option<Expression> {
+        let Expression::Identifier(identifier) = left else {
+            self.errors.push(ParseError {
+                message: "expected identifier before compound assignment operator".to_owned(),
+                span: self.previous().span,
+            });
+            return None;
+        };
+
+        let target = Expression::Identifier(identifier.clone());
+        let binary = Expression::Binary(BinaryExpression {
+            left: Box::new(Expression::Identifier(identifier.clone())),
+            operator,
+            right: Box::new(value),
+            span: Span {
+                start: identifier.span.start,
+                end: self.previous().span.end,
+            },
+        });
+        let span = binary.span();
+
+        Some(Expression::Assignment(AssignmentExpression {
+            target: Box::new(target),
+            value: Box::new(binary),
+            span,
+        }))
+    }
+
+    fn match_compound_assignment_operator(&mut self) -> Option<BinaryOperator> {
+        if self.match_token(TokenKind::PlusEq) {
+            Some(BinaryOperator::Add)
+        } else if self.match_token(TokenKind::MinusEq) {
+            Some(BinaryOperator::Subtract)
+        } else if self.match_token(TokenKind::StarEq) {
+            Some(BinaryOperator::Multiply)
+        } else if self.match_token(TokenKind::SlashEq) {
+            Some(BinaryOperator::Divide)
+        } else if self.match_token(TokenKind::PercentEq) {
+            Some(BinaryOperator::Modulo)
+        } else if self.match_token(TokenKind::CaretEq) {
+            Some(BinaryOperator::Power)
+        } else {
+            None
+        }
+    }
+
     fn parse_identifier(&mut self) -> Option<Identifier> {
         let token = *self.current();
         if !matches!(token.kind, TokenKind::Identifier) {
@@ -1084,6 +1140,68 @@ FUNCTION Build()
         assert_eq!(
             parsed.errors[0].to_string(),
             "expected `}` after array literal; found `\\n` at line 3, column 17"
+        );
+    }
+
+    #[test]
+    fn parses_compound_assignment_for_identifier_targets() {
+        let source = r#"
+PROCEDURE Main()
+   LOCAL total := 1
+   STATIC factor := 2
+   total += 3
+   factor *= total
+   RETURN factor
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0];
+        let Statement::Expression(total_update) = &routine.body[2] else {
+            panic!("expected expression statement for total update");
+        };
+        let Expression::Assignment(total_assign) = &total_update.expression else {
+            panic!("expected assignment expression");
+        };
+        assert!(
+            matches!(total_assign.target.as_ref(), Expression::Identifier(identifier) if identifier.text == "total")
+        );
+        assert!(matches!(
+            total_assign.value.as_ref(),
+            Expression::Binary(binary)
+                if binary.operator == BinaryOperator::Add
+                    && matches!(binary.left.as_ref(), Expression::Identifier(identifier) if identifier.text == "total")
+        ));
+
+        let Statement::Expression(factor_update) = &routine.body[3] else {
+            panic!("expected expression statement for factor update");
+        };
+        let Expression::Assignment(factor_assign) = &factor_update.expression else {
+            panic!("expected assignment expression");
+        };
+        assert!(
+            matches!(factor_assign.target.as_ref(), Expression::Identifier(identifier) if identifier.text == "factor")
+        );
+        assert!(matches!(
+            factor_assign.value.as_ref(),
+            Expression::Binary(binary)
+                if binary.operator == BinaryOperator::Multiply
+                    && matches!(binary.left.as_ref(), Expression::Identifier(identifier) if identifier.text == "factor")
+        ));
+    }
+
+    #[test]
+    fn reports_non_identifier_compound_assignment_target() {
+        let source = r#"
+PROCEDURE Main()
+   ( total + 1 ) += 2
+"#;
+        let parsed = parse(source);
+
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected identifier before compound assignment operator at line 3, column 21"
         );
     }
 

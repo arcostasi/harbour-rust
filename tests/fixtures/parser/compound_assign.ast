@@ -1,0 +1,28 @@
+Program
+  Routine Procedure Main [3:1-10:17]
+    Params []
+    Body
+      Local [5:4-5:20]
+        Binding total [5:10-5:20]
+          Integer 1 [5:19-5:20]
+      Static [6:4-6:22]
+        Binding factor [6:11-6:22]
+          Integer 2 [6:21-6:22]
+      Expression [7:4-7:14]
+        Assignment [7:4-7:14]
+          Target
+            Identifier total [7:4-7:9]
+          Value
+            Binary Add [7:4-7:14]
+              Identifier total [7:4-7:9]
+              Integer 3 [7:13-7:14]
+      Expression [8:4-8:19]
+        Assignment [8:4-8:19]
+          Target
+            Identifier factor [8:4-8:10]
+          Value
+            Binary Multiply [8:4-8:19]
+              Identifier factor [8:4-8:10]
+              Identifier total [8:14-8:19]
+      Return [10:4-10:17]
+        Identifier factor [10:11-10:17]

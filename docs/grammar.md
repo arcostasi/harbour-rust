@@ -109,6 +109,17 @@ Terceira slice da Fase 7:
 
 Nesta etapa, arrays já entram na AST e no parser como literal explícito, mas lowering, semântica de acesso/indexação e execução continuam pendentes.
 
+Quarta slice da Fase 7:
+
+- `ident += expr`
+- `ident -= expr`
+- `ident *= expr`
+- `ident /= expr`
+- `ident %= expr`
+- `ident ^= expr`
+
+Nesta etapa, operadores compostos entram no parser apenas para alvo identificador simples. A AST continua estável: o parser desdobra a surface em `Assignment(target=id, value=Binary(id, op, rhs))`.
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:

@@ -46,3 +46,11 @@ fn arrays_fixture_matches_snapshot() {
         "tests/fixtures/parser/arrays.ast",
     );
 }
+
+#[test]
+fn compound_assign_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/compound_assign.prg",
+        "tests/fixtures/parser/compound_assign.ast",
+    );
+}
