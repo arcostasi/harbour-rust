@@ -345,6 +345,27 @@ fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) 
                 .collect(),
             span: statement.span,
         }),
+        ast::Statement::Static(statement) => {
+            errors.push(LoweringError {
+                message: "STATIC declarations are not supported in HIR yet".to_owned(),
+                span: statement.span,
+            });
+            Statement::Local(LocalStatement {
+                bindings: statement
+                    .bindings
+                    .iter()
+                    .map(|binding| LocalBinding {
+                        name: lower_identifier(&binding.name),
+                        initializer: binding
+                            .initializer
+                            .as_ref()
+                            .map(|expression| lower_expression(expression, errors)),
+                        span: binding.span,
+                    })
+                    .collect(),
+                span: statement.span,
+            })
+        }
         ast::Statement::If(statement) => Statement::If(Box::new(IfStatement {
             branches: statement
                 .branches
@@ -568,6 +589,7 @@ mod tests {
                 params: vec![identifier("name", span(15, 1, 16, 19, 1, 20))],
                 body: vec![
                     ast::Statement::Local(ast::LocalStatement {
+                        storage_class: ast::StorageClass::Local,
                         bindings: vec![ast::LocalBinding {
                             name: identifier("x", span(25, 2, 7, 26, 2, 8)),
                             initializer: Some(ast::Expression::Integer(ast::IntegerLiteral {

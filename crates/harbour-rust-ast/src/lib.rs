@@ -47,6 +47,7 @@ pub struct Routine {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Local(LocalStatement),
+    Static(StaticStatement),
     If(Box<IfStatement>),
     DoWhile(Box<DoWhileStatement>),
     For(Box<ForStatement>),
@@ -59,6 +60,7 @@ impl Statement {
     pub fn span(&self) -> Span {
         match self {
             Self::Local(statement) => statement.span,
+            Self::Static(statement) => statement.span,
             Self::If(statement) => statement.span,
             Self::DoWhile(statement) => statement.span,
             Self::For(statement) => statement.span,
@@ -69,14 +71,35 @@ impl Statement {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageClass {
+    Local,
+    Static,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalStatement {
+    pub storage_class: StorageClass,
     pub bindings: Vec<LocalBinding>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalBinding {
+    pub name: Identifier,
+    pub initializer: Option<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticStatement {
+    pub storage_class: StorageClass,
+    pub bindings: Vec<StaticBinding>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticBinding {
     pub name: Identifier,
     pub initializer: Option<Expression>,
     pub span: Span,
@@ -275,7 +298,8 @@ mod tests {
         BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch, DoWhileStatement,
         Expression, ExpressionStatement, ForStatement, Identifier, IfStatement, Item, LocalBinding,
         LocalStatement, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement, Program,
-        ReturnStatement, Routine, RoutineKind, Statement, StringLiteral,
+        ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement,
+        StorageClass, StringLiteral,
     };
 
     fn span(
@@ -374,6 +398,7 @@ mod tests {
     #[test]
     fn control_flow_statements_report_their_spans() {
         let local = Statement::Local(LocalStatement {
+            storage_class: StorageClass::Local,
             bindings: vec![LocalBinding {
                 name: Identifier {
                     text: "x".to_owned(),
@@ -385,6 +410,21 @@ mod tests {
                 span: span(6, 2, 7, 14, 2, 15),
             }],
             span: span(0, 2, 1, 14, 2, 15),
+        });
+        let static_statement = Statement::Static(StaticStatement {
+            storage_class: StorageClass::Static,
+            bindings: vec![StaticBinding {
+                name: Identifier {
+                    text: "cache".to_owned(),
+                    span: span(7, 3, 8, 12, 3, 13),
+                },
+                initializer: Some(Expression::String(StringLiteral {
+                    lexeme: "\"memo\"".to_owned(),
+                    span: span(17, 3, 18, 23, 3, 24),
+                })),
+                span: span(7, 3, 8, 23, 3, 24),
+            }],
+            span: span(0, 3, 1, 23, 3, 24),
         });
         let if_statement = Statement::If(Box::new(IfStatement {
             branches: vec![ConditionalBranch {
@@ -425,9 +465,27 @@ mod tests {
         }));
 
         assert_eq!(local.span(), span(0, 2, 1, 14, 2, 15));
+        assert_eq!(static_statement.span(), span(0, 3, 1, 23, 3, 24));
         assert_eq!(if_statement.span(), span(0, 4, 1, 15, 6, 1));
         assert_eq!(while_statement.span(), span(0, 8, 1, 18, 9, 1));
         assert_eq!(for_statement.span(), span(0, 10, 1, 22, 11, 1));
+    }
+
+    #[test]
+    fn declaration_statements_keep_storage_class_hooks() {
+        let local = LocalStatement {
+            storage_class: StorageClass::Local,
+            bindings: Vec::new(),
+            span: span(0, 1, 1, 5, 1, 6),
+        };
+        let static_statement = StaticStatement {
+            storage_class: StorageClass::Static,
+            bindings: Vec::new(),
+            span: span(6, 2, 1, 12, 2, 7),
+        };
+
+        assert_eq!(local.storage_class, StorageClass::Local);
+        assert_eq!(static_statement.storage_class, StorageClass::Static);
     }
 
     #[test]

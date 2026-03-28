@@ -3,7 +3,7 @@ use harbour_rust_ast::{
     DoWhileStatement, Expression, ExpressionStatement, FloatLiteral, ForStatement, Identifier,
     IfStatement, IntegerLiteral, Item, LocalBinding, LocalStatement, LogicalLiteral, NilLiteral,
     PostfixExpression, PostfixOperator, PrintStatement, Program, ReturnStatement, Routine,
-    RoutineKind, Statement, StringLiteral, UnaryExpression, UnaryOperator,
+    RoutineKind, Statement, StorageClass, StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 use std::fmt;
@@ -228,6 +228,7 @@ impl<'src> Parser<'src> {
             .last()
             .map_or(self.previous().span.end, |binding| binding.span.end);
         Some(Statement::Local(LocalStatement {
+            storage_class: StorageClass::Local,
             bindings,
             span: Span { start, end },
         }))

@@ -84,6 +84,14 @@ Extensão da terceira slice:
 - `Expression::{Binary, Unary, Postfix}`
 - operadores binários, unários e pós-fixos mínimos para controle de fluxo procedural
 
+Primeira slice da Fase 7:
+
+- `Statement::Static(StaticStatement)`
+- `StorageClass::{Local, Static}` como hook explícito de storage no AST
+- `LocalStatement` passa a carregar `storage_class`
+
+Nesta etapa, o objetivo ainda não é parsear `STATIC`, mas estabilizar o modelo sintático para as slices seguintes de parser e semântica.
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:

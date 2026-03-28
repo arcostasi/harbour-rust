@@ -123,6 +123,27 @@ fn render_statement(out: &mut String, statement: &Statement, level: usize) {
                 }
             }
         }
+        Statement::Static(statement) => {
+            push_line(
+                out,
+                level,
+                &format!("Static [{}]", format_span(statement.span)),
+            );
+            for binding in &statement.bindings {
+                push_line(
+                    out,
+                    level + 1,
+                    &format!(
+                        "Binding {} [{}]",
+                        binding.name.text,
+                        format_span(binding.span)
+                    ),
+                );
+                if let Some(initializer) = &binding.initializer {
+                    render_expression(out, initializer, level + 2);
+                }
+            }
+        }
         Statement::If(statement) => {
             push_line(out, level, &format!("If [{}]", format_span(statement.span)));
             for (index, branch) in statement.branches.iter().enumerate() {

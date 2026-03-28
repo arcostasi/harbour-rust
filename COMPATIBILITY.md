@@ -23,7 +23,7 @@ Status:
 | strings | Clipper | partial | 1/4 | `doc/pp.txt` | unit + runtime | literais e erro de string não terminada cobertos na Fase 1; concatenação, comparação léxica básica e saída orientada a print entram na Fase 4; `[]` segue para PP |
 | números | Clipper | partial | 1/4 | `doc/pp.txt` | unit + runtime | inteiros e floats decimais tokenizados na Fase 1; aritmética, promoção numérica e formatação básica entram na Fase 4; corner cases ainda pendentes |
 | comentários | Clipper | partial | 1 | `tests/hello.prg`, `tests/while.prg` | unit + golden | `//`, `&&`, `/* */` e `*` em início de linha cobertos pelo lexer |
-| `STATIC` | Clipper | planned | 7 | `doc/statics.txt`, `tests/statics*.prg` | compat | modelar storage separado |
+| `STATIC` | Clipper | partial | 7 | `doc/statics.txt`, `tests/statics*.prg` | ast + parser + compat | hook inicial de AST e storage model já existe; parsing, lowering semântico e runtime ainda pendentes |
 | arrays | Clipper | planned | 7 | `src/vm/arrays.c` | runtime + compat | depois do procedural mínimo |
 | builtins de string | Clipper | planned | 7 | `src/rtl`, `utils/hbtest/rt_str.prg` | compat | por prioridade, não em lote |
 | builtins matemáticos | Clipper | planned | 7 | `utils/hbtest/rt_math.prg` | compat | |
