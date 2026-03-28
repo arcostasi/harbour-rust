@@ -62,6 +62,17 @@ O upstream é fortemente centrado em VM/pcode. Para `harbour-rust`, o caminho in
 
 O `include/hbpcode.h` e os docs de VM servem como referência semântica, não como contrato obrigatório da primeira versão.
 
+### 1.1. HIR inicial pequena e explícita
+
+Na Fase 3, a HIR começa como lowering direto da AST procedural já suportada:
+
+- rotinas, `LOCAL`, `RETURN`, `IF`, `DO WHILE`, `FOR` e `?`,
+- identificadores normalizados como símbolos,
+- atribuição já restringida a alvo nominal simples,
+- sem resolução de escopo ainda.
+
+Isso mantém a HIR útil para a semântica sem antecipar tabela de símbolos ou tipagem.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:
