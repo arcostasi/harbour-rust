@@ -95,6 +95,17 @@ Na primeira slice da Fase 5, a IR começa como lowering de HIR para uma forma ma
 
 O objetivo desta etapa é estabilizar a superfície de lowering antes de introduzir flattening de controle de fluxo ou detalhes de codegen C.
 
+### 1.4. Backend C começa pelo subconjunto observável
+
+Na segunda slice da Fase 5, `harbour-rust-codegen-c` começa emitindo C legível para:
+
+- rotinas procedurais,
+- `RETURN`,
+- `?` já baixado como `BuiltinCall(QOut)`,
+- wrapper `main()` quando houver `PROCEDURE Main()`.
+
+Controle de fluxo estruturado e expressões mais ricas ainda produzem diagnóstico explícito de codegen nesta etapa, em vez de expansão parcial silenciosa.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:

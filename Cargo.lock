@@ -16,6 +16,12 @@ version = "0.1.0"
 [[package]]
 name = "harbour-rust-codegen-c"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-hir",
+ "harbour-rust-ir",
+ "harbour-rust-lexer",
+ "harbour-rust-parser",
+]
 
 [[package]]
 name = "harbour-rust-compat"

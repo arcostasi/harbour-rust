@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+harbour-rust-ir = { path = "../harbour-rust-ir" }
+harbour-rust-lexer = { path = "../harbour-rust-lexer" }
+
+[dev-dependencies]
+harbour-rust-hir = { path = "../harbour-rust-hir" }
+harbour-rust-parser = { path = "../harbour-rust-parser" }
