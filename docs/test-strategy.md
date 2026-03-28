@@ -88,6 +88,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/arrays.prg` -> `arrays.ast`
 - `tests/fixtures/parser/compound_assign.prg` -> `compound_assign.ast`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
+- `tests/fixtures/parser/compound_assign.prg` -> lowering HIR estável como `Assignment + Binary`
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
 - `tests/fixtures/parser/static.prg` -> `tests/fixtures/sema/static_unsupported.errors`

@@ -93,3 +93,67 @@ fn lowers_arrays_fixture_without_hir_errors() {
         harbour_rust_hir::Expression::Array(ref nested) if nested.elements.len() == 3
     ));
 }
+
+#[test]
+fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
+    let lowered = lower_fixture("tests/fixtures/parser/compound_assign.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 5);
+
+    let static_declaration = match &body[1] {
+        harbour_rust_hir::Statement::Local(statement) => statement,
+        statement => panic!("expected static-like declaration, found {statement:?}"),
+    };
+    assert_eq!(static_declaration.storage_class, StorageClass::Static);
+    assert_eq!(static_declaration.bindings[0].name.text, "factor");
+
+    let first_assignment = match &body[2] {
+        harbour_rust_hir::Statement::Evaluate(statement) => &statement.expression,
+        statement => panic!("expected evaluation statement, found {statement:?}"),
+    };
+    let harbour_rust_hir::Expression::Assign(assign) = first_assignment else {
+        panic!("expected lowered assign expression, found {first_assignment:?}");
+    };
+    assert_eq!(assign.target.text, "total");
+
+    let harbour_rust_hir::Expression::Binary(binary) = assign.value.as_ref() else {
+        panic!("expected binary expression in compound assignment");
+    };
+    assert_eq!(binary.operator, harbour_rust_hir::BinaryOperator::Add);
+    assert!(matches!(
+        binary.left.as_ref(),
+        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "total"
+    ));
+    assert!(matches!(
+        binary.right.as_ref(),
+        harbour_rust_hir::Expression::Integer(literal) if literal.lexeme == "3"
+    ));
+
+    let second_assignment = match &body[3] {
+        harbour_rust_hir::Statement::Evaluate(statement) => &statement.expression,
+        statement => panic!("expected evaluation statement, found {statement:?}"),
+    };
+    let harbour_rust_hir::Expression::Assign(assign) = second_assignment else {
+        panic!("expected lowered assign expression, found {second_assignment:?}");
+    };
+    assert_eq!(assign.target.text, "factor");
+
+    let harbour_rust_hir::Expression::Binary(binary) = assign.value.as_ref() else {
+        panic!("expected binary expression in compound assignment");
+    };
+    assert_eq!(binary.operator, harbour_rust_hir::BinaryOperator::Multiply);
+    assert!(matches!(
+        binary.left.as_ref(),
+        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "factor"
+    ));
+    assert!(matches!(
+        binary.right.as_ref(),
+        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "total"
+    ));
+}

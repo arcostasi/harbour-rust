@@ -85,6 +85,12 @@ Na slice seguinte da Fase 7, arrays deixam de morrer cedo no lowering:
 - a semântica passa a caminhar pelos elementos para preservar resolução e regressões,
 - a IR ainda não executa arrays, mas produz diagnóstico estável e explícito em vez de perder a informação já no AST -> HIR.
 
+Na slice seguinte da Fase 7, operadores compostos passam a ter superfície estável no lowering:
+
+- o parser dessuga `+= -= *= /= %= ^=` para `Assignment + Binary`,
+- a HIR preserva esse shape sem introduzir nó especial ainda,
+- fixtures com `LOCAL` e `STATIC` agora validam explicitamente esse lowering.
+
 ### 1.2. Sema inicial com side tables
 
 O primeiro slice de `sema` trabalha sobre a HIR sem reescrevê-la:
