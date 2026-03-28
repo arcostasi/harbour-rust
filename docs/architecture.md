@@ -164,6 +164,12 @@ Na slice seguinte, a expansão de `#define` objeto ganha recursão controlada:
 - ciclos como `A -> B -> A` geram diagnóstico explícito,
 - o erro é reportado no ponto de uso da linha preprocessada, não como panic interno.
 
+Na slice seguinte, o resolver de includes ganha política inicial de busca:
+
+- `#include "x.ch"` tenta primeiro o diretório do arquivo atual e depois search paths configuráveis,
+- `#include <x.ch>` usa search paths configuráveis como primeira política,
+- a lógica de busca continua isolada em `FileSystemIncludeResolver`.
+
 ### 4. Compatibilidade incremental por dialeto
 
 - baseline inicial: subconjunto Clipper procedural,

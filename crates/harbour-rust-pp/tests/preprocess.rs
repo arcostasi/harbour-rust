@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use harbour_rust_pp::{Preprocessor, SourceFile};
+use harbour_rust_pp::{FileSystemIncludeResolver, Preprocessor, SourceFile};
 
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -116,4 +116,36 @@ fn reports_cyclic_object_like_define_fixture() {
         output.errors[0].message,
         "cyclic define expansion detected: A -> B -> A"
     );
+}
+
+#[test]
+fn resolves_quoted_include_through_search_paths() {
+    let root = fixture_path("quoted_search_path_root.prg");
+    let expected = fs::read_to_string(fixture_path("quoted_search_path_root.out")).unwrap();
+    let resolver = FileSystemIncludeResolver::new().with_search_path(fixture_path("include-path"));
+
+    let output = Preprocessor::new(resolver).preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
+fn resolves_angle_include_through_search_paths() {
+    let root = fixture_path("angle_search_path_root.prg");
+    let expected = fs::read_to_string(fixture_path("angle_search_path_root.out")).unwrap();
+    let resolver = FileSystemIncludeResolver::new().with_search_path(fixture_path("include-path"));
+
+    let output = Preprocessor::new(resolver).preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
 }

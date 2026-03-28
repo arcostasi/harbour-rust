@@ -148,8 +148,25 @@ pub trait IncludeResolver {
     ) -> Result<SourceFile, IncludeResolutionError>;
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct FileSystemIncludeResolver;
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct FileSystemIncludeResolver {
+    search_paths: Vec<PathBuf>,
+}
+
+impl FileSystemIncludeResolver {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_search_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.search_paths.push(path.into());
+        self
+    }
+
+    pub fn search_paths(&self) -> &[PathBuf] {
+        &self.search_paths
+    }
+}
 
 impl IncludeResolver for FileSystemIncludeResolver {
     fn resolve_include(
@@ -157,17 +174,40 @@ impl IncludeResolver for FileSystemIncludeResolver {
         including_source: &SourceFile,
         directive: &IncludeDirective,
     ) -> Result<SourceFile, IncludeResolutionError> {
-        let path = if Path::new(&directive.target).is_absolute() {
-            PathBuf::from(&directive.target)
-        } else {
+        let target_path = Path::new(&directive.target);
+        if target_path.is_absolute() {
+            return SourceFile::from_path(target_path).map_err(IncludeResolutionError::from);
+        }
+
+        let mut candidates = Vec::new();
+        if directive.delimiter == IncludeDelimiter::Quotes {
             let base = including_source
                 .path
                 .parent()
                 .unwrap_or_else(|| Path::new("."));
-            base.join(&directive.target)
-        };
+            candidates.push(base.join(&directive.target));
+        }
 
-        SourceFile::from_path(&path).map_err(IncludeResolutionError::from)
+        candidates.extend(
+            self.search_paths
+                .iter()
+                .map(|search_path| search_path.join(&directive.target)),
+        );
+
+        for candidate in &candidates {
+            if let Ok(source) = SourceFile::from_path(candidate) {
+                return Ok(source);
+            }
+        }
+
+        let rendered_candidates = candidates
+            .iter()
+            .map(|candidate| candidate.display().to_string())
+            .collect::<Vec<_>>();
+        Err(IncludeResolutionError::new(format!(
+            "no include file found in [{}]",
+            rendered_candidates.join(", ")
+        )))
     }
 }
 
@@ -184,7 +224,7 @@ impl<R> Preprocessor<R> {
 
 impl Default for Preprocessor<FileSystemIncludeResolver> {
     fn default() -> Self {
-        Self::new(FileSystemIncludeResolver)
+        Self::new(FileSystemIncludeResolver::default())
     }
 }
 
