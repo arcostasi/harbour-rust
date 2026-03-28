@@ -158,6 +158,12 @@ Na slice seguinte, o PP passa a expandir `#define` objeto no source normal:
 - sem tocar em strings e comentários de linha,
 - sem expandir macros parametrizadas ainda.
 
+Na slice seguinte, a expansão de `#define` objeto ganha recursão controlada:
+
+- cadeias como `A -> B -> "x"` passam a resolver até o valor final,
+- ciclos como `A -> B -> A` geram diagnóstico explícito,
+- o erro é reportado no ponto de uso da linha preprocessada, não como panic interno.
+
 ### 4. Compatibilidade incremental por dialeto
 
 - baseline inicial: subconjunto Clipper procedural,

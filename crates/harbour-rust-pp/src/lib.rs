@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     error::Error,
     fmt, fs, io,
     path::{Path, PathBuf},
@@ -251,7 +252,13 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
             let line_number = index + 1;
             match parse_directive(&source.path, raw_line, line_number) {
                 None => {
-                    let expanded_line = expand_object_like_defines(raw_line, &self.defines);
+                    let (expanded_line, mut errors) = expand_object_like_defines(
+                        raw_line,
+                        &self.defines,
+                        &source.path,
+                        line_number,
+                    );
+                    self.errors.append(&mut errors);
                     self.push_output_line(&source.path, line_number, &expanded_line);
                 }
                 Some(Ok(Directive::Define(define))) => self.defines.push(define),
@@ -553,43 +560,95 @@ fn display_path(path: &Path) -> String {
     }
 }
 
-fn expand_object_like_defines(line: &str, defines: &[DefineDirective]) -> String {
+fn expand_object_like_defines(
+    line: &str,
+    defines: &[DefineDirective],
+    path: &Path,
+    line_number: usize,
+) -> (String, Vec<PreprocessError>) {
     let object_like_defines = defines
         .iter()
         .filter(|define| define.parameters.is_none())
-        .collect::<Vec<_>>();
+        .map(|define| (define.normalized_name.clone(), define))
+        .collect::<BTreeMap<_, _>>();
 
     if object_like_defines.is_empty() {
-        return line.to_owned();
+        return (line.to_owned(), Vec::new());
     }
 
-    let mut output = String::with_capacity(line.len());
+    let mut errors = Vec::new();
+    let output = expand_text_segment(
+        line,
+        &object_like_defines,
+        path,
+        line_number,
+        1,
+        &mut Vec::new(),
+        &mut errors,
+    );
+
+    (output, errors)
+}
+
+fn expand_text_segment(
+    text: &str,
+    defines: &BTreeMap<String, &DefineDirective>,
+    path: &Path,
+    line_number: usize,
+    column_base: usize,
+    stack: &mut Vec<String>,
+    errors: &mut Vec<PreprocessError>,
+) -> String {
+    let mut output = String::with_capacity(text.len());
     let mut cursor = 0;
 
-    while cursor < line.len() {
-        let ch = char_at(line, cursor);
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
         if is_string_delimiter(ch) {
-            cursor = copy_string_literal(line, cursor, ch, &mut output);
+            cursor = copy_string_literal(text, cursor, ch, &mut output);
             continue;
         }
 
-        if starts_line_comment(line, cursor) {
-            output.push_str(&line[cursor..]);
+        if starts_line_comment(text, cursor) {
+            output.push_str(&text[cursor..]);
             break;
         }
 
         if is_identifier_start(ch) {
-            let end = advance_identifier(line, cursor);
-            let identifier = &line[cursor..end];
+            let end = advance_identifier(text, cursor);
+            let identifier = &text[cursor..end];
             let normalized = identifier.to_ascii_uppercase();
-            if let Some(define) = object_like_defines
-                .iter()
-                .find(|define| define.normalized_name == normalized)
-            {
-                output.push_str(&define.replacement);
+            let identifier_column = column_base + text[..cursor].chars().count();
+
+            if let Some(define) = defines.get(&normalized) {
+                if let Some(position) = stack.iter().position(|name| name == &normalized) {
+                    let mut cycle = stack[position..].to_vec();
+                    cycle.push(normalized.clone());
+                    errors.push(directive_error(
+                        path,
+                        line_number,
+                        identifier_column,
+                        format!("cyclic define expansion detected: {}", cycle.join(" -> ")),
+                    ));
+                    output.push_str(identifier);
+                } else {
+                    stack.push(normalized);
+                    let expanded = expand_text_segment(
+                        &define.replacement,
+                        defines,
+                        path,
+                        line_number,
+                        identifier_column,
+                        stack,
+                        errors,
+                    );
+                    stack.pop();
+                    output.push_str(&expanded);
+                }
             } else {
                 output.push_str(identifier);
             }
+
             cursor = end;
             continue;
         }
@@ -791,6 +850,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_recursive_object_like_define_chains() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define APP_NAME GREETING\n#define GREETING \"hello\"\n? APP_NAME\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "? \"hello\"\n");
+    }
+
+    #[test]
     fn does_not_expand_defines_inside_strings_or_comments() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
@@ -811,5 +883,21 @@ mod tests {
 
         assert!(output.errors.is_empty());
         assert_eq!(output.text, "? WRAP\n");
+    }
+
+    #[test]
+    fn reports_cycles_in_recursive_object_like_define_expansion() {
+        let source = SourceFile::new(PathBuf::from("main.prg"), "#define A B\n#define B A\n? A\n");
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert_eq!(output.text, "? A\n");
+        assert_eq!(output.errors.len(), 1);
+        assert_eq!(
+            output.errors[0].message,
+            "cyclic define expansion detected: A -> B -> A"
+        );
+        assert_eq!(output.errors[0].line(), 3);
+        assert_eq!(output.errors[0].column(), 3);
     }
 }

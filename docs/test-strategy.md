@@ -85,6 +85,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/pp/include_root.prg` -> preprocessamento com `#define` e `#include` simples
 - `tests/fixtures/pp/define_root.prg` -> expansão simples de `#define` objeto
+- `tests/fixtures/pp/recursive_define_root.prg` -> expansão recursiva de `#define` objeto
+- `tests/fixtures/pp/cyclic_define_root.prg` -> erro de ciclo em expansão recursiva
 
 ## Critérios por PR
 

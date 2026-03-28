@@ -1,0 +1,5 @@
+#define APP_NAME GREETING
+#define GREETING "hello"
+PROCEDURE Main()
+   ? APP_NAME
+RETURN

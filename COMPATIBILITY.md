@@ -27,7 +27,7 @@ Status:
 | arrays | Clipper | planned | 7 | `src/vm/arrays.c` | runtime + compat | depois do procedural mínimo |
 | builtins de string | Clipper | planned | 7 | `src/rtl`, `utils/hbtest/rt_str.prg` | compat | por prioridade, não em lote |
 | builtins matemáticos | Clipper | planned | 7 | `utils/hbtest/rt_math.prg` | compat | |
-| `#define` | Clipper | partial | 6 | `doc/pp.txt`, `tests/pp.prg` | unit + integração | parsing inicial de diretiva, registro de defines e expansão simples case-insensitive de macros objeto em linhas normais; macros parametrizadas e expansão token-based ainda pendentes |
+| `#define` | Clipper | partial | 6 | `doc/pp.txt`, `tests/pp.prg` | unit + integração | parsing inicial de diretiva, registro de defines e expansão recursiva case-insensitive de macros objeto em linhas normais, com diagnóstico de ciclo; macros parametrizadas e expansão token-based ainda pendentes |
 | `#include` | Clipper | partial | 6 | `ppcore.c` | integração | resolução inicial relativa ao arquivo atual com source graph e mapeamento de linhas; busca ampliada e spans finos ainda pendentes |
 | `#command` | Clipper | planned | 9 | `tests/hbpp/_pp_test.prg` | compat | implementação incremental |
 | `#translate` | Clipper | planned | 9 | `tests/hbpp/_pp_test.prg` | compat | |
