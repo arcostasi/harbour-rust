@@ -1,0 +1,9 @@
+# Build artifacts
+/target/
+
+# Local tool state
+/.idea/
+/.vscode/
+
+# Local upstream checkout used as oracle/reference
+/harbour-core/
