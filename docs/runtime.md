@@ -127,6 +127,13 @@ Com a slice seguinte, o runtime passa a aceitar também escrita básica por índ
 - comparação profunda de arrays,
 - mensagens completas no formato histórico de erro xBase.
 
+Na slice seguinte da Fase 7, o runtime ganha helpers mais ricos de coleção e comparação exata:
+
+- `exact_equals()` e `exact_not_equals()` como superfície explícita para a semântica de `==`,
+- arrays usam identidade do valor observado, então a mesma referência retorna `.T.` e clones seguem `.F.`,
+- `array_resize()`, `array_push()` e `array_clone()` preparam o terreno para `ASize()`, `AAdd()` e `AClone()`,
+- a comparação comum `=`/`<>` e ordenação continuam fora da semântica de arrays nesta fase.
+
 ### Erros de runtime
 
 - nada de `panic!` para erro de usuário,

@@ -75,3 +75,38 @@ fn public_array_set_helpers_follow_one_based_semantics() {
         Ok(&Value::from("ok"))
     );
 }
+
+#[test]
+fn public_array_collection_helpers_cover_resize_push_and_clone() {
+    let mut values = Value::array(vec![Value::from(1_i64)]);
+
+    assert_eq!(
+        values.array_push(Value::from("tail")),
+        Ok(Value::from("tail"))
+    );
+    assert_eq!(values.array_resize(4), Ok(()));
+    assert_eq!(
+        values,
+        Value::array(vec![
+            Value::from(1_i64),
+            Value::from("tail"),
+            Value::Nil,
+            Value::Nil,
+        ])
+    );
+
+    let cloned = values.array_clone();
+    assert_eq!(cloned, Ok(values.clone()));
+
+    assert_eq!(values.array_resize(1), Ok(()));
+    assert_eq!(values, Value::array(vec![Value::from(1_i64)]));
+    assert_eq!(
+        cloned,
+        Ok(Value::array(vec![
+            Value::from(1_i64),
+            Value::from("tail"),
+            Value::Nil,
+            Value::Nil,
+        ]))
+    );
+}

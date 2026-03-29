@@ -45,6 +45,20 @@ fn public_comparison_operations_cover_numeric_and_string_values() {
 }
 
 #[test]
+fn public_exact_comparison_distinguishes_array_identity_from_value_equality() {
+    let array = Value::array(vec![Value::from(1_i64), Value::from(2_i64)]);
+    let clone = array.clone();
+
+    assert_eq!(array.exact_equals(&array), Ok(Value::from(true)));
+    assert_eq!(array.exact_equals(&clone), Ok(Value::from(false)));
+    assert_eq!(array.exact_not_equals(&clone), Ok(Value::from(true)));
+    assert_eq!(
+        Value::from(2_i64).exact_equals(&Value::from(2.0_f64)),
+        Ok(Value::from(true))
+    );
+}
+
+#[test]
 fn public_qout_builtin_writes_expected_output_and_returns_nil() {
     let mut output = OutputBuffer::new();
 

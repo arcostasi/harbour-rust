@@ -105,7 +105,7 @@ impl Value {
         }
     }
 
-    pub fn as_array_mut(&mut self) -> Result<&mut [Value], RuntimeError> {
+    pub fn as_array_mut(&mut self) -> Result<&mut Vec<Value>, RuntimeError> {
         match self {
             Self::Array(values) => Ok(values),
             _ => Err(RuntimeError::type_mismatch(
@@ -178,6 +178,22 @@ impl Value {
 
         let nested = self.array_get_mut(first)?;
         nested.array_set_path(rest, value)
+    }
+
+    pub fn array_resize(&mut self, len: usize) -> Result<(), RuntimeError> {
+        let values = self.as_array_mut()?;
+        values.resize(len, Self::Nil);
+        Ok(())
+    }
+
+    pub fn array_push(&mut self, value: Self) -> Result<Self, RuntimeError> {
+        let values = self.as_array_mut()?;
+        values.push(value.clone());
+        Ok(value)
+    }
+
+    pub fn array_clone(&self) -> Result<Self, RuntimeError> {
+        self.as_array().map(|values| Self::Array(values.to_vec()))
     }
 
     pub fn to_output_string(&self) -> String {
@@ -255,10 +271,41 @@ impl Value {
         Ok(Self::Logical(result))
     }
 
+    pub fn exact_equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        let result = match (self, rhs) {
+            (Self::Nil, Self::Nil) => true,
+            (Self::Nil, _) | (_, Self::Nil) => false,
+            (Self::Logical(left), Self::Logical(right)) => left == right,
+            (Self::String(left), Self::String(right)) => left == right,
+            (Self::Array(_), Self::Array(_)) => std::ptr::eq(self, rhs),
+            _ => {
+                if let Ok((left, right)) = self.numeric_pair_as_float(rhs, "compare exact equality")
+                {
+                    left == right
+                } else {
+                    return Err(RuntimeError::binary_operator_mismatch(
+                        "compare exact equality",
+                        self.kind(),
+                        rhs.kind(),
+                    ));
+                }
+            }
+        };
+
+        Ok(Self::Logical(result))
+    }
+
     pub fn not_equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
         match self.equals(rhs)? {
             Self::Logical(value) => Ok(Self::Logical(!value)),
             _ => unreachable!("equals always returns Value::Logical"),
+        }
+    }
+
+    pub fn exact_not_equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        match self.exact_equals(rhs)? {
+            Self::Logical(value) => Ok(Self::Logical(!value)),
+            _ => unreachable!("exact_equals always returns Value::Logical"),
         }
     }
 
@@ -756,6 +803,46 @@ mod tests {
     }
 
     #[test]
+    fn array_collection_helpers_cover_resize_push_and_clone() {
+        let mut values = Value::array(vec![Value::from(10_i64)]);
+
+        assert_eq!(
+            values.array_push(Value::from("tail")),
+            Ok(Value::from("tail"))
+        );
+        assert_eq!(
+            values,
+            Value::array(vec![Value::from(10_i64), Value::from("tail")])
+        );
+
+        assert_eq!(values.array_resize(4), Ok(()));
+        assert_eq!(
+            values,
+            Value::array(vec![
+                Value::from(10_i64),
+                Value::from("tail"),
+                Value::Nil,
+                Value::Nil,
+            ])
+        );
+
+        let cloned = values.array_clone();
+        assert_eq!(cloned, Ok(values.clone()));
+
+        assert_eq!(values.array_resize(1), Ok(()));
+        assert_eq!(values, Value::array(vec![Value::from(10_i64)]));
+        assert_eq!(
+            cloned,
+            Ok(Value::array(vec![
+                Value::from(10_i64),
+                Value::from("tail"),
+                Value::Nil,
+                Value::Nil,
+            ]))
+        );
+    }
+
+    #[test]
     fn invalid_array_indexing_reports_structured_runtime_errors() {
         let values = Value::array(vec![Value::from(10_i64), Value::from(20_i64)]);
 
@@ -859,6 +946,24 @@ mod tests {
         );
         assert_eq!(
             Value::Nil.not_equals(&Value::from(false)),
+            Ok(Value::from(true))
+        );
+    }
+
+    #[test]
+    fn exact_comparison_distinguishes_array_identity_from_value_equality() {
+        let array = Value::array(vec![Value::from(1_i64), Value::from(2_i64)]);
+        let clone = array.clone();
+
+        assert_eq!(array.exact_equals(&array), Ok(Value::from(true)));
+        assert_eq!(array.exact_equals(&clone), Ok(Value::from(false)));
+        assert_eq!(array.exact_not_equals(&clone), Ok(Value::from(true)));
+        assert_eq!(
+            Value::from("abc").exact_equals(&Value::from("abc")),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from(2_i64).exact_equals(&Value::from(2.0_f64)),
             Ok(Value::from(true))
         );
     }
