@@ -101,7 +101,14 @@ impl Emitter {
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);",
         );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_from_array_items(const harbour_runtime_Value *items, size_t length);",
+        );
         self.emit_line("extern bool harbour_value_is_true(harbour_runtime_Value value);");
+        self.emit_line("extern size_t harbour_value_array_len(harbour_runtime_Value value);");
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, long long index);",
+        );
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);",
         );
@@ -315,6 +322,13 @@ impl Emitter {
                     self.push_error("C emission requires a named call target", expression.span);
                     None
                 }
+            }
+            Expression::Index(expression) => {
+                self.push_error(
+                    "C emission for array indexing is not implemented yet",
+                    expression.span,
+                );
+                None
             }
             Expression::Binary(expression) => {
                 let left = self.emit_expression(&expression.left)?;
@@ -550,7 +564,10 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_from_integer(long long value);\n",
                     "extern harbour_runtime_Value harbour_value_from_float(double value);\n",
                     "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);\n",
+                    "extern harbour_runtime_Value harbour_value_from_array_items(const harbour_runtime_Value *items, size_t length);\n",
                     "extern bool harbour_value_is_true(harbour_runtime_Value value);\n",
+                    "extern size_t harbour_value_array_len(harbour_runtime_Value value);\n",
+                    "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, long long index);\n",
                     "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
@@ -728,6 +745,41 @@ mod tests {
             emitted
                 .source
                 .contains("n = harbour_value_add(n, harbour_value_from_integer(1LL));")
+        );
+    }
+
+    #[test]
+    fn reports_array_indexing_as_unimplemented_in_c_emission() {
+        let index_span = span(12, 2, 4, 20, 2, 12);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Return(ir::ReturnStatement {
+                    value: Some(ir::Expression::Index(ir::IndexExpression {
+                        target: Box::new(ir::Expression::Symbol(symbol(
+                            "matrix",
+                            span(12, 2, 4, 18, 2, 10),
+                        ))),
+                        indices: vec![ir::Expression::Integer(ir::IntegerLiteral {
+                            lexeme: "1".to_owned(),
+                            span: span(19, 2, 11, 20, 2, 12),
+                        })],
+                        span: index_span,
+                    })),
+                    span: index_span,
+                })],
+                span: span(0, 1, 1, 20, 2, 12),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert_eq!(emitted.errors.len(), 1);
+        assert_eq!(
+            emitted.errors[0].message,
+            "C emission for array indexing is not implemented yet"
         );
     }
 }

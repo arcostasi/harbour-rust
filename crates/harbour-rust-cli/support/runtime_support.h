@@ -9,13 +9,18 @@ struct harbour_runtime_Value {
         HARBOUR_VALUE_LOGICAL = 1,
         HARBOUR_VALUE_INTEGER = 2,
         HARBOUR_VALUE_FLOAT = 3,
-        HARBOUR_VALUE_STRING = 4
+        HARBOUR_VALUE_STRING = 4,
+        HARBOUR_VALUE_ARRAY = 5
     } kind;
     union {
         _Bool logical;
         long long integer;
         double floating;
         const char *string;
+        struct {
+            struct harbour_runtime_Value *items;
+            size_t length;
+        } array;
     } as;
 };
 
@@ -34,6 +39,15 @@ struct harbour_runtime_Value harbour_value_less_than_or_equal(
 );
 struct harbour_runtime_Value harbour_value_postfix_increment(
     struct harbour_runtime_Value *value
+);
+struct harbour_runtime_Value harbour_value_from_array_items(
+    const struct harbour_runtime_Value *items,
+    size_t length
+);
+size_t harbour_value_array_len(struct harbour_runtime_Value value);
+struct harbour_runtime_Value harbour_value_array_get(
+    struct harbour_runtime_Value value,
+    long long index
 );
 struct harbour_runtime_Value harbour_builtin_qout(
     const struct harbour_runtime_Value *arguments,

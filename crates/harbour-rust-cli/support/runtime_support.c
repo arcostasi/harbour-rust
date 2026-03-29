@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "runtime_support.h"
@@ -37,6 +38,60 @@ harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     value.kind = HARBOUR_VALUE_STRING;
     value.as.string = string;
     return value;
+}
+
+harbour_runtime_Value harbour_value_from_array_items(
+    const harbour_runtime_Value *items,
+    size_t length
+) {
+    harbour_runtime_Value value;
+    size_t index;
+
+    value.kind = HARBOUR_VALUE_ARRAY;
+    value.as.array.length = length;
+    value.as.array.items = NULL;
+
+    if (length == 0) {
+        return value;
+    }
+
+    value.as.array.items = (harbour_runtime_Value *) malloc(
+        sizeof(harbour_runtime_Value) * length
+    );
+    if (value.as.array.items == NULL) {
+        value.kind = HARBOUR_VALUE_NIL;
+        value.as.array.length = 0;
+        return value;
+    }
+
+    for (index = 0; index < length; ++index) {
+        value.as.array.items[index] = items[index];
+    }
+
+    return value;
+}
+
+size_t harbour_value_array_len(harbour_runtime_Value value) {
+    if (value.kind == HARBOUR_VALUE_ARRAY) {
+        return value.as.array.length;
+    }
+
+    return 0;
+}
+
+harbour_runtime_Value harbour_value_array_get(
+    harbour_runtime_Value value,
+    long long index
+) {
+    if (
+        value.kind != HARBOUR_VALUE_ARRAY ||
+        index <= 0 ||
+        (size_t) index > value.as.array.length
+    ) {
+        return harbour_value_nil();
+    }
+
+    return value.as.array.items[index - 1];
 }
 
 harbour_runtime_Value harbour_value_add(
@@ -79,6 +134,8 @@ _Bool harbour_value_is_true(harbour_runtime_Value value) {
         return value.as.floating != 0.0;
     case HARBOUR_VALUE_STRING:
         return value.as.string != NULL && value.as.string[0] != '\0';
+    case HARBOUR_VALUE_ARRAY:
+        return value.as.array.length != 0;
     default:
         return 0;
     }
@@ -168,6 +225,9 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
         break;
     case HARBOUR_VALUE_STRING:
         fputs(value->as.string, stdout);
+        break;
+    case HARBOUR_VALUE_ARRAY:
+        fprintf(stdout, "{ Array(%zu) }", value->as.array.length);
         break;
     default:
         fputs("<invalid>", stdout);

@@ -93,3 +93,24 @@ fn emits_for_sum_fixture_as_c_with_for_loop_helpers() {
             .contains("n = harbour_value_add(n, harbour_value_from_integer(1LL));")
     );
 }
+
+#[test]
+fn emits_array_runtime_helper_declarations_in_c_prelude() {
+    let emitted = emit_fixture("tests/fixtures/parser/hello.prg");
+
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_value_from_array_items(const harbour_runtime_Value *items, size_t length);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern size_t harbour_value_array_len(harbour_runtime_Value value);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, long long index);")
+    );
+}

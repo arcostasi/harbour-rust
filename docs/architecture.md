@@ -144,6 +144,12 @@ Na slice seguinte, o backend C passa a cobrir o primeiro `FOR` executável:
 - atualização do índice por passo implícito `1`,
 - atribuição `sum := sum + n` via helper de soma.
 
+Na slice seguinte da Fase 7, o backend C ganha a primeira surface de arrays sem ligar lowering ainda:
+
+- o prelude de `codegen-c` passa a declarar helpers de array no runtime C,
+- o suporte host em `runtime_support.{h,c}` ganha `Value::Array` mínima, construtor por itens, `array_len` e `array_get`,
+- `expr[...]` continua bloqueado na IR/codegen, mas a infraestrutura do lado C deixa de ser o próximo gargalo.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:
