@@ -105,6 +105,16 @@ impl Value {
         }
     }
 
+    pub fn as_array_mut(&mut self) -> Result<&mut [Value], RuntimeError> {
+        match self {
+            Self::Array(values) => Ok(values),
+            _ => Err(RuntimeError::type_mismatch(
+                "convert value to array",
+                self.kind(),
+            )),
+        }
+    }
+
     pub fn array(values: Vec<Value>) -> Self {
         Self::Array(values)
     }
@@ -123,21 +133,10 @@ impl Value {
 
     pub fn array_get(&self, index: &Self) -> Result<&Value, RuntimeError> {
         let values = self.as_array()?;
-        let index = match index {
-            Self::Integer(value) => *value,
-            _ => {
-                return Err(RuntimeError::array_index_type_mismatch(index.kind()));
-            }
-        };
-
-        if index <= 0 {
-            return Err(RuntimeError::array_index_out_of_bounds(index, values.len()));
-        }
-
-        let zero_based_index = (index - 1) as usize;
-        values
-            .get(zero_based_index)
-            .ok_or_else(|| RuntimeError::array_index_out_of_bounds(index, values.len()))
+        let zero_based_index = array_index_to_zero_based(index, values.len())?;
+        values.get(zero_based_index).ok_or_else(|| {
+            RuntimeError::array_index_out_of_bounds(array_index_integer(index), values.len())
+        })
     }
 
     pub fn array_get_path(&self, indices: &[Value]) -> Result<&Value, RuntimeError> {
@@ -151,6 +150,34 @@ impl Value {
 
     pub fn array_get_owned(&self, index: &Self) -> Result<Self, RuntimeError> {
         self.array_get(index).cloned()
+    }
+
+    pub fn array_get_mut(&mut self, index: &Self) -> Result<&mut Value, RuntimeError> {
+        let values = self.as_array_mut()?;
+        let len = values.len();
+        let zero_based_index = array_index_to_zero_based(index, len)?;
+        values
+            .get_mut(zero_based_index)
+            .ok_or_else(|| RuntimeError::array_index_out_of_bounds(array_index_integer(index), len))
+    }
+
+    pub fn array_set(&mut self, index: &Self, value: Self) -> Result<Self, RuntimeError> {
+        let slot = self.array_get_mut(index)?;
+        *slot = value.clone();
+        Ok(value)
+    }
+
+    pub fn array_set_path(&mut self, indices: &[Value], value: Self) -> Result<Self, RuntimeError> {
+        let (first, rest) = indices
+            .split_first()
+            .ok_or_else(RuntimeError::array_assignment_path_empty)?;
+
+        if rest.is_empty() {
+            return self.array_set(first, value);
+        }
+
+        let nested = self.array_get_mut(first)?;
+        nested.array_set_path(rest, value)
     }
 
     pub fn to_output_string(&self) -> String {
@@ -536,11 +563,46 @@ impl RuntimeError {
             actual: None,
         }
     }
+
+    pub fn array_assignment_path_empty() -> Self {
+        Self {
+            message: "array assignment path must not be empty".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
 }
 
 enum NumericPair {
     Integers(i64, i64),
     Floats(f64, f64),
+}
+
+fn array_index_integer(index: &Value) -> i64 {
+    match index {
+        Value::Integer(value) => *value,
+        _ => unreachable!("array index integer helper only called after validation"),
+    }
+}
+
+fn array_index_to_zero_based(index: &Value, len: usize) -> Result<usize, RuntimeError> {
+    let index = match index {
+        Value::Integer(value) => *value,
+        _ => {
+            return Err(RuntimeError::array_index_type_mismatch(index.kind()));
+        }
+    };
+
+    if index <= 0 {
+        return Err(RuntimeError::array_index_out_of_bounds(index, len));
+    }
+
+    let zero_based_index = (index - 1) as usize;
+    if zero_based_index >= len {
+        return Err(RuntimeError::array_index_out_of_bounds(index, len));
+    }
+
+    Ok(zero_based_index)
 }
 
 impl fmt::Display for RuntimeError {
@@ -666,6 +728,34 @@ mod tests {
     }
 
     #[test]
+    fn array_set_helpers_support_one_based_updates_and_nested_assignment_paths() {
+        let mut matrix = Value::array(vec![
+            Value::array(vec![Value::from(10_i64), Value::from(20_i64)]),
+            Value::array(vec![Value::from(30_i64), Value::from(40_i64)]),
+        ]);
+
+        assert_eq!(
+            matrix.array_set(&Value::from(1_i64), Value::array(vec![Value::from(99_i64)])),
+            Ok(Value::array(vec![Value::from(99_i64)]))
+        );
+        assert_eq!(
+            matrix.array_get(&Value::from(1_i64)),
+            Ok(&Value::array(vec![Value::from(99_i64)]))
+        );
+        assert_eq!(
+            matrix.array_set_path(
+                &[Value::from(2_i64), Value::from(1_i64)],
+                Value::from("updated"),
+            ),
+            Ok(Value::from("updated"))
+        );
+        assert_eq!(
+            matrix.array_get_path(&[Value::from(2_i64), Value::from(1_i64)]),
+            Ok(&Value::from("updated"))
+        );
+    }
+
+    #[test]
     fn invalid_array_indexing_reports_structured_runtime_errors() {
         let values = Value::array(vec![Value::from(10_i64), Value::from(20_i64)]);
 
@@ -699,6 +789,24 @@ mod tests {
                 message: "array index 3 out of bounds for length 2".to_owned(),
                 expected: None,
                 actual: None,
+            })
+        );
+
+        let mut mutable_values = values.clone();
+        assert_eq!(
+            mutable_values.array_set_path(&[], Value::from(1_i64)),
+            Err(RuntimeError {
+                message: "array assignment path must not be empty".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            mutable_values.array_set_path(&[Value::from(1_i64), Value::from(1_i64)], Value::Nil),
+            Err(RuntimeError {
+                message: "convert value to array".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
             })
         );
     }

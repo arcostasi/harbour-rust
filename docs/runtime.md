@@ -73,6 +73,13 @@ Na slice seguinte da Fase 7, entram helpers mínimos de indexação:
 - `array_get_path()` para navegação sequencial em indexação encadeada,
 - diagnóstico estruturado para alvo não-array, índice não-inteiro e bounds inválidos.
 
+Na slice seguinte da Fase 7, entram helpers mínimos de escrita e groundwork de atribuição:
+
+- `as_array_mut()` e `array_get_mut()` como superfície controlada de mutação,
+- `array_set()` retornando o valor atribuído para preparar semântica de assignment expression,
+- `array_set_path()` para `matrix[i][j] := value` sem acoplar parser e codegen ainda,
+- diagnóstico estruturado para caminho de atribuição vazio e alvo intermediário não-array.
+
 ## Ambientes
 
 Precisaremos de pelo menos:
@@ -111,6 +118,13 @@ Com a slice seguinte, o runtime passa a aceitar leitura básica de arrays, mas a
 - escrita por índice,
 - comparação profunda de arrays,
 - integração fim a fim com IR/codegen,
+- mensagens completas no formato histórico de erro xBase.
+
+Com a slice seguinte, o runtime passa a aceitar também escrita básica por índice e por caminho, mas ainda não implementa:
+
+- atribuição indexada fim a fim no pipeline parser -> codegen,
+- crescimento automático compatível com todas as variantes históricas de xBase,
+- comparação profunda de arrays,
 - mensagens completas no formato histórico de erro xBase.
 
 ### Erros de runtime

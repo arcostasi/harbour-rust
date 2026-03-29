@@ -54,3 +54,24 @@ fn public_array_index_helpers_follow_one_based_semantics() {
         Ok(&Value::from(20_i64))
     );
 }
+
+#[test]
+fn public_array_set_helpers_follow_one_based_semantics() {
+    let mut values = Value::array(vec![
+        Value::array(vec![Value::from(10_i64), Value::from(20_i64)]),
+        Value::array(vec![Value::from(30_i64), Value::from(40_i64)]),
+    ]);
+
+    assert_eq!(
+        values.array_set(&Value::from(1_i64), Value::array(vec![Value::from(99_i64)])),
+        Ok(Value::array(vec![Value::from(99_i64)]))
+    );
+    assert_eq!(
+        values.array_set_path(&[Value::from(2_i64), Value::from(2_i64)], Value::from("ok")),
+        Ok(Value::from("ok"))
+    );
+    assert_eq!(
+        values.array_get_path(&[Value::from(2_i64), Value::from(2_i64)]),
+        Ok(&Value::from("ok"))
+    );
+}

@@ -99,6 +99,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/arrays.prg` -> codegen C com `harbour_value_from_array_items(...)`
 - `tests/fixtures/parser/indexing.prg` -> codegen C com `harbour_value_array_get(...)`
 - `harbour-rust-runtime` -> helpers públicos de indexação 1-based com diagnóstico de bounds e tipo
+- `harbour-rust-runtime` -> helpers públicos de escrita 1-based com `array_set()` e `array_set_path()`
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`

@@ -108,3 +108,25 @@ fn public_array_index_diagnostics_cover_type_and_bounds_errors() {
         })
     );
 }
+
+#[test]
+fn public_array_set_diagnostics_cover_empty_paths_and_non_array_nested_targets() {
+    let mut values = Value::array(vec![Value::from(10_i64), Value::from(20_i64)]);
+
+    assert_eq!(
+        values.array_set_path(&[], Value::from(1_i64)),
+        Err(RuntimeError {
+            message: "array assignment path must not be empty".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        values.array_set_path(&[Value::from(1_i64), Value::from(1_i64)], Value::Nil),
+        Err(RuntimeError {
+            message: "convert value to array".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
