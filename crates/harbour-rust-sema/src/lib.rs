@@ -364,6 +364,10 @@ impl<'a> RoutineAnalyzer<'a> {
             return;
         }
 
+        if is_runtime_builtin(&symbol.text) {
+            return;
+        }
+
         self.errors.push(SemanticError {
             message: format!(
                 "unresolved callable symbol `{}` in routine `{}`",
@@ -394,6 +398,13 @@ enum ExpressionContext {
 
 fn normalize_name(name: &str) -> String {
     name.to_ascii_lowercase()
+}
+
+fn is_runtime_builtin(name: &str) -> bool {
+    name.eq_ignore_ascii_case("QOUT")
+        || name.eq_ignore_ascii_case("ACLONE")
+        || name.eq_ignore_ascii_case("AADD")
+        || name.eq_ignore_ascii_case("ASIZE")
 }
 
 #[cfg(test)]

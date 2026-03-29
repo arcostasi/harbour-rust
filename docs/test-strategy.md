@@ -105,10 +105,12 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `harbour-rust-runtime` -> `AAdd()`/`ASize()` via `call_builtin_mut()` e erro explícito na surface imutável
 - `harbour-rust-runtime` -> `AClone()` via `call_builtin()` e baseline leniente para `NIL`/não-array
 - `harbour-rust-runtime` -> códigos/mensagens de `array access` e `array assign` mais próximos do baseline (`1068/1069/1132/1133`)
+- `tests/fixtures/parser/aclone.prg` -> codegen C com `harbour_builtin_aclone(...)`
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/indexed_assign.prg` -> `harbour-rust-cli run`
+- `tests/fixtures/parser/aclone.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/pp/include_root.prg` -> preprocessamento com `#define` e `#include` simples
 - `tests/fixtures/pp/define_root.prg` -> expansão simples de `#define` objeto
 - `tests/fixtures/pp/recursive_define_root.prg` -> expansão recursiva de `#define` objeto

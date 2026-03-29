@@ -6,6 +6,8 @@
 
 typedef struct harbour_runtime_Value harbour_runtime_Value;
 
+static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value);
+
 harbour_runtime_Value harbour_value_nil(void) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_NIL;
@@ -299,4 +301,46 @@ harbour_runtime_Value harbour_builtin_qout(
     fflush(stdout);
 
     return harbour_value_nil();
+}
+
+struct harbour_runtime_Value harbour_builtin_aclone(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_nil();
+    }
+
+    if (arguments[0].kind != HARBOUR_VALUE_ARRAY) {
+        return harbour_value_nil();
+    }
+
+    return harbour_value_clone(arguments[0]);
+}
+
+static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value) {
+    size_t index;
+    harbour_runtime_Value cloned;
+    harbour_runtime_Value *items;
+
+    if (value.kind != HARBOUR_VALUE_ARRAY) {
+        return value;
+    }
+
+    if (value.as.array.length == 0) {
+        return harbour_value_from_array_items(NULL, 0);
+    }
+
+    items = (harbour_runtime_Value *) malloc(sizeof(harbour_runtime_Value) * value.as.array.length);
+    if (items == NULL) {
+        return harbour_value_nil();
+    }
+
+    for (index = 0; index < value.as.array.length; ++index) {
+        items[index] = harbour_value_clone(value.as.array.items[index]);
+    }
+
+    cloned = harbour_value_from_array_items(items, value.as.array.length);
+    free(items);
+    return cloned;
 }

@@ -59,6 +59,10 @@ struct harbour_runtime_Value harbour_builtin_qout(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_aclone(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_value_nil(void);
 struct harbour_runtime_Value harbour_value_from_logical(_Bool logical);
 struct harbour_runtime_Value harbour_value_from_integer(long long integer);

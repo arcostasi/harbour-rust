@@ -166,6 +166,13 @@ Na slice seguinte da Fase 7, a escrita por índice entra no caminho executável 
 - o suporte host em C passa a materializar atualização 1-based por caminho,
 - a leitura imediata do mesmo caminho já consegue validar a mutação no pipeline `run`.
 
+Na slice seguinte da Fase 7, o backend C começa a distinguir chamadas nomeadas de runtime builtin de chamadas de rotina:
+
+- `AClone(expr)` deixa de ser emitido como `harbour_routine_aclone(...)` e passa a usar `harbour_builtin_aclone(...)`,
+- o suporte host em `runtime_support.{h,c}` ganha clone recursivo mínimo de arrays para sustentar esse caminho executável,
+- `AAdd()` e `ASize()` passam a falhar com diagnóstico explícito de codegen até existir dispatch mutável endereçável,
+- fixtures dedicados passam a validar `parser -> hir -> ir -> codegen-c -> cli run` para builtin imutável além de `QOut`.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:

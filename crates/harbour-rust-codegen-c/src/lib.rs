@@ -53,6 +53,52 @@ struct Emitter {
     indent_level: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RuntimeBuiltin {
+    QOut,
+    AClone,
+    AAdd,
+    ASize,
+}
+
+impl RuntimeBuiltin {
+    fn lookup(name: &str) -> Option<Self> {
+        if name.eq_ignore_ascii_case("QOUT") {
+            Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("ACLONE") {
+            Some(Self::AClone)
+        } else if name.eq_ignore_ascii_case("AADD") {
+            Some(Self::AAdd)
+        } else if name.eq_ignore_ascii_case("ASIZE") {
+            Some(Self::ASize)
+        } else {
+            None
+        }
+    }
+
+    fn helper_name(self) -> &'static str {
+        match self {
+            Self::QOut => "harbour_builtin_qout",
+            Self::AClone => "harbour_builtin_aclone",
+            Self::AAdd => "harbour_builtin_aadd",
+            Self::ASize => "harbour_builtin_asize",
+        }
+    }
+
+    fn source_name(self) -> &'static str {
+        match self {
+            Self::QOut => "QOut",
+            Self::AClone => "AClone",
+            Self::AAdd => "AAdd",
+            Self::ASize => "ASize",
+        }
+    }
+
+    fn requires_mutable_dispatch(self) -> bool {
+        matches!(self, Self::AAdd | Self::ASize)
+    }
+}
+
 impl Emitter {
     fn new() -> Self {
         let mut emitter = Self {
@@ -126,6 +172,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line("");
     }
@@ -260,23 +309,14 @@ impl Emitter {
     fn emit_builtin_call(&mut self, statement: &ir::BuiltinCallStatement) {
         match statement.builtin {
             Builtin::QOut => {
-                let arguments = statement
-                    .arguments
-                    .iter()
-                    .filter_map(|argument| self.emit_expression(argument))
-                    .collect::<Vec<_>>();
-                let count = arguments.len();
-
-                if count == 0 {
+                let Some(call) = self
+                    .emit_runtime_builtin_invocation(RuntimeBuiltin::QOut, &statement.arguments)
+                else {
                     self.emit_line("harbour_builtin_qout(NULL, 0);");
                     return;
-                }
+                };
 
-                self.emit_line(&format!(
-                    "harbour_builtin_qout((harbour_runtime_Value[]) {{ {} }}, {});",
-                    arguments.join(", "),
-                    count
-                ));
+                self.emit_line(&format!("{};", call));
             }
         }
     }
@@ -356,16 +396,23 @@ impl Emitter {
             }
             Expression::Call(expression) => {
                 if let Expression::Symbol(symbol) = expression.callee.as_ref() {
-                    let arguments = expression
-                        .arguments
-                        .iter()
-                        .filter_map(|argument| self.emit_expression(argument))
-                        .collect::<Vec<_>>();
-                    Some(format!(
-                        "{}({})",
-                        mangle_routine_name(&symbol.text),
-                        arguments.join(", ")
-                    ))
+                    if let Some(builtin) = RuntimeBuiltin::lookup(&symbol.text) {
+                        self.emit_runtime_builtin_expression(
+                            builtin,
+                            &expression.arguments,
+                            expression.span,
+                        )
+                    } else {
+                        let mut arguments = Vec::with_capacity(expression.arguments.len());
+                        for argument in &expression.arguments {
+                            arguments.push(self.emit_expression(argument)?);
+                        }
+                        Some(format!(
+                            "{}({})",
+                            mangle_routine_name(&symbol.text),
+                            arguments.join(", ")
+                        ))
+                    }
                 } else {
                     self.push_error("C emission requires a named call target", expression.span);
                     None
@@ -447,6 +494,48 @@ impl Emitter {
         }
         self.source.push_str(line);
         self.source.push('\n');
+    }
+
+    fn emit_runtime_builtin_expression(
+        &mut self,
+        builtin: RuntimeBuiltin,
+        arguments: &[Expression],
+        span: Span,
+    ) -> Option<String> {
+        if builtin.requires_mutable_dispatch() {
+            self.push_error(
+                &format!(
+                    "C emission for mutable builtin {} is not implemented yet",
+                    builtin.source_name()
+                ),
+                span,
+            );
+            return None;
+        }
+
+        self.emit_runtime_builtin_invocation(builtin, arguments)
+    }
+
+    fn emit_runtime_builtin_invocation(
+        &mut self,
+        builtin: RuntimeBuiltin,
+        arguments: &[Expression],
+    ) -> Option<String> {
+        let mut emitted_arguments = Vec::with_capacity(arguments.len());
+        for argument in arguments {
+            emitted_arguments.push(self.emit_expression(argument)?);
+        }
+
+        if emitted_arguments.is_empty() {
+            Some(format!("{}(NULL, 0)", builtin.helper_name()))
+        } else {
+            Some(format!(
+                "{}((harbour_runtime_Value[]) {{ {} }}, {})",
+                builtin.helper_name(),
+                emitted_arguments.join(", "),
+                emitted_arguments.len()
+            ))
+        }
     }
 }
 
@@ -625,6 +714,7 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",
                     "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "\n",
                     "static harbour_runtime_Value harbour_routine_main(void);\n",
                     "\n",
@@ -909,6 +999,77 @@ mod tests {
             emitted
                 .source
                 .contains("return harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(1LL) }, 1);")
+        );
+    }
+
+    #[test]
+    fn emits_runtime_builtin_calls_for_aclone_expressions() {
+        let call_span = span(12, 2, 4, 26, 2, 18);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Return(ir::ReturnStatement {
+                    value: Some(ir::Expression::Call(ir::CallExpression {
+                        callee: Box::new(ir::Expression::Symbol(symbol(
+                            "AClone",
+                            span(12, 2, 4, 18, 2, 10),
+                        ))),
+                        arguments: vec![ir::Expression::Symbol(symbol(
+                            "source",
+                            span(20, 2, 12, 26, 2, 18),
+                        ))],
+                        span: call_span,
+                    })),
+                    span: call_span,
+                })],
+                span: span(0, 1, 1, 26, 2, 18),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted.source.contains(
+                "return harbour_builtin_aclone((harbour_runtime_Value[]) { source }, 1);"
+            )
+        );
+    }
+
+    #[test]
+    fn reports_mutable_runtime_builtin_calls_as_codegen_errors() {
+        let call_span = span(12, 2, 4, 24, 2, 16);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Return(ir::ReturnStatement {
+                    value: Some(ir::Expression::Call(ir::CallExpression {
+                        callee: Box::new(ir::Expression::Symbol(symbol(
+                            "AAdd",
+                            span(12, 2, 4, 16, 2, 8),
+                        ))),
+                        arguments: vec![ir::Expression::Symbol(symbol(
+                            "items",
+                            span(18, 2, 10, 23, 2, 15),
+                        ))],
+                        span: call_span,
+                    })),
+                    span: call_span,
+                })],
+                span: span(0, 1, 1, 24, 2, 16),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert_eq!(emitted.errors.len(), 1);
+        assert_eq!(
+            emitted.errors[0].message,
+            "C emission for mutable builtin AAdd is not implemented yet"
         );
     }
 }

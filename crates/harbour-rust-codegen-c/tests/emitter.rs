@@ -118,6 +118,11 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
             .source
             .contains("extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);")
     );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
 }
 
 #[test]
@@ -185,5 +190,26 @@ fn emits_indexed_assignment_fixture_with_array_set_path_helper() {
         emitted
             .source
             .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_array_get(harbour_value_array_get(matrix, harbour_value_from_integer(2LL)), harbour_value_from_integer(1LL)) }, 1);")
+    );
+}
+
+#[test]
+fn emits_aclones_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/aclone.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_runtime_Value source = harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(1LL), harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(2LL) }, 1) }, 2);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_aclone((harbour_runtime_Value[]) { source }, 1) }, 1);")
     );
 }

@@ -103,3 +103,13 @@ fn analyzes_indexed_assignment_fixture_without_semantic_errors() {
         analysis.errors
     );
 }
+
+#[test]
+fn analyzes_aclones_fixture_without_semantic_errors() {
+    let analysis = analyze_fixture("tests/fixtures/parser/aclone.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+}
