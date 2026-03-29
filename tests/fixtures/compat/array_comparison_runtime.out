@@ -1,0 +1,8 @@
+same == same => .T.
+{} == {} => .F.
+same = same => BASE 1071 Argument error (=)
+same != same => BASE 1072 Argument error (<>)
+same < same => BASE 1073 Argument error (<)
+same <= same => BASE 1074 Argument error (<=)
+same > same => BASE 1075 Argument error (>)
+same >= same => BASE 1076 Argument error (>=)

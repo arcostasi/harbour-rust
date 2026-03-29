@@ -7,3 +7,6 @@ edition = "2024"
 harbour-rust-ast = { path = "../harbour-rust-ast" }
 harbour-rust-lexer = { path = "../harbour-rust-lexer" }
 harbour-rust-parser = { path = "../harbour-rust-parser" }
+
+[dev-dependencies]
+harbour-rust-runtime = { path = "../harbour-rust-runtime" }
