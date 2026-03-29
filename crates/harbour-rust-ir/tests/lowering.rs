@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use harbour_rust_hir::lower_program as lower_hir_program;
-use harbour_rust_ir::{Builtin, Statement, lower_program};
+use harbour_rust_ir::{Builtin, Expression, ReturnStatement, Statement, lower_program};
 use harbour_rust_parser::parse;
 
 fn workspace_fixture(path: &str) -> PathBuf {
@@ -76,15 +76,31 @@ fn reports_arrays_fixture_as_ir_placeholder_error() {
 }
 
 #[test]
-fn reports_indexing_fixture_as_ir_placeholder_error() {
+fn lowers_indexing_fixture_to_explicit_ir_index_nodes() {
     let lowered = lower_fixture("tests/fixtures/parser/indexing.prg");
-    assert_eq!(lowered.errors.len(), 2);
+    assert_eq!(lowered.errors.len(), 1);
     assert_eq!(
         lowered.errors[0].message,
         "array literals are not supported in IR yet"
     );
-    assert_eq!(
-        lowered.errors[1].message,
-        "array indexing is not supported in IR yet"
-    );
+
+    let Statement::Return(ReturnStatement {
+        value: Some(expression),
+        ..
+    }) = &lowered.program.routines[0].body[1]
+    else {
+        panic!("expected return statement with indexing expression");
+    };
+
+    let Expression::Index(outer_index) = expression else {
+        panic!("expected outer IR index expression");
+    };
+    let Expression::Index(inner_index) = outer_index.target.as_ref() else {
+        panic!("expected nested IR index expression");
+    };
+    assert!(matches!(inner_index.target.as_ref(), Expression::Symbol(_)));
+    assert_eq!(inner_index.indices.len(), 1);
+    assert!(matches!(inner_index.indices[0], Expression::Symbol(_)));
+    assert_eq!(outer_index.indices.len(), 1);
+    assert!(matches!(outer_index.indices[0], Expression::Binary(_)));
 }

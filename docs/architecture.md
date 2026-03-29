@@ -95,7 +95,8 @@ Na slice seguinte da Fase 7, indexação de array deixa de morrer no AST -> HIR:
 
 - `expr[expr]`, `expr[expr, ...]` e encadeamento entram como `Index(target, indices)` na HIR,
 - a semântica passa a caminhar por `target` e por cada índice,
-- a IR continua sem execução de arrays e emite diagnóstico estável nesse ponto.
+- a IR agora também preserva `Index(target, indices)` de forma explícita,
+- array literal e codegen executável de indexação continuam como limitações separadas e diagnosticáveis.
 
 ### 1.2. Sema inicial com side tables
 
@@ -148,7 +149,7 @@ Na slice seguinte da Fase 7, o backend C ganha a primeira surface de arrays sem 
 
 - o prelude de `codegen-c` passa a declarar helpers de array no runtime C,
 - o suporte host em `runtime_support.{h,c}` ganha `Value::Array` mínima, construtor por itens, `array_len` e `array_get`,
-- `expr[...]` continua bloqueado na IR/codegen, mas a infraestrutura do lado C deixa de ser o próximo gargalo.
+- `expr[...]` deixa de estar bloqueado na IR e passa a ficar bloqueado apenas no codegen executável, enquanto a infraestrutura do lado C deixa de ser o próximo gargalo.
 
 ### 2. Parser manual, não porta de Bison
 

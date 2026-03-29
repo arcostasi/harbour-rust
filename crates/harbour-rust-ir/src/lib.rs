@@ -475,15 +475,15 @@ fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError
                 .collect(),
             span: expression.span,
         }),
-        hir::Expression::Index(expression) => {
-            errors.push(LoweringError {
-                message: "array indexing is not supported in IR yet".to_owned(),
-                span: expression.span,
-            });
-            Expression::Error(ErrorExpression {
-                span: expression.span,
-            })
-        }
+        hir::Expression::Index(expression) => Expression::Index(IndexExpression {
+            target: Box::new(lower_expression(&expression.target, errors)),
+            indices: expression
+                .indices
+                .iter()
+                .map(|index| lower_expression(index, errors))
+                .collect(),
+            span: expression.span,
+        }),
         hir::Expression::Assign(expression) => {
             errors.push(LoweringError {
                 message: "cannot lower assignment expression outside statement position".to_owned(),
@@ -778,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn reports_array_indexing_as_unsupported_in_ir_lowering() {
+    fn lowers_array_indexing_to_explicit_ir_nodes() {
         let expression_span = span(15, 2, 6, 25, 2, 16);
         let program = hir::Program {
             routines: vec![hir::Routine {
@@ -805,19 +805,18 @@ mod tests {
 
         let lowered = lower_program(&program);
 
-        assert_eq!(
-            lowered.errors,
-            vec![LoweringError {
-                message: "array indexing is not supported in IR yet".to_owned(),
-                span: expression_span,
-            }]
-        );
-        assert!(matches!(
-            lowered.program.routines[0].body[0],
-            Statement::Evaluate(crate::ExpressionStatement {
-                expression: Expression::Error(ErrorExpression { span }),
-                span: _
-            }) if span == expression_span
-        ));
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Evaluate(crate::ExpressionStatement { expression, .. }) =
+            &lowered.program.routines[0].body[0]
+        else {
+            panic!("expected evaluation statement");
+        };
+        let Expression::Index(index) = expression else {
+            panic!("expected lowered index expression");
+        };
+        assert!(matches!(index.target.as_ref(), Expression::Symbol(_)));
+        assert_eq!(index.indices.len(), 1);
+        assert!(matches!(index.indices[0], Expression::Integer(_)));
+        assert_eq!(index.span, expression_span);
     }
 }
