@@ -251,6 +251,10 @@ impl Value {
     }
 
     pub fn equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        if self.is_array_comparison_target(rhs) {
+            return Err(RuntimeError::array_comparison_equals());
+        }
+
         let result = match (self, rhs) {
             (Self::Nil, Self::Nil) => true,
             (Self::Nil, _) | (_, Self::Nil) => false,
@@ -297,6 +301,10 @@ impl Value {
     }
 
     pub fn not_equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
+        if self.is_array_comparison_target(rhs) {
+            return Err(RuntimeError::array_comparison_not_equals());
+        }
+
         match self.equals(rhs)? {
             Self::Logical(value) => Ok(Self::Logical(!value)),
             _ => unreachable!("equals always returns Value::Logical"),
@@ -311,23 +319,27 @@ impl Value {
     }
 
     pub fn less_than(&self, rhs: &Self) -> Result<Self, RuntimeError> {
-        self.compare_order(rhs, "compare ordering")
+        self.compare_order(rhs, "compare less-than")
             .map(|ordering| Self::Logical(ordering == Ordering::Less))
     }
 
     pub fn less_than_or_equal(&self, rhs: &Self) -> Result<Self, RuntimeError> {
-        self.compare_order(rhs, "compare ordering")
+        self.compare_order(rhs, "compare less-than-or-equal")
             .map(|ordering| Self::Logical(ordering != Ordering::Greater))
     }
 
     pub fn greater_than(&self, rhs: &Self) -> Result<Self, RuntimeError> {
-        self.compare_order(rhs, "compare ordering")
+        self.compare_order(rhs, "compare greater-than")
             .map(|ordering| Self::Logical(ordering == Ordering::Greater))
     }
 
     pub fn greater_than_or_equal(&self, rhs: &Self) -> Result<Self, RuntimeError> {
-        self.compare_order(rhs, "compare ordering")
+        self.compare_order(rhs, "compare greater-than-or-equal")
             .map(|ordering| Self::Logical(ordering != Ordering::Less))
+    }
+
+    fn is_array_comparison_target(&self, rhs: &Self) -> bool {
+        matches!(self, Self::Array(_)) || matches!(rhs, Self::Array(_))
     }
 
     fn numeric_pair(&self, rhs: &Self, operation: &str) -> Result<NumericPair, RuntimeError> {
@@ -358,6 +370,18 @@ impl Value {
     }
 
     fn compare_order(&self, rhs: &Self, operation: &str) -> Result<Ordering, RuntimeError> {
+        if self.is_array_comparison_target(rhs) {
+            return Err(match operation {
+                "compare less-than" => RuntimeError::array_comparison_less_than(),
+                "compare less-than-or-equal" => RuntimeError::array_comparison_less_than_or_equal(),
+                "compare greater-than" => RuntimeError::array_comparison_greater_than(),
+                "compare greater-than-or-equal" => {
+                    RuntimeError::array_comparison_greater_than_or_equal()
+                }
+                _ => RuntimeError::binary_operator_mismatch(operation, self.kind(), rhs.kind()),
+            });
+        }
+
         match (self, rhs) {
             (Self::String(left), Self::String(right)) => Ok(left.cmp(right)),
             _ => {
@@ -710,6 +734,54 @@ impl RuntimeError {
     pub fn array_assign_out_of_bounds(_index: i64) -> Self {
         Self {
             message: "BASE 1133 Bound error (array assign)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_comparison_equals() -> Self {
+        Self {
+            message: "BASE 1071 Argument error (=)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_comparison_not_equals() -> Self {
+        Self {
+            message: "BASE 1072 Argument error (<>)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_comparison_less_than() -> Self {
+        Self {
+            message: "BASE 1073 Argument error (<)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_comparison_less_than_or_equal() -> Self {
+        Self {
+            message: "BASE 1074 Argument error (<=)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_comparison_greater_than() -> Self {
+        Self {
+            message: "BASE 1075 Argument error (>)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_comparison_greater_than_or_equal() -> Self {
+        Self {
+            message: "BASE 1076 Argument error (>=)".to_owned(),
             expected: None,
             actual: None,
         }
@@ -1107,6 +1179,60 @@ mod tests {
     }
 
     #[test]
+    fn array_comparison_operations_follow_xbase_baseline_errors() {
+        let values = Value::array(vec![Value::from(1_i64)]);
+
+        assert_eq!(
+            values.equals(&values),
+            Err(RuntimeError {
+                message: "BASE 1071 Argument error (=)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            values.not_equals(&values),
+            Err(RuntimeError {
+                message: "BASE 1072 Argument error (<>)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            values.less_than(&values),
+            Err(RuntimeError {
+                message: "BASE 1073 Argument error (<)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            values.less_than_or_equal(&values),
+            Err(RuntimeError {
+                message: "BASE 1074 Argument error (<=)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            values.greater_than(&values),
+            Err(RuntimeError {
+                message: "BASE 1075 Argument error (>)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            values.greater_than_or_equal(&values),
+            Err(RuntimeError {
+                message: "BASE 1076 Argument error (>=)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
     fn exact_comparison_distinguishes_array_identity_from_value_equality() {
         let array = Value::array(vec![Value::from(1_i64), Value::from(2_i64)]);
         let clone = array.clone();
@@ -1145,7 +1271,7 @@ mod tests {
         assert_eq!(
             Value::from(true).less_than(&Value::from(false)),
             Err(RuntimeError {
-                message: "compare ordering with Logical and Logical".to_owned(),
+                message: "compare less-than with Logical and Logical".to_owned(),
                 expected: None,
                 actual: None,
             })

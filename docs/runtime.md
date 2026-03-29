@@ -155,6 +155,14 @@ Na slice seguinte da Fase 7, os diagnósticos de acesso e atualização de array
 - o runtime continua estruturado em `RuntimeError`, mas a mensagem primária já preserva o código estável esperado,
 - erros genéricos de conversão continuam reservados para APIs que não representam acesso/atribuição indexada.
 
+Na slice seguinte da Fase 7, comparações de arrays ficam mais próximas do baseline xBase:
+
+- `==` continua modelado por identidade observável do valor, então a mesma referência retorna `.T.` e clones seguem `.F.`,
+- `=` e `<>` deixam de cair no mismatch genérico e passam a emitir `BASE 1071` e `BASE 1072`,
+- `exact_not_equals()` continua sendo a negação da surface exata atual, preservando a API interna usada pelos testes,
+- `<`, `<=`, `>` e `>=` com arrays passam a emitir `BASE 1073` a `BASE 1076`,
+- a slice continua restrita a arrays; semântica equivalente para objetos e codeblocks permanece fora do escopo atual.
+
 ### Erros de runtime
 
 - nada de `panic!` para erro de usuário,

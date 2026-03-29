@@ -62,6 +62,60 @@ fn public_exact_comparison_distinguishes_array_identity_from_value_equality() {
 }
 
 #[test]
+fn public_array_comparison_operations_follow_xbase_baseline_errors() {
+    let array = Value::array(vec![Value::from(1_i64)]);
+
+    assert_eq!(
+        array.equals(&array),
+        Err(RuntimeError {
+            message: "BASE 1071 Argument error (=)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        array.not_equals(&array),
+        Err(RuntimeError {
+            message: "BASE 1072 Argument error (<>)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        array.less_than(&array),
+        Err(RuntimeError {
+            message: "BASE 1073 Argument error (<)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        array.less_than_or_equal(&array),
+        Err(RuntimeError {
+            message: "BASE 1074 Argument error (<=)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        array.greater_than(&array),
+        Err(RuntimeError {
+            message: "BASE 1075 Argument error (>)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        array.greater_than_or_equal(&array),
+        Err(RuntimeError {
+            message: "BASE 1076 Argument error (>=)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}
+
+#[test]
 fn public_qout_builtin_writes_expected_output_and_returns_nil() {
     let mut output = OutputBuffer::new();
 

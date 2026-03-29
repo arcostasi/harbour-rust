@@ -105,6 +105,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `harbour-rust-runtime` -> `AAdd()`/`ASize()` via `call_builtin_mut()` e erro explícito na surface imutável
 - `harbour-rust-runtime` -> `AClone()` via `call_builtin()` e baseline leniente para `NIL`/não-array
 - `harbour-rust-runtime` -> códigos/mensagens de `array access` e `array assign` mais próximos do baseline (`1068/1069/1132/1133`)
+- `harbour-rust-runtime` -> `==` por identidade observável e `=`/`<>`/ordenação de arrays com erros `1071` a `1076`
 - `tests/fixtures/parser/aclone.prg` -> codegen C com `harbour_builtin_aclone(...)`
 - `tests/fixtures/parser/mutable_builtins.prg` -> codegen C com `harbour_builtin_aadd(&value, ...)` e `harbour_builtin_asize(&value, ...)`
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
