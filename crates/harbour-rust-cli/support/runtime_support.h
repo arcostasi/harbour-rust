@@ -47,7 +47,13 @@ struct harbour_runtime_Value harbour_value_from_array_items(
 size_t harbour_value_array_len(struct harbour_runtime_Value value);
 struct harbour_runtime_Value harbour_value_array_get(
     struct harbour_runtime_Value value,
-    long long index
+    struct harbour_runtime_Value index
+);
+struct harbour_runtime_Value harbour_value_array_set_path(
+    struct harbour_runtime_Value *value,
+    const struct harbour_runtime_Value *indices,
+    size_t index_count,
+    struct harbour_runtime_Value assigned
 );
 struct harbour_runtime_Value harbour_builtin_qout(
     const struct harbour_runtime_Value *arguments,

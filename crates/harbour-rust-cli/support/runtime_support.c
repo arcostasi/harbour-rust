@@ -81,17 +81,62 @@ size_t harbour_value_array_len(harbour_runtime_Value value) {
 
 harbour_runtime_Value harbour_value_array_get(
     harbour_runtime_Value value,
-    long long index
+    harbour_runtime_Value index
 ) {
+    long long position;
+
     if (
+        index.kind != HARBOUR_VALUE_INTEGER ||
         value.kind != HARBOUR_VALUE_ARRAY ||
-        index <= 0 ||
-        (size_t) index > value.as.array.length
+        index.as.integer <= 0 ||
+        (size_t) index.as.integer > value.as.array.length
     ) {
         return harbour_value_nil();
     }
 
-    return value.as.array.items[index - 1];
+    position = index.as.integer;
+    return value.as.array.items[position - 1];
+}
+
+harbour_runtime_Value harbour_value_array_set_path(
+    harbour_runtime_Value *value,
+    const harbour_runtime_Value *indices,
+    size_t index_count,
+    harbour_runtime_Value assigned
+) {
+    harbour_runtime_Value *current;
+    size_t position;
+
+    if (value == NULL || indices == NULL || index_count == 0) {
+        return harbour_value_nil();
+    }
+
+    current = value;
+
+    for (position = 0; position < index_count; ++position) {
+        long long index;
+
+        if (
+            indices[position].kind != HARBOUR_VALUE_INTEGER ||
+            current->kind != HARBOUR_VALUE_ARRAY
+        ) {
+            return harbour_value_nil();
+        }
+
+        index = indices[position].as.integer;
+        if (index <= 0 || (size_t) index > current->as.array.length) {
+            return harbour_value_nil();
+        }
+
+        if (position + 1 == index_count) {
+            current->as.array.items[index - 1] = assigned;
+            return assigned;
+        }
+
+        current = &current->as.array.items[index - 1];
+    }
+
+    return harbour_value_nil();
 }
 
 harbour_runtime_Value harbour_value_add(

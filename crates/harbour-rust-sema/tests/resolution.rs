@@ -93,3 +93,13 @@ fn reports_static_storage_placeholder_diagnostics() {
         "tests/fixtures/sema/static_unsupported.errors",
     );
 }
+
+#[test]
+fn analyzes_indexed_assignment_fixture_without_semantic_errors() {
+    let analysis = analyze_fixture("tests/fixtures/parser/indexed_assign.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+}

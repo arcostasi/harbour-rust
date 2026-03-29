@@ -107,7 +107,10 @@ impl Emitter {
         self.emit_line("extern bool harbour_value_is_true(harbour_runtime_Value value);");
         self.emit_line("extern size_t harbour_value_array_len(harbour_runtime_Value value);");
         self.emit_line(
-            "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, long long index);",
+            "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, harbour_runtime_Value index);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);",
@@ -196,17 +199,7 @@ impl Emitter {
                     }
                 }
             }
-            ir::Statement::Assign(statement) => match self.emit_expression(&statement.value) {
-                Some(expression) => self.emit_line(&format!(
-                    "{} = {};",
-                    mangle_symbol(&statement.target.text),
-                    expression
-                )),
-                None => self.emit_line(&format!(
-                    "{} = harbour_value_nil();",
-                    mangle_symbol(&statement.target.text)
-                )),
-            },
+            ir::Statement::Assign(statement) => self.emit_assign_statement(statement),
             ir::Statement::If(statement) => {
                 self.push_error("C emission for IF is not implemented yet", statement.span);
                 self.emit_line("/* TODO: emit IF */");
@@ -283,6 +276,45 @@ impl Emitter {
                     "harbour_builtin_qout((harbour_runtime_Value[]) {{ {} }}, {});",
                     arguments.join(", "),
                     count
+                ));
+            }
+        }
+    }
+
+    fn emit_assign_statement(&mut self, statement: &ir::AssignStatement) {
+        let Some(value) = self.emit_expression(&statement.value) else {
+            match &statement.target {
+                ir::AssignTarget::Symbol(target) => self.emit_line(&format!(
+                    "{} = harbour_value_nil();",
+                    mangle_symbol(&target.text)
+                )),
+                ir::AssignTarget::Index(_) => {
+                    self.emit_line("/* TODO: emit indexed assignment */");
+                }
+            }
+            return;
+        };
+
+        match &statement.target {
+            ir::AssignTarget::Symbol(target) => {
+                self.emit_line(&format!("{} = {};", mangle_symbol(&target.text), value));
+            }
+            ir::AssignTarget::Index(target) => {
+                let mut indices = Vec::with_capacity(target.indices.len());
+                for index in &target.indices {
+                    let Some(index_expression) = self.emit_expression(index) else {
+                        self.emit_line("/* TODO: emit indexed assignment */");
+                        return;
+                    };
+                    indices.push(index_expression);
+                }
+
+                self.emit_line(&format!(
+                    "(void) harbour_value_array_set_path(&{}, (harbour_runtime_Value[]) {{ {} }}, {}, {});",
+                    mangle_symbol(&target.root.text),
+                    indices.join(", "),
+                    indices.len(),
+                    value
                 ));
             }
         }
@@ -586,7 +618,8 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_from_array_items(const harbour_runtime_Value *items, size_t length);\n",
                     "extern bool harbour_value_is_true(harbour_runtime_Value value);\n",
                     "extern size_t harbour_value_array_len(harbour_runtime_Value value);\n",
-                    "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, long long index);\n",
+                    "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, harbour_runtime_Value index);\n",
+                    "extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);\n",
                     "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
@@ -724,7 +757,10 @@ mod tests {
                         }),
                         step: None,
                         body: vec![ir::Statement::Assign(ir::AssignStatement {
-                            target: symbol("sum", span(30, 4, 7, 33, 4, 10)),
+                            target: ir::AssignTarget::Symbol(symbol(
+                                "sum",
+                                span(30, 4, 7, 33, 4, 10),
+                            )),
                             value: ir::Expression::Binary(ir::BinaryExpression {
                                 left: Box::new(ir::Expression::Symbol(symbol(
                                     "sum",
@@ -801,6 +837,47 @@ mod tests {
                 "return harbour_value_array_get(matrix, harbour_value_from_integer(1LL));"
             )
         );
+    }
+
+    #[test]
+    fn emits_indexed_assignment_with_runtime_set_path_helper() {
+        let assign_span = span(12, 2, 4, 32, 2, 24);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Assign(ir::AssignStatement {
+                    target: ir::AssignTarget::Index(ir::IndexedAssignTarget {
+                        root: symbol("matrix", span(12, 2, 4, 18, 2, 10)),
+                        indices: vec![
+                            ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "2".to_owned(),
+                                span: span(19, 2, 11, 20, 2, 12),
+                            }),
+                            ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "1".to_owned(),
+                                span: span(22, 2, 14, 23, 2, 15),
+                            }),
+                        ],
+                        span: span(12, 2, 4, 23, 2, 15),
+                    }),
+                    value: ir::Expression::Integer(ir::IntegerLiteral {
+                        lexeme: "99".to_owned(),
+                        span: span(28, 2, 20, 30, 2, 22),
+                    }),
+                    span: assign_span,
+                })],
+                span: span(0, 1, 1, 32, 2, 24),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(emitted.source.contains(
+            "(void) harbour_value_array_set_path(&matrix, (harbour_runtime_Value[]) { harbour_value_from_integer(2LL), harbour_value_from_integer(1LL) }, 2, harbour_value_from_integer(99LL));"
+        ));
     }
 
     #[test]

@@ -112,8 +112,30 @@ pub struct LocalBinding {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AssignTarget {
+    Symbol(Symbol),
+    Index(IndexedAssignTarget),
+}
+
+impl AssignTarget {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Symbol(symbol) => symbol.span,
+            Self::Index(target) => target.span,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexedAssignTarget {
+    pub root: Symbol,
+    pub indices: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssignStatement {
-    pub target: Symbol,
+    pub target: AssignTarget,
     pub value: Expression,
     pub span: Span,
 }
@@ -434,13 +456,31 @@ fn lower_expression_statement(
 ) -> Statement {
     match &statement.expression {
         hir::Expression::Assign(expression) => Statement::Assign(AssignStatement {
-            target: lower_symbol(&expression.target),
+            target: lower_assign_target(&expression.target, errors),
             value: lower_expression(&expression.value, errors),
             span: statement.span,
         }),
         expression => Statement::Evaluate(ExpressionStatement {
             expression: lower_expression(expression, errors),
             span: statement.span,
+        }),
+    }
+}
+
+fn lower_assign_target(
+    target: &hir::AssignTarget,
+    errors: &mut Vec<LoweringError>,
+) -> AssignTarget {
+    match target {
+        hir::AssignTarget::Symbol(symbol) => AssignTarget::Symbol(lower_symbol(symbol)),
+        hir::AssignTarget::Index(target) => AssignTarget::Index(IndexedAssignTarget {
+            root: lower_symbol(&target.root),
+            indices: target
+                .indices
+                .iter()
+                .map(|index| lower_expression(index, errors))
+                .collect(),
+            span: target.span,
         }),
     }
 }
@@ -576,9 +616,9 @@ mod tests {
     use harbour_rust_lexer::{Position, Span};
 
     use crate::{
-        ArrayLiteral, AssignStatement, Builtin, BuiltinCallStatement, ErrorExpression, Expression,
-        LoweringError, LoweringOutput, ReturnStatement, Routine, RoutineKind, Statement, Symbol,
-        lower_program,
+        ArrayLiteral, AssignStatement, AssignTarget, Builtin, BuiltinCallStatement,
+        ErrorExpression, Expression, IndexedAssignTarget, LoweringError, LoweringOutput,
+        ReturnStatement, Routine, RoutineKind, Statement, Symbol, lower_program,
     };
 
     fn span(
@@ -631,7 +671,10 @@ mod tests {
                     }),
                     hir::Statement::Evaluate(hir::ExpressionStatement {
                         expression: hir::Expression::Assign(hir::AssignExpression {
-                            target: symbol("x", span(24, 3, 4, 25, 3, 5)),
+                            target: hir::AssignTarget::Symbol(symbol(
+                                "x",
+                                span(24, 3, 4, 25, 3, 5),
+                            )),
                             value: Box::new(hir::Expression::Integer(hir::IntegerLiteral {
                                 lexeme: "1".to_owned(),
                                 span: span(30, 3, 10, 31, 3, 11),
@@ -674,10 +717,10 @@ mod tests {
                         span: print_span,
                     }),
                     Statement::Assign(AssignStatement {
-                        target: Symbol {
+                        target: AssignTarget::Symbol(Symbol {
                             text: "x".to_owned(),
                             span: span(24, 3, 4, 25, 3, 5),
-                        },
+                        }),
                         value: Expression::Integer(crate::IntegerLiteral {
                             lexeme: "1".to_owned(),
                             span: span(30, 3, 10, 31, 3, 11),
@@ -820,5 +863,62 @@ mod tests {
         assert_eq!(index.indices.len(), 1);
         assert!(matches!(index.indices[0], Expression::Integer(_)));
         assert_eq!(index.span, expression_span);
+    }
+
+    #[test]
+    fn lowers_indexed_assignment_targets_to_ir_surface() {
+        let assign_span = span(15, 2, 6, 34, 2, 25);
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![hir::Statement::Evaluate(hir::ExpressionStatement {
+                    expression: hir::Expression::Assign(hir::AssignExpression {
+                        target: hir::AssignTarget::Index(hir::IndexedAssignTarget {
+                            root: symbol("matrix", span(15, 2, 6, 21, 2, 12)),
+                            indices: vec![
+                                hir::Expression::Integer(hir::IntegerLiteral {
+                                    lexeme: "2".to_owned(),
+                                    span: span(22, 2, 13, 23, 2, 14),
+                                }),
+                                hir::Expression::Integer(hir::IntegerLiteral {
+                                    lexeme: "1".to_owned(),
+                                    span: span(26, 2, 17, 27, 2, 18),
+                                }),
+                            ],
+                            span: span(15, 2, 6, 28, 2, 19),
+                        }),
+                        value: Box::new(hir::Expression::Integer(hir::IntegerLiteral {
+                            lexeme: "99".to_owned(),
+                            span: span(32, 2, 23, 34, 2, 25),
+                        })),
+                        span: assign_span,
+                    }),
+                    span: assign_span,
+                })],
+                span: span(0, 1, 1, 34, 2, 25),
+            }],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Assign(assign) = &lowered.program.routines[0].body[0] else {
+            panic!("expected lowered assign statement");
+        };
+        let AssignTarget::Index(IndexedAssignTarget {
+            root,
+            indices,
+            span: target_span,
+        }) = &assign.target
+        else {
+            panic!("expected indexed assign target");
+        };
+        assert_eq!(root.text, "matrix");
+        assert_eq!(indices.len(), 2);
+        assert!(matches!(indices[0], Expression::Integer(_)));
+        assert!(matches!(indices[1], Expression::Integer(_)));
+        assert_eq!(*target_span, span(15, 2, 6, 28, 2, 19));
     }
 }

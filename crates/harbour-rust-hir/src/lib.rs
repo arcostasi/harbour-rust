@@ -260,8 +260,30 @@ pub struct IndexExpression {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AssignTarget {
+    Symbol(Symbol),
+    Index(IndexedAssignTarget),
+}
+
+impl AssignTarget {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Symbol(symbol) => symbol.span,
+            Self::Index(target) => target.span,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexedAssignTarget {
+    pub root: Symbol,
+    pub indices: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssignExpression {
-    pub target: Symbol,
+    pub target: AssignTarget,
     pub value: Box<Expression>,
     pub span: Span,
 }
@@ -501,20 +523,15 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
             span: expression.span,
         }),
         ast::Expression::Assignment(expression) => {
-            if let ast::Expression::Identifier(identifier) = expression.target.as_ref() {
-                Expression::Assign(AssignExpression {
-                    target: lower_identifier(identifier),
+            match lower_assign_target(expression.target.as_ref(), errors) {
+                Some(target) => Expression::Assign(AssignExpression {
+                    target,
                     value: Box::new(lower_expression(&expression.value, errors)),
                     span: expression.span,
-                })
-            } else {
-                errors.push(LoweringError {
-                    message: "expected identifier on assignment left-hand side".to_owned(),
-                    span: expression.target.span(),
-                });
-                Expression::Error(ErrorExpression {
+                }),
+                None => Expression::Error(ErrorExpression {
                     span: expression.span,
-                })
+                }),
             }
         }
         ast::Expression::Binary(expression) => Expression::Binary(BinaryExpression {
@@ -540,6 +557,73 @@ fn lower_identifier(identifier: &ast::Identifier) -> Symbol {
     Symbol {
         text: identifier.text.clone(),
         span: identifier.span,
+    }
+}
+
+fn lower_assign_target(
+    expression: &ast::Expression,
+    errors: &mut Vec<LoweringError>,
+) -> Option<AssignTarget> {
+    match expression {
+        ast::Expression::Identifier(identifier) => {
+            Some(AssignTarget::Symbol(lower_identifier(identifier)))
+        }
+        ast::Expression::Index(index) => {
+            lower_index_assign_target(index, errors).map(AssignTarget::Index)
+        }
+        _ => {
+            errors.push(LoweringError {
+                message: "expected identifier or indexed identifier on assignment left-hand side"
+                    .to_owned(),
+                span: expression.span(),
+            });
+            None
+        }
+    }
+}
+
+fn lower_index_assign_target(
+    expression: &ast::IndexExpression,
+    errors: &mut Vec<LoweringError>,
+) -> Option<IndexedAssignTarget> {
+    let (root, mut indices) = flatten_assign_index_target(expression.target.as_ref(), errors)?;
+    indices.extend(
+        expression
+            .indices
+            .iter()
+            .map(|index| lower_expression(index, errors)),
+    );
+
+    Some(IndexedAssignTarget {
+        root,
+        indices,
+        span: expression.span,
+    })
+}
+
+fn flatten_assign_index_target(
+    expression: &ast::Expression,
+    errors: &mut Vec<LoweringError>,
+) -> Option<(Symbol, Vec<Expression>)> {
+    match expression {
+        ast::Expression::Identifier(identifier) => Some((lower_identifier(identifier), Vec::new())),
+        ast::Expression::Index(index) => {
+            let (root, mut indices) = flatten_assign_index_target(index.target.as_ref(), errors)?;
+            indices.extend(
+                index
+                    .indices
+                    .iter()
+                    .map(|index| lower_expression(index, errors)),
+            );
+            Some((root, indices))
+        }
+        _ => {
+            errors.push(LoweringError {
+                message: "expected identifier as root of indexed assignment target".to_owned(),
+                span: expression.span(),
+            });
+            None
+        }
     }
 }
 
@@ -591,8 +675,9 @@ mod tests {
     use harbour_rust_lexer::{Position, Span};
 
     use crate::{
-        Expression, ExpressionStatement, LocalBinding, LocalStatement, LoweringOutput,
-        ReturnStatement, Routine, RoutineKind, Statement, StorageClass, Symbol, lower_program,
+        AssignTarget, Expression, ExpressionStatement, IndexedAssignTarget, LocalBinding,
+        LocalStatement, LoweringOutput, ReturnStatement, Routine, RoutineKind, Statement,
+        StorageClass, Symbol, lower_program,
     };
 
     fn span(
@@ -754,11 +839,79 @@ mod tests {
                     }],
                 },
                 errors: vec![crate::LoweringError {
-                    message: "expected identifier on assignment left-hand side".to_owned(),
+                    message:
+                        "expected identifier or indexed identifier on assignment left-hand side"
+                            .to_owned(),
                     span: call_span,
                 }],
             }
         );
+    }
+
+    #[test]
+    fn lowers_indexed_assignment_target_to_root_and_flat_indices() {
+        let assign_span = span(18, 2, 8, 37, 2, 27);
+        let program = ast::Program {
+            items: vec![ast::Item::Routine(ast::Routine {
+                kind: ast::RoutineKind::Procedure,
+                name: identifier("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ast::Statement::Expression(ast::ExpressionStatement {
+                    expression: ast::Expression::Assignment(ast::AssignmentExpression {
+                        target: Box::new(ast::Expression::Index(ast::IndexExpression {
+                            target: Box::new(ast::Expression::Index(ast::IndexExpression {
+                                target: Box::new(ast::Expression::Identifier(identifier(
+                                    "matrix",
+                                    span(18, 2, 8, 24, 2, 14),
+                                ))),
+                                indices: vec![ast::Expression::Integer(ast::IntegerLiteral {
+                                    lexeme: "2".to_owned(),
+                                    span: span(25, 2, 15, 26, 2, 16),
+                                })],
+                                span: span(18, 2, 8, 27, 2, 17),
+                            })),
+                            indices: vec![ast::Expression::Integer(ast::IntegerLiteral {
+                                lexeme: "1".to_owned(),
+                                span: span(28, 2, 18, 29, 2, 19),
+                            })],
+                            span: span(18, 2, 8, 30, 2, 20),
+                        })),
+                        value: Box::new(ast::Expression::Integer(ast::IntegerLiteral {
+                            lexeme: "99".to_owned(),
+                            span: span(34, 2, 24, 36, 2, 26),
+                        })),
+                        span: assign_span,
+                    }),
+                    span: assign_span,
+                })],
+                span: span(0, 1, 1, 37, 2, 27),
+            })],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Evaluate(ExpressionStatement { expression, .. }) =
+            &lowered.program.routines[0].body[0]
+        else {
+            panic!("expected evaluation statement");
+        };
+        let Expression::Assign(assign) = expression else {
+            panic!("expected lowered assignment expression");
+        };
+        let AssignTarget::Index(IndexedAssignTarget {
+            root,
+            indices,
+            span: target_span,
+        }) = &assign.target
+        else {
+            panic!("expected indexed assignment target");
+        };
+        assert_eq!(root.text, "matrix");
+        assert_eq!(indices.len(), 2);
+        assert!(matches!(indices[0], Expression::Integer(_)));
+        assert!(matches!(indices[1], Expression::Integer(_)));
+        assert_eq!(*target_span, span(18, 2, 8, 30, 2, 20));
     }
 
     #[test]

@@ -159,6 +159,13 @@ Na slice seguinte da Fase 7, o backend C passa a usar essa surface explicitament
 - fixtures de arrays e indexação já conseguem gerar C sem erro de codegen,
 - escrita por índice e semântica mais completa de arrays continuam pendentes.
 
+Na slice seguinte da Fase 7, a escrita por índice entra no caminho executável inicial:
+
+- alvos como `matrix[2][1] := 99` baixam para `AssignTarget::Index` em HIR e IR,
+- o backend C emite `harbour_value_array_set_path(&matrix, indices..., assigned)`,
+- o suporte host em C passa a materializar atualização 1-based por caminho,
+- a leitura imediata do mesmo caminho já consegue validar a mutação no pipeline `run`.
+
 ### 2. Parser manual, não porta de Bison
 
 `harbour.y` é útil como oráculo de:

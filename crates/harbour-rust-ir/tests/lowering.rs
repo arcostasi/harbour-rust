@@ -1,7 +1,9 @@
 use std::{fs, path::PathBuf};
 
 use harbour_rust_hir::lower_program as lower_hir_program;
-use harbour_rust_ir::{Builtin, Expression, ReturnStatement, Statement, lower_program};
+use harbour_rust_ir::{
+    AssignTarget, Builtin, Expression, ReturnStatement, Statement, lower_program,
+};
 use harbour_rust_parser::parse;
 
 fn workspace_fixture(path: &str) -> PathBuf {
@@ -124,4 +126,36 @@ fn lowers_indexing_fixture_to_explicit_ir_index_nodes() {
     assert!(matches!(inner_index.indices[0], Expression::Symbol(_)));
     assert_eq!(outer_index.indices.len(), 1);
     assert!(matches!(outer_index.indices[0], Expression::Binary(_)));
+}
+
+#[test]
+fn lowers_indexed_assignment_fixture_to_explicit_ir_assign_target() {
+    let lowered = lower_fixture("tests/fixtures/parser/indexed_assign.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 4);
+
+    let Statement::Assign(assign) = &body[1] else {
+        panic!("expected assign statement");
+    };
+
+    let AssignTarget::Index(target) = &assign.target else {
+        panic!("expected indexed assign target");
+    };
+
+    assert_eq!(target.root.text, "matrix");
+    assert_eq!(target.indices.len(), 2);
+    assert!(matches!(
+        target.indices[0],
+        Expression::Integer(ref literal) if literal.lexeme == "2"
+    ));
+    assert!(matches!(
+        target.indices[1],
+        Expression::Integer(ref literal) if literal.lexeme == "1"
+    ));
 }

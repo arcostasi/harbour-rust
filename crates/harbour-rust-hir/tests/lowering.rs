@@ -120,7 +120,10 @@ fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
     let harbour_rust_hir::Expression::Assign(assign) = first_assignment else {
         panic!("expected lowered assign expression, found {first_assignment:?}");
     };
-    assert_eq!(assign.target.text, "total");
+    assert!(matches!(
+        assign.target,
+        harbour_rust_hir::AssignTarget::Symbol(ref symbol) if symbol.text == "total"
+    ));
 
     let harbour_rust_hir::Expression::Binary(binary) = assign.value.as_ref() else {
         panic!("expected binary expression in compound assignment");
@@ -142,7 +145,10 @@ fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
     let harbour_rust_hir::Expression::Assign(assign) = second_assignment else {
         panic!("expected lowered assign expression, found {second_assignment:?}");
     };
-    assert_eq!(assign.target.text, "factor");
+    assert!(matches!(
+        assign.target,
+        harbour_rust_hir::AssignTarget::Symbol(ref symbol) if symbol.text == "factor"
+    ));
 
     let harbour_rust_hir::Expression::Binary(binary) = assign.value.as_ref() else {
         panic!("expected binary expression in compound assignment");
@@ -196,5 +202,42 @@ fn lowers_indexing_fixture_to_explicit_hir_index_nodes() {
     assert!(matches!(
         inner_index.target.as_ref(),
         harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "matrix"
+    ));
+}
+
+#[test]
+fn lowers_indexed_assignment_fixture_to_flat_assign_target() {
+    let lowered = lower_fixture("tests/fixtures/parser/indexed_assign.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 4);
+
+    let assignment = match &body[1] {
+        harbour_rust_hir::Statement::Evaluate(statement) => &statement.expression,
+        statement => panic!("expected evaluation statement, found {statement:?}"),
+    };
+
+    let harbour_rust_hir::Expression::Assign(assign) = assignment else {
+        panic!("expected assign expression, found {assignment:?}");
+    };
+
+    let harbour_rust_hir::AssignTarget::Index(target) = &assign.target else {
+        panic!("expected indexed assign target");
+    };
+
+    assert_eq!(target.root.text, "matrix");
+    assert_eq!(target.indices.len(), 2);
+    assert!(matches!(
+        target.indices[0],
+        harbour_rust_hir::Expression::Integer(ref literal) if literal.lexeme == "2"
+    ));
+    assert!(matches!(
+        target.indices[1],
+        harbour_rust_hir::Expression::Integer(ref literal) if literal.lexeme == "1"
     ));
 }

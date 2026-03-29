@@ -308,7 +308,7 @@ impl<'a> RoutineAnalyzer<'a> {
                 }
             }
             hir::Expression::Assign(expression) => {
-                self.resolve_local_symbol(&expression.target);
+                self.analyze_assign_target(&expression.target);
                 self.analyze_expression(&expression.value, ExpressionContext::Value);
             }
             hir::Expression::Binary(expression) => {
@@ -371,6 +371,18 @@ impl<'a> RoutineAnalyzer<'a> {
             ),
             span: symbol.span,
         });
+    }
+
+    fn analyze_assign_target(&mut self, target: &hir::AssignTarget) {
+        match target {
+            hir::AssignTarget::Symbol(symbol) => self.resolve_local_symbol(symbol),
+            hir::AssignTarget::Index(target) => {
+                self.resolve_local_symbol(&target.root);
+                for index in &target.indices {
+                    self.analyze_expression(index, ExpressionContext::Value);
+                }
+            }
+        }
     }
 }
 
