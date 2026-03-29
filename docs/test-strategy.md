@@ -102,6 +102,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `harbour-rust-runtime` -> helpers públicos de indexação 1-based com diagnóstico de bounds e tipo
 - `harbour-rust-runtime` -> helpers públicos de escrita 1-based com `array_set()` e `array_set_path()`
 - `harbour-rust-runtime` -> `exact_equals()` para identidade observável de arrays e helpers `array_resize()`/`array_push()`/`array_clone()`
+- `harbour-rust-runtime` -> `AAdd()`/`ASize()` via `call_builtin_mut()` e erro explícito na surface imutável
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`

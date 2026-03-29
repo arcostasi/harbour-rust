@@ -134,6 +134,13 @@ Na slice seguinte da Fase 7, o runtime ganha helpers mais ricos de coleção e c
 - `array_resize()`, `array_push()` e `array_clone()` preparam o terreno para `ASize()`, `AAdd()` e `AClone()`,
 - a comparação comum `=`/`<>` e ordenação continuam fora da semântica de arrays nesta fase.
 
+Na slice seguinte da Fase 7, entram os primeiros builtins de array sobre essa infraestrutura:
+
+- `aadd()` usa `array_push()` e retorna o valor adicionado,
+- `asize()` usa `array_resize()` e retorna o array ajustado,
+- `call_builtin_mut()` passa a existir como surface separada para builtins mutantes,
+- `call_builtin()` continua atendendo builtins imutáveis e reporta erro explícito se `AAdd` ou `ASize` forem chamados pela surface errada.
+
 ### Erros de runtime
 
 - nada de `panic!` para erro de usuário,

@@ -432,12 +432,18 @@ impl RuntimeContext {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Builtin {
     QOut,
+    AAdd,
+    ASize,
 }
 
 impl Builtin {
     pub fn lookup(name: &str) -> Option<Self> {
         if name.eq_ignore_ascii_case("QOUT") {
             Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("AADD") {
+            Some(Self::AAdd)
+        } else if name.eq_ignore_ascii_case("ASIZE") {
+            Some(Self::ASize)
         } else {
             None
         }
@@ -449,6 +455,33 @@ pub fn qout(values: &[Value], output: &mut OutputBuffer) -> Result<Value, Runtim
     Ok(Value::Nil)
 }
 
+pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
+    if matches!(array, Value::Array(_)) {
+        array.array_push(value)
+    } else {
+        Ok(Value::Nil)
+    }
+}
+
+pub fn asize(array: &mut Value, len: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(len) = len else {
+        return Ok(Value::Nil);
+    };
+
+    if !matches!(array, Value::Array(_)) {
+        return Ok(Value::Nil);
+    }
+
+    let target_len = match len {
+        Value::Integer(value) if *value <= 0 => 0,
+        Value::Integer(value) => *value as usize,
+        _ => return Ok(Value::Nil),
+    };
+
+    array.array_resize(target_len)?;
+    array.array_clone()
+}
+
 pub fn call_builtin(
     name: &str,
     arguments: &[Value],
@@ -456,6 +489,35 @@ pub fn call_builtin(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::AAdd | Builtin::ASize) => {
+            Err(RuntimeError::builtin_requires_mutable_dispatch(name))
+        }
+        None => Err(RuntimeError::unknown_builtin(name)),
+    }
+}
+
+pub fn call_builtin_mut(
+    name: &str,
+    arguments: &mut [Value],
+    context: &mut RuntimeContext,
+) -> Result<Value, RuntimeError> {
+    match Builtin::lookup(name) {
+        Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::AAdd) => {
+            let Some((array, rest)) = arguments.split_first_mut() else {
+                return Ok(Value::Nil);
+            };
+            let Some(value) = rest.first() else {
+                return Ok(Value::Nil);
+            };
+            aadd(array, value.clone())
+        }
+        Some(Builtin::ASize) => {
+            let Some((array, rest)) = arguments.split_first_mut() else {
+                return Ok(Value::Nil);
+            };
+            asize(array, rest.first())
+        }
         None => Err(RuntimeError::unknown_builtin(name)),
     }
 }
@@ -595,6 +657,14 @@ impl RuntimeError {
         }
     }
 
+    pub fn builtin_requires_mutable_dispatch(name: &str) -> Self {
+        Self {
+            message: format!("builtin {} requires mutable dispatch", name),
+            expected: None,
+            actual: None,
+        }
+    }
+
     pub fn array_index_type_mismatch(actual: ValueKind) -> Self {
         Self {
             message: "array index must be Integer".to_owned(),
@@ -677,7 +747,10 @@ impl Error for RuntimeError {}
 
 #[cfg(test)]
 mod tests {
-    use crate::{OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, call_builtin, qout};
+    use crate::{
+        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, asize, call_builtin,
+        call_builtin_mut, qout,
+    };
 
     #[test]
     fn value_kind_and_type_name_match_variants() {
@@ -1040,6 +1113,53 @@ mod tests {
     }
 
     #[test]
+    fn array_builtins_mutate_the_first_argument_through_mutable_dispatch() {
+        let mut context = RuntimeContext::new();
+        let mut add_arguments = [Value::empty_array(), Value::from("tail")];
+
+        assert_eq!(
+            call_builtin_mut("AADD", &mut add_arguments, &mut context),
+            Ok(Value::from("tail"))
+        );
+        assert_eq!(add_arguments[0], Value::array(vec![Value::from("tail")]));
+
+        let mut size_arguments = [add_arguments[0].clone(), Value::from(3_i64)];
+        assert_eq!(
+            call_builtin_mut("ASIZE", &mut size_arguments, &mut context),
+            Ok(Value::array(vec![
+                Value::from("tail"),
+                Value::Nil,
+                Value::Nil,
+            ]))
+        );
+        assert_eq!(
+            size_arguments[0],
+            Value::array(vec![Value::from("tail"), Value::Nil, Value::Nil])
+        );
+    }
+
+    #[test]
+    fn aadd_and_asize_follow_the_current_lenient_runtime_baseline() {
+        let mut values = Value::empty_array();
+
+        assert_eq!(aadd(&mut values, Value::Nil), Ok(Value::Nil));
+        assert_eq!(values, Value::array(vec![Value::Nil]));
+
+        assert_eq!(
+            asize(&mut values, Some(&Value::from(-1_i64))),
+            Ok(Value::empty_array())
+        );
+        assert_eq!(values, Value::empty_array());
+
+        let mut not_array = Value::from("nope");
+        assert_eq!(aadd(&mut not_array, Value::from(1_i64)), Ok(Value::Nil));
+        assert_eq!(
+            asize(&mut not_array, Some(&Value::from(3_i64))),
+            Ok(Value::Nil)
+        );
+    }
+
+    #[test]
     fn unknown_builtin_reports_runtime_error() {
         let mut context = RuntimeContext::new();
 
@@ -1047,6 +1167,36 @@ mod tests {
             call_builtin("MissingBuiltin", &[], &mut context),
             Err(RuntimeError {
                 message: "unknown builtin MissingBuiltin".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn mutable_array_builtins_report_when_called_through_immutable_dispatch() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin(
+                "AADD",
+                &[Value::empty_array(), Value::from(1_i64)],
+                &mut context
+            ),
+            Err(RuntimeError {
+                message: "builtin AADD requires mutable dispatch".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            call_builtin(
+                "ASIZE",
+                &[Value::empty_array(), Value::from(2_i64)],
+                &mut context
+            ),
+            Err(RuntimeError {
+                message: "builtin ASIZE requires mutable dispatch".to_owned(),
                 expected: None,
                 actual: None,
             })

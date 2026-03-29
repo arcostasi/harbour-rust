@@ -1,4 +1,7 @@
-use harbour_rust_runtime::{OutputBuffer, RuntimeContext, RuntimeError, Value, call_builtin, qout};
+use harbour_rust_runtime::{
+    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, asize, call_builtin, call_builtin_mut,
+    qout,
+};
 
 #[test]
 fn public_arithmetic_operations_cover_core_runtime_baseline() {
@@ -95,6 +98,83 @@ fn public_builtin_dispatch_reports_unknown_builtin() {
         call_builtin("Nope", &[], &mut context),
         Err(RuntimeError {
             message: "unknown builtin Nope".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}
+
+#[test]
+fn public_array_builtins_mutate_the_first_argument_through_mutable_dispatch() {
+    let mut context = RuntimeContext::new();
+    let mut add_arguments = [Value::empty_array(), Value::from("tail")];
+
+    assert_eq!(
+        call_builtin_mut("AADD", &mut add_arguments, &mut context),
+        Ok(Value::from("tail"))
+    );
+    assert_eq!(add_arguments[0], Value::array(vec![Value::from("tail")]));
+
+    let mut size_arguments = [add_arguments[0].clone(), Value::from(3_i64)];
+    assert_eq!(
+        call_builtin_mut("ASIZE", &mut size_arguments, &mut context),
+        Ok(Value::array(vec![
+            Value::from("tail"),
+            Value::Nil,
+            Value::Nil,
+        ]))
+    );
+    assert_eq!(
+        size_arguments[0],
+        Value::array(vec![Value::from("tail"), Value::Nil, Value::Nil])
+    );
+}
+
+#[test]
+fn public_aadd_and_asize_follow_the_current_lenient_runtime_baseline() {
+    let mut values = Value::empty_array();
+
+    assert_eq!(aadd(&mut values, Value::Nil), Ok(Value::Nil));
+    assert_eq!(values, Value::array(vec![Value::Nil]));
+
+    assert_eq!(
+        asize(&mut values, Some(&Value::from(-1_i64))),
+        Ok(Value::empty_array())
+    );
+    assert_eq!(values, Value::empty_array());
+
+    let mut not_array = Value::from("nope");
+    assert_eq!(aadd(&mut not_array, Value::from(1_i64)), Ok(Value::Nil));
+    assert_eq!(
+        asize(&mut not_array, Some(&Value::from(3_i64))),
+        Ok(Value::Nil)
+    );
+}
+
+#[test]
+fn public_mutating_array_builtins_report_when_called_through_immutable_dispatch() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "AADD",
+            &[Value::empty_array(), Value::from(1_i64)],
+            &mut context
+        ),
+        Err(RuntimeError {
+            message: "builtin AADD requires mutable dispatch".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        call_builtin(
+            "ASIZE",
+            &[Value::empty_array(), Value::from(2_i64)],
+            &mut context
+        ),
+        Err(RuntimeError {
+            message: "builtin ASIZE requires mutable dispatch".to_owned(),
             expected: None,
             actual: None,
         })
