@@ -117,6 +117,42 @@ impl Value {
         Self::Array(vec![Self::Nil; len])
     }
 
+    pub fn array_len(&self) -> Result<usize, RuntimeError> {
+        self.as_array().map(|values| values.len())
+    }
+
+    pub fn array_get(&self, index: &Self) -> Result<&Value, RuntimeError> {
+        let values = self.as_array()?;
+        let index = match index {
+            Self::Integer(value) => *value,
+            _ => {
+                return Err(RuntimeError::array_index_type_mismatch(index.kind()));
+            }
+        };
+
+        if index <= 0 {
+            return Err(RuntimeError::array_index_out_of_bounds(index, values.len()));
+        }
+
+        let zero_based_index = (index - 1) as usize;
+        values
+            .get(zero_based_index)
+            .ok_or_else(|| RuntimeError::array_index_out_of_bounds(index, values.len()))
+    }
+
+    pub fn array_get_path(&self, indices: &[Value]) -> Result<&Value, RuntimeError> {
+        let mut current = self;
+        for index in indices {
+            current = current.array_get(index)?;
+        }
+
+        Ok(current)
+    }
+
+    pub fn array_get_owned(&self, index: &Self) -> Result<Self, RuntimeError> {
+        self.array_get(index).cloned()
+    }
+
     pub fn to_output_string(&self) -> String {
         match self {
             Self::Nil => "NIL".to_owned(),
@@ -484,6 +520,22 @@ impl RuntimeError {
             actual: None,
         }
     }
+
+    pub fn array_index_type_mismatch(actual: ValueKind) -> Self {
+        Self {
+            message: "array index must be Integer".to_owned(),
+            expected: Some(ValueKind::Integer),
+            actual: Some(actual),
+        }
+    }
+
+    pub fn array_index_out_of_bounds(index: i64, len: usize) -> Self {
+        Self {
+            message: format!("array index {} out of bounds for length {}", index, len),
+            expected: None,
+            actual: None,
+        }
+    }
 }
 
 enum NumericPair {
@@ -585,6 +637,69 @@ mod tests {
         assert_eq!(
             Value::array(vec![Value::from(1_i64), Value::from("x")]),
             Value::Array(vec![Value::from(1_i64), Value::from("x")])
+        );
+    }
+
+    #[test]
+    fn array_index_helpers_follow_one_based_runtime_baseline() {
+        let matrix = Value::array(vec![
+            Value::array(vec![Value::from(10_i64), Value::from(20_i64)]),
+            Value::array(vec![Value::from(30_i64), Value::from(40_i64)]),
+        ]);
+
+        assert_eq!(matrix.array_len(), Ok(2));
+        assert_eq!(
+            matrix.array_get(&Value::from(1_i64)),
+            Ok(&Value::array(vec![
+                Value::from(10_i64),
+                Value::from(20_i64),
+            ]))
+        );
+        assert_eq!(
+            matrix.array_get_path(&[Value::from(2_i64), Value::from(1_i64)]),
+            Ok(&Value::from(30_i64))
+        );
+        assert_eq!(
+            matrix.array_get_owned(&Value::from(2_i64)),
+            Ok(Value::array(vec![Value::from(30_i64), Value::from(40_i64)]))
+        );
+    }
+
+    #[test]
+    fn invalid_array_indexing_reports_structured_runtime_errors() {
+        let values = Value::array(vec![Value::from(10_i64), Value::from(20_i64)]);
+
+        assert_eq!(
+            Value::from("text").array_get(&Value::from(1_i64)),
+            Err(RuntimeError {
+                message: "convert value to array".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            values.array_get(&Value::from("1")),
+            Err(RuntimeError {
+                message: "array index must be Integer".to_owned(),
+                expected: Some(ValueKind::Integer),
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            values.array_get(&Value::from(0_i64)),
+            Err(RuntimeError {
+                message: "array index 0 out of bounds for length 2".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            values.array_get(&Value::from(3_i64)),
+            Err(RuntimeError {
+                message: "array index 3 out of bounds for length 2".to_owned(),
+                expected: None,
+                actual: None,
+            })
         );
     }
 

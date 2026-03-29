@@ -86,3 +86,25 @@ fn public_builtin_dispatch_reports_unknown_builtin() {
         })
     );
 }
+
+#[test]
+fn public_array_index_diagnostics_cover_type_and_bounds_errors() {
+    let values = Value::array(vec![Value::from(10_i64), Value::from(20_i64)]);
+
+    assert_eq!(
+        values.array_get(&Value::from("1")),
+        Err(RuntimeError {
+            message: "array index must be Integer".to_owned(),
+            expected: Some(harbour_rust_runtime::ValueKind::Integer),
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        values.array_get(&Value::from(0_i64)),
+        Err(RuntimeError {
+            message: "array index 0 out of bounds for length 2".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}

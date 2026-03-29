@@ -66,6 +66,13 @@ Na primeira slice de arrays da Fase 7, entra a superfície mínima de coleção:
 - acesso estrito com `as_array()` e `TryFrom<&Value> for Vec<Value>`,
 - formatter basal `"{ Array(n) }"` para tornar snapshots e diagnósticos previsíveis.
 
+Na slice seguinte da Fase 7, entram helpers mínimos de indexação:
+
+- `array_len()` para expor o tamanho do contêiner,
+- `array_get()` e `array_get_owned()` com índice 1-based, alinhado ao baseline xBase,
+- `array_get_path()` para navegação sequencial em indexação encadeada,
+- diagnóstico estruturado para alvo não-array, índice não-inteiro e bounds inválidos.
+
 ## Ambientes
 
 Precisaremos de pelo menos:
@@ -98,6 +105,13 @@ Implementar por prioridade e sempre com teste de compatibilidade:
 5. arrays
 
 Nesta primeira entrada de arrays, o objetivo ainda não é semântica completa de xBase. O runtime só materializa o contêiner, seu tamanho inicial e uma surface pública pequena o bastante para parser, builtins e testes evoluírem sem inventar indexação, mutação ou comparação antes da hora.
+
+Com a slice seguinte, o runtime passa a aceitar leitura básica de arrays, mas ainda não implementa:
+
+- escrita por índice,
+- comparação profunda de arrays,
+- integração fim a fim com IR/codegen,
+- mensagens completas no formato histórico de erro xBase.
 
 ### Erros de runtime
 

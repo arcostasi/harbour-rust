@@ -35,3 +35,22 @@ fn public_array_constructors_cover_empty_sized_and_explicit_values() {
         Value::from(vec![Value::from(1_i64), Value::from(true)])
     );
 }
+
+#[test]
+fn public_array_index_helpers_follow_one_based_semantics() {
+    let values = Value::array(vec![Value::from(10_i64), Value::from(20_i64)]);
+
+    assert_eq!(values.array_len(), Ok(2));
+    assert_eq!(
+        values.array_get(&Value::from(1_i64)),
+        Ok(&Value::from(10_i64))
+    );
+    assert_eq!(
+        values.array_get_owned(&Value::from(2_i64)),
+        Ok(Value::from(20_i64))
+    );
+    assert_eq!(
+        values.array_get_path(&[Value::from(2_i64)]),
+        Ok(&Value::from(20_i64))
+    );
+}

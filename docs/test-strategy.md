@@ -96,6 +96,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/static.prg` -> `tests/fixtures/sema/static_unsupported.errors`
 - `tests/fixtures/parser/arrays.prg` -> diagnóstico estável de IR para array ainda não suportado
 - `tests/fixtures/parser/indexing.prg` -> diagnóstico estável de IR para indexação de array ainda não suportada
+- `harbour-rust-runtime` -> helpers públicos de indexação 1-based com diagnóstico de bounds e tipo
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`
