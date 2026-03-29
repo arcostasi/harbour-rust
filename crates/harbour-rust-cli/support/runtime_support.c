@@ -16,6 +16,7 @@ static _Bool harbour_try_numeric_pair(
     double *right_number
 );
 static harbour_runtime_Value harbour_unsupported_comparison(void);
+static harbour_runtime_Value harbour_array_comparison_error(const char *message);
 
 static unsigned long long harbour_array_identity_seed = 1;
 
@@ -50,6 +51,13 @@ harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_STRING;
     value.as.string = string;
+    return value;
+}
+
+harbour_runtime_Value harbour_value_error_literal(const char *error) {
+    harbour_runtime_Value value;
+    value.kind = HARBOUR_VALUE_ERROR;
+    value.as.error = error;
     return value;
 }
 
@@ -190,7 +198,7 @@ harbour_runtime_Value harbour_value_equals(
     double right_number;
 
     if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
-        return harbour_unsupported_comparison();
+        return harbour_array_comparison_error("BASE 1071 Argument error (=)");
     }
 
     if (left.kind == HARBOUR_VALUE_NIL && right.kind == HARBOUR_VALUE_NIL) {
@@ -254,6 +262,10 @@ harbour_runtime_Value harbour_value_not_equals(
     harbour_runtime_Value left,
     harbour_runtime_Value right
 ) {
+    if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_array_comparison_error("BASE 1072 Argument error (<>)");
+    }
+
     harbour_runtime_Value equals = harbour_value_equals(left, right);
 
     if (equals.kind == HARBOUR_VALUE_LOGICAL) {
@@ -301,6 +313,10 @@ harbour_runtime_Value harbour_value_less_than(
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) < 0);
     }
 
+    if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_array_comparison_error("BASE 1073 Argument error (<)");
+    }
+
     return harbour_value_from_logical(0);
 }
 
@@ -321,6 +337,10 @@ harbour_runtime_Value harbour_value_less_than_or_equal(
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) <= 0);
+    }
+
+    if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_array_comparison_error("BASE 1074 Argument error (<=)");
     }
 
     return harbour_value_from_logical(0);
@@ -345,6 +365,10 @@ harbour_runtime_Value harbour_value_greater_than(
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) > 0);
     }
 
+    if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_array_comparison_error("BASE 1075 Argument error (>)");
+    }
+
     return harbour_value_from_logical(0);
 }
 
@@ -365,6 +389,10 @@ harbour_runtime_Value harbour_value_greater_than_or_equal(
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) >= 0);
+    }
+
+    if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_array_comparison_error("BASE 1076 Argument error (>=)");
     }
 
     return harbour_value_from_logical(0);
@@ -398,6 +426,9 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
         break;
     case HARBOUR_VALUE_STRING:
         fputs(value->as.string, stdout);
+        break;
+    case HARBOUR_VALUE_ERROR:
+        fputs(value->as.error, stdout);
         break;
     case HARBOUR_VALUE_ARRAY:
         fprintf(stdout, "{ Array(%zu) }", value->as.array.length);
@@ -588,4 +619,8 @@ static _Bool harbour_try_numeric_pair(
 
 static harbour_runtime_Value harbour_unsupported_comparison(void) {
     return harbour_value_nil();
+}
+
+static harbour_runtime_Value harbour_array_comparison_error(const char *message) {
+    return harbour_value_error_literal(message);
 }

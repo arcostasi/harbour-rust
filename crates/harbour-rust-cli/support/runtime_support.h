@@ -10,13 +10,15 @@ struct harbour_runtime_Value {
         HARBOUR_VALUE_INTEGER = 2,
         HARBOUR_VALUE_FLOAT = 3,
         HARBOUR_VALUE_STRING = 4,
-        HARBOUR_VALUE_ARRAY = 5
+        HARBOUR_VALUE_ARRAY = 5,
+        HARBOUR_VALUE_ERROR = 6
     } kind;
     union {
         _Bool logical;
         long long integer;
         double floating;
         const char *string;
+        const char *error;
         struct {
             struct harbour_runtime_Value *items;
             size_t length;
@@ -99,5 +101,6 @@ struct harbour_runtime_Value harbour_value_from_logical(_Bool logical);
 struct harbour_runtime_Value harbour_value_from_integer(long long integer);
 struct harbour_runtime_Value harbour_value_from_float(double floating);
 struct harbour_runtime_Value harbour_value_from_string_literal(const char *string);
+struct harbour_runtime_Value harbour_value_error_literal(const char *error);
 
 #endif

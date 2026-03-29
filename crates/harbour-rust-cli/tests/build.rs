@@ -310,6 +310,23 @@ fn run_command_executes_array_exact_compare_fixture_with_expected_output() {
 }
 
 #[test]
+fn run_command_executes_compare_ops_fixture_with_xbase_array_diagnostics() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/compare_ops.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(
+        stdout,
+        ".T.\nBASE 1071 Argument error (=)\nBASE 1072 Argument error (<>)\nBASE 1075 Argument error (>)\nBASE 1076 Argument error (>=)\n"
+    );
+}
+
+#[test]
 fn run_command_uses_configured_include_directory_for_preprocess_handoff() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
