@@ -307,11 +307,20 @@ impl Emitter {
                 escape_c_string(&normalize_string_lexeme(&literal.lexeme))
             )),
             Expression::Array(expression) => {
-                self.push_error(
-                    "C emission for array literals is not implemented yet",
-                    expression.span,
-                );
-                None
+                let mut elements = Vec::with_capacity(expression.elements.len());
+                for element in &expression.elements {
+                    elements.push(self.emit_expression(element)?);
+                }
+
+                if elements.is_empty() {
+                    Some("harbour_value_from_array_items(NULL, 0)".to_owned())
+                } else {
+                    Some(format!(
+                        "harbour_value_from_array_items((harbour_runtime_Value[]) {{ {} }}, {})",
+                        elements.join(", "),
+                        elements.len()
+                    ))
+                }
             }
             Expression::Call(expression) => {
                 if let Expression::Symbol(symbol) = expression.callee.as_ref() {
@@ -331,11 +340,14 @@ impl Emitter {
                 }
             }
             Expression::Index(expression) => {
-                self.push_error(
-                    "C emission for array indexing is not implemented yet",
-                    expression.span,
-                );
-                None
+                let mut target = self.emit_expression(&expression.target)?;
+
+                for index in &expression.indices {
+                    let emitted_index = self.emit_expression(index)?;
+                    target = format!("harbour_value_array_get({}, {})", target, emitted_index);
+                }
+
+                Some(target)
             }
             Expression::Binary(expression) => {
                 let left = self.emit_expression(&expression.left)?;
@@ -756,7 +768,7 @@ mod tests {
     }
 
     #[test]
-    fn reports_array_indexing_as_unimplemented_in_c_emission() {
+    fn emits_array_indexing_with_runtime_helpers() {
         let index_span = span(12, 2, 4, 20, 2, 12);
         let program = ir::Program {
             routines: vec![ir::Routine {
@@ -783,15 +795,16 @@ mod tests {
 
         let emitted = emit_program(&program);
 
-        assert_eq!(emitted.errors.len(), 1);
-        assert_eq!(
-            emitted.errors[0].message,
-            "C emission for array indexing is not implemented yet"
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted.source.contains(
+                "return harbour_value_array_get(matrix, harbour_value_from_integer(1LL));"
+            )
         );
     }
 
     #[test]
-    fn reports_array_literals_as_unimplemented_in_c_emission() {
+    fn emits_array_literals_with_runtime_helpers() {
         let array_span = span(12, 2, 4, 22, 2, 14);
         let program = ir::Program {
             routines: vec![ir::Routine {
@@ -814,10 +827,11 @@ mod tests {
 
         let emitted = emit_program(&program);
 
-        assert_eq!(emitted.errors.len(), 1);
-        assert_eq!(
-            emitted.errors[0].message,
-            "C emission for array literals is not implemented yet"
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted
+                .source
+                .contains("return harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(1LL) }, 1);")
         );
     }
 }

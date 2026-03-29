@@ -114,3 +114,45 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
             .contains("extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, long long index);")
     );
 }
+
+#[test]
+fn emits_arrays_fixture_with_array_constructor_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/arrays.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_from_array_items(NULL, 0)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(1LL), harbour_value_from_string_literal(\"x\"), cache }, 3)")
+    );
+}
+
+#[test]
+fn emits_indexing_fixture_with_array_get_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/indexing.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_runtime_Value matrix = harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(10LL), harbour_value_from_integer(20LL) }, 2), harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(30LL), harbour_value_from_integer(40LL) }, 2) }, 2);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("return harbour_value_array_get(harbour_value_array_get(matrix, row), harbour_value_add(harbour_value_from_integer(1LL), col));")
+    );
+}

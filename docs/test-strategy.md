@@ -94,8 +94,10 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
 - `tests/fixtures/parser/static.prg` -> `tests/fixtures/sema/static_unsupported.errors`
-- `tests/fixtures/parser/arrays.prg` -> lowering IR explícito para `Array(elements)` com placeholder restante apenas no codegen
+- `tests/fixtures/parser/arrays.prg` -> lowering IR explícito para `Array(elements)` sem erro de lowering
 - `tests/fixtures/parser/indexing.prg` -> lowering IR explícito para `Index(target, indices)` sem erro de lowering
+- `tests/fixtures/parser/arrays.prg` -> codegen C com `harbour_value_from_array_items(...)`
+- `tests/fixtures/parser/indexing.prg` -> codegen C com `harbour_value_array_get(...)`
 - `harbour-rust-runtime` -> helpers públicos de indexação 1-based com diagnóstico de bounds e tipo
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`

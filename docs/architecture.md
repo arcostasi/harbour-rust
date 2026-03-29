@@ -84,7 +84,7 @@ Na slice seguinte da Fase 7, arrays deixam de morrer cedo no lowering:
 - literais de array entram como nó explícito da HIR,
 - a semântica passa a caminhar pelos elementos para preservar resolução e regressões,
 - a IR agora também preserva literais de array como nós explícitos,
-- o gargalo remanescente fica no codegen executável de arrays, não mais no lowering AST -> HIR -> IR.
+- o gargalo remanescente deixa de estar no lowering AST -> HIR -> IR e passa a se concentrar na semântica executável mais completa de arrays.
 
 Na slice seguinte da Fase 7, operadores compostos passam a ter superfície estável no lowering:
 
@@ -97,7 +97,7 @@ Na slice seguinte da Fase 7, indexação de array deixa de morrer no AST -> HIR:
 - `expr[expr]`, `expr[expr, ...]` e encadeamento entram como `Index(target, indices)` na HIR,
 - a semântica passa a caminhar por `target` e por cada índice,
 - a IR agora também preserva `Index(target, indices)` de forma explícita,
-- array literal e codegen executável de indexação continuam como limitações separadas e diagnosticáveis.
+- escrita por índice e semântica mais completa de arrays continuam como limitações separadas e diagnosticáveis.
 
 ### 1.2. Sema inicial com side tables
 
@@ -151,6 +151,13 @@ Na slice seguinte da Fase 7, o backend C ganha a primeira surface de arrays sem 
 - o prelude de `codegen-c` passa a declarar helpers de array no runtime C,
 - o suporte host em `runtime_support.{h,c}` ganha `Value::Array` mínima, construtor por itens, `array_len` e `array_get`,
 - literais `{}` e `expr[...]` deixam de estar bloqueados na IR e passam a ficar bloqueados apenas no codegen executável, enquanto a infraestrutura do lado C deixa de ser o próximo gargalo.
+
+Na slice seguinte da Fase 7, o backend C passa a usar essa surface explicitamente:
+
+- literais de array baixam para `harbour_value_from_array_items(...)`,
+- indexação baixa para chamadas encadeadas de `harbour_value_array_get(...)`,
+- fixtures de arrays e indexação já conseguem gerar C sem erro de codegen,
+- escrita por índice e semântica mais completa de arrays continuam pendentes.
 
 ### 2. Parser manual, não porta de Bison
 
