@@ -33,21 +33,23 @@ Entregar um compilador compatível com CA-Clipper/Harbour em Rust sem copiar a e
 
 ## Crates
 
-| Crate | Responsabilidade |
-| --- | --- |
-| `harbour-rust-cli` | CLI `check`, `build`, `run`, `transpile` |
-| `harbour-rust-lexer` | tokens, spans, trivia, erros léxicos |
-| `harbour-rust-pp` | diretivas e expansão token-based |
-| `harbour-rust-parser` | parser recursivo + Pratt parser de expressões |
-| `harbour-rust-ast` | AST concreta e estável |
-| `harbour-rust-hir` | lowering semanticamente útil |
-| `harbour-rust-sema` | escopos, resolução, builtins, diagnósticos semânticos |
-| `harbour-rust-ir` | IR própria, mais simples que pcode |
-| `harbour-rust-codegen-c` | C legível e depurável |
-| `harbour-rust-runtime` | `Value`, ambiente, builtins, helpers |
-| `harbour-rust-rdd` | DBF/RDD |
-| `harbour-rust-compat` | harness de comparação com Harbour |
-| `harbour-rust-tests` | fixtures, snapshots, golden tests |
+Veja [overview.md](overview.md) para o mapa completo com diagrama de dependências.
+
+| Crate | Responsabilidade | Doc detalhada |
+| --- | --- | --- |
+| `harbour-rust-cli` | CLI `check`, `build`, `run`, `transpile` | [cli.md](cli.md) |
+| `harbour-rust-lexer` | tokens, spans, trivia, erros léxicos | [lexer.md](lexer.md) |
+| `harbour-rust-pp` | diretivas e expansão token-based | [preprocessor.md](preprocessor.md) |
+| `harbour-rust-parser` | parser recursivo + Pratt parser de expressões | [grammar.md](grammar.md) |
+| `harbour-rust-ast` | AST concreta e estável | [grammar.md](grammar.md) |
+| `harbour-rust-hir` | lowering semanticamente útil | [hir.md](hir.md) |
+| `harbour-rust-sema` | escopos, resolução, builtins, diagnósticos semânticos | [sema.md](sema.md) |
+| `harbour-rust-ir` | IR própria, mais simples que pcode | [ir.md](ir.md) |
+| `harbour-rust-codegen-c` | C legível e depurável | [codegen-c.md](codegen-c.md) |
+| `harbour-rust-runtime` | `Value`, ambiente, builtins, helpers | [runtime.md](runtime.md) |
+| `harbour-rust-rdd` | DBF/RDD | [rdd.md](rdd.md) |
+| `harbour-rust-compat` | harness de comparação com Harbour | [test-strategy.md](test-strategy.md) |
+| `harbour-rust-tests` | fixtures, snapshots, golden tests | [test-strategy.md](test-strategy.md) |
 
 ## Decisões arquiteturais
 
@@ -172,6 +174,13 @@ Na slice seguinte da Fase 7, o backend C começa a distinguir chamadas nomeadas 
 - o suporte host em `runtime_support.{h,c}` ganha clone recursivo mínimo de arrays para sustentar esse caminho executável,
 - `AAdd()` e `ASize()` passam a falhar com diagnóstico explícito de codegen até existir dispatch mutável endereçável,
 - fixtures dedicados passam a validar `parser -> hir -> ir -> codegen-c -> cli run` para builtin imutável além de `QOut`.
+
+Na slice seguinte da Fase 7, o backend C passa a aceitar o primeiro builtin mutável com lowering endereçável:
+
+- `AAdd(items, value)` e `ASize(items, len)` passam a emitir `harbour_builtin_aadd(&items, ...)` e `harbour_builtin_asize(&items, ...)`,
+- o suporte host em `runtime_support.{h,c}` ganha resize/push mínimo para arrays do runtime C,
+- a semântica continua restrita a primeiro argumento simbólico simples nesta fase,
+- formas como `AAdd(matrix[1], value)` ainda seguem como erro explícito de codegen até existir surface geral de lvalue endereçável.
 
 ### 2. Parser manual, não porta de Bison
 

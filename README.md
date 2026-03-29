@@ -23,9 +23,10 @@ Este repositório começa pela governança e pelo plano de execução. O código
 1. `AGENTS.md`
 2. `ROADMAP.md`
 3. `COMPATIBILITY.md`
-4. `docs/architecture.md`
-5. `docs/test-strategy.md`
-6. `docs/grammar.md`, `docs/runtime.md` e demais docs relevantes para a task
+4. `docs/overview.md` — visão geral, mapa de crates e pipeline
+5. `docs/architecture.md` — decisões arquiteturais
+6. `docs/test-strategy.md`
+7. Docs temáticas por camada: `docs/lexer.md`, `docs/preprocessor.md`, `docs/grammar.md`, `docs/hir.md`, `docs/sema.md`, `docs/ir.md`, `docs/codegen-c.md`, `docs/runtime.md`, `docs/cli.md`, `docs/rdd.md`
 
 ## Como usar o upstream `harbour-core/`
 

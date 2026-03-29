@@ -76,3 +76,37 @@ Construir o `harbour-rust`, um compilador em Rust compatível com CA-Clipper/Har
 - Use o `harbour-core/` como referência de comportamento, arquitetura e teste.
 - Não translitere grandes blocos de C.
 - Prefira reexpressar regras em Rust com testes cobrindo a mesma semântica.
+
+## Documentação
+
+A documentação do projeto está organizada em:
+
+- `docs/overview.md` — visão geral, mapa de crates e pipeline de compilação
+- `docs/architecture.md` — decisões arquiteturais e mapeamento do upstream
+- Docs por camada: `lexer.md`, `preprocessor.md`, `grammar.md`, `hir.md`, `sema.md`, `ir.md`, `codegen-c.md`, `runtime.md`, `cli.md`, `rdd.md`
+- `docs/diagnostics.md` — estrutura, categorias e códigos de mensagens de erro
+- `docs/test-strategy.md` — estratégia de testes e baselines
+- `docs/dialect-clipper.md` / `docs/dialect-harbour.md` — regras de compatibilidade por dialeto
+- `docs/upstream-navigator.md` — guia para encontrar referências no harbour-core
+- `docs/recipes.md` — receitas passo a passo para operações comuns no compilador
+- `docs/phase7-plan.md` — plano detalhado da Fase 7 com slices, fixtures e aceite
+- `docs/commit-flow.md` / `docs/conventional-commits.md` — convenções de commit
+
+Ao trabalhar em qualquer camada, leia primeiro a doc temática correspondente.
+
+## Skills disponíveis
+
+| Skill | Quando usar |
+| --- | --- |
+| `implement-lexer` | Adicionar tokens, spans ou diagnósticos léxicos |
+| `implement-preprocessor` | Estender PP (diretivas, expansão) |
+| `implement-parser` | Estender parser/AST |
+| `implement-hir-sema` | Lowering HIR ou análise semântica |
+| `implement-ir-codegen` | IR lowering ou geração de código C |
+| `add-runtime-builtin` | Adicionar builtin ao runtime |
+| `implement-cli` | Comandos, opções ou pipeline do CLI |
+| `implement-rdd` | Acesso a dados DBF/RDD |
+| `add-compat-test` | Teste de compatibilidade Clipper/Harbour |
+| `investigate-regression` | Investigar e corrigir regressão |
+| `release-checklist` | Preparar release |
+| `conventional-commits` | Organizar commits |
