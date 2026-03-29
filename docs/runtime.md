@@ -141,6 +141,13 @@ Na slice seguinte da Fase 7, entram os primeiros builtins de array sobre essa in
 - `call_builtin_mut()` passa a existir como surface separada para builtins mutantes,
 - `call_builtin()` continua atendendo builtins imutáveis e reporta erro explícito se `AAdd` ou `ASize` forem chamados pela surface errada.
 
+Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
+
+- `aclone()` usa `array_clone()` e retorna cópia estrutural do array,
+- `AClone()` permanece na surface imutável `call_builtin()`,
+- `AClone(NIL)` e argumentos não-array retornam `NIL` no baseline atual,
+- a slice evita introduzir ainda semântica mais ampla de cópia para tipos complexos além de `Array`.
+
 ### Erros de runtime
 
 - nada de `panic!` para erro de usuário,

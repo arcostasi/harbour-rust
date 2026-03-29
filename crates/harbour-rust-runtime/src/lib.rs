@@ -434,6 +434,7 @@ pub enum Builtin {
     QOut,
     AAdd,
     ASize,
+    AClone,
 }
 
 impl Builtin {
@@ -444,6 +445,8 @@ impl Builtin {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
             Some(Self::ASize)
+        } else if name.eq_ignore_ascii_case("ACLONE") {
+            Some(Self::AClone)
         } else {
             None
         }
@@ -482,6 +485,18 @@ pub fn asize(array: &mut Value, len: Option<&Value>) -> Result<Value, RuntimeErr
     array.array_clone()
 }
 
+pub fn aclone(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Ok(Value::Nil);
+    };
+
+    if matches!(value, Value::Array(_)) {
+        value.array_clone()
+    } else {
+        Ok(Value::Nil)
+    }
+}
+
 pub fn call_builtin(
     name: &str,
     arguments: &[Value],
@@ -489,6 +504,7 @@ pub fn call_builtin(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
         }
@@ -503,6 +519,7 @@ pub fn call_builtin_mut(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
                 return Ok(Value::Nil);
@@ -748,8 +765,8 @@ impl Error for RuntimeError {}
 #[cfg(test)]
 mod tests {
     use crate::{
-        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, asize, call_builtin,
-        call_builtin_mut, qout,
+        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize,
+        call_builtin, call_builtin_mut, qout,
     };
 
     #[test]
@@ -1139,6 +1156,19 @@ mod tests {
     }
 
     #[test]
+    fn aclone_follows_the_current_lenient_runtime_baseline() {
+        let values = Value::array(vec![
+            Value::from(1_i64),
+            Value::array(vec![Value::from("nested")]),
+        ]);
+
+        assert_eq!(aclone(None), Ok(Value::Nil));
+        assert_eq!(aclone(Some(&Value::Nil)), Ok(Value::Nil));
+        assert_eq!(aclone(Some(&Value::from("nope"))), Ok(Value::Nil));
+        assert_eq!(aclone(Some(&values)), Ok(values.clone()));
+    }
+
+    #[test]
     fn aadd_and_asize_follow_the_current_lenient_runtime_baseline() {
         let mut values = Value::empty_array();
 
@@ -1201,5 +1231,27 @@ mod tests {
                 actual: None,
             })
         );
+    }
+
+    #[test]
+    fn aclone_dispatches_through_the_immutable_builtin_surface() {
+        let mut context = RuntimeContext::new();
+        let values = Value::array(vec![
+            Value::from(1_i64),
+            Value::array(vec![Value::from("nested")]),
+        ]);
+
+        assert_eq!(
+            call_builtin("ACLONE", std::slice::from_ref(&values), &mut context),
+            Ok(values.clone())
+        );
+        assert_eq!(call_builtin("ACLONE", &[], &mut context), Ok(Value::Nil));
+
+        let mut mutable_arguments = [values.clone()];
+        assert_eq!(
+            call_builtin_mut("ACLONE", &mut mutable_arguments, &mut context),
+            Ok(values.clone())
+        );
+        assert_eq!(mutable_arguments[0], values);
     }
 }

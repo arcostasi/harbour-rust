@@ -1,6 +1,6 @@
 use harbour_rust_runtime::{
-    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, asize, call_builtin, call_builtin_mut,
-    qout,
+    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, call_builtin,
+    call_builtin_mut, qout,
 };
 
 #[test]
@@ -131,6 +131,19 @@ fn public_array_builtins_mutate_the_first_argument_through_mutable_dispatch() {
 }
 
 #[test]
+fn public_aclone_follows_the_current_lenient_runtime_baseline() {
+    let values = Value::array(vec![
+        Value::from(1_i64),
+        Value::array(vec![Value::from("nested")]),
+    ]);
+
+    assert_eq!(aclone(None), Ok(Value::Nil));
+    assert_eq!(aclone(Some(&Value::Nil)), Ok(Value::Nil));
+    assert_eq!(aclone(Some(&Value::from("nope"))), Ok(Value::Nil));
+    assert_eq!(aclone(Some(&values)), Ok(values.clone()));
+}
+
+#[test]
 fn public_aadd_and_asize_follow_the_current_lenient_runtime_baseline() {
     let mut values = Value::empty_array();
 
@@ -179,6 +192,28 @@ fn public_mutating_array_builtins_report_when_called_through_immutable_dispatch(
             actual: None,
         })
     );
+}
+
+#[test]
+fn public_aclone_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+    let values = Value::array(vec![
+        Value::from(1_i64),
+        Value::array(vec![Value::from("nested")]),
+    ]);
+
+    assert_eq!(
+        call_builtin("ACLONE", std::slice::from_ref(&values), &mut context),
+        Ok(values.clone())
+    );
+    assert_eq!(call_builtin("ACLONE", &[], &mut context), Ok(Value::Nil));
+
+    let mut mutable_arguments = [values.clone()];
+    assert_eq!(
+        call_builtin_mut("ACLONE", &mut mutable_arguments, &mut context),
+        Ok(values.clone())
+    );
+    assert_eq!(mutable_arguments[0], values);
 }
 
 #[test]
