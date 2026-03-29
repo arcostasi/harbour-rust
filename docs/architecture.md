@@ -83,7 +83,8 @@ Na slice seguinte da Fase 7, arrays deixam de morrer cedo no lowering:
 
 - literais de array entram como nó explícito da HIR,
 - a semântica passa a caminhar pelos elementos para preservar resolução e regressões,
-- a IR ainda não executa arrays, mas produz diagnóstico estável e explícito em vez de perder a informação já no AST -> HIR.
+- a IR agora também preserva literais de array como nós explícitos,
+- o gargalo remanescente fica no codegen executável de arrays, não mais no lowering AST -> HIR -> IR.
 
 Na slice seguinte da Fase 7, operadores compostos passam a ter superfície estável no lowering:
 
@@ -149,7 +150,7 @@ Na slice seguinte da Fase 7, o backend C ganha a primeira surface de arrays sem 
 
 - o prelude de `codegen-c` passa a declarar helpers de array no runtime C,
 - o suporte host em `runtime_support.{h,c}` ganha `Value::Array` mínima, construtor por itens, `array_len` e `array_get`,
-- `expr[...]` deixa de estar bloqueado na IR e passa a ficar bloqueado apenas no codegen executável, enquanto a infraestrutura do lado C deixa de ser o próximo gargalo.
+- literais `{}` e `expr[...]` deixam de estar bloqueados na IR e passam a ficar bloqueados apenas no codegen executável, enquanto a infraestrutura do lado C deixa de ser o próximo gargalo.
 
 ### 2. Parser manual, não porta de Bison
 

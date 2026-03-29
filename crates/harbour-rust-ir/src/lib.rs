@@ -181,6 +181,7 @@ pub enum Expression {
     Integer(IntegerLiteral),
     Float(FloatLiteral),
     String(StringLiteral),
+    Array(ArrayLiteral),
     Call(CallExpression),
     Index(IndexExpression),
     Binary(BinaryExpression),
@@ -198,6 +199,7 @@ impl Expression {
             Self::Integer(literal) => literal.span,
             Self::Float(literal) => literal.span,
             Self::String(literal) => literal.span,
+            Self::Array(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
             Self::Binary(expression) => expression.span,
@@ -240,6 +242,12 @@ pub struct FloatLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringLiteral {
     pub lexeme: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArrayLiteral {
+    pub elements: Vec<Expression>,
     pub span: Span,
 }
 
@@ -457,15 +465,14 @@ fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError
             lexeme: literal.lexeme.clone(),
             span: literal.span,
         }),
-        hir::Expression::Array(expression) => {
-            errors.push(LoweringError {
-                message: "array literals are not supported in IR yet".to_owned(),
-                span: expression.span,
-            });
-            Expression::Error(ErrorExpression {
-                span: expression.span,
-            })
-        }
+        hir::Expression::Array(expression) => Expression::Array(ArrayLiteral {
+            elements: expression
+                .elements
+                .iter()
+                .map(|element| lower_expression(element, errors))
+                .collect(),
+            span: expression.span,
+        }),
         hir::Expression::Call(expression) => Expression::Call(CallExpression {
             callee: Box::new(lower_expression(&expression.callee, errors)),
             arguments: expression
@@ -569,8 +576,9 @@ mod tests {
     use harbour_rust_lexer::{Position, Span};
 
     use crate::{
-        AssignStatement, Builtin, BuiltinCallStatement, ErrorExpression, Expression, LoweringError,
-        LoweringOutput, ReturnStatement, Routine, RoutineKind, Statement, Symbol, lower_program,
+        ArrayLiteral, AssignStatement, Builtin, BuiltinCallStatement, ErrorExpression, Expression,
+        LoweringError, LoweringOutput, ReturnStatement, Routine, RoutineKind, Statement, Symbol,
+        lower_program,
     };
 
     fn span(
@@ -738,7 +746,7 @@ mod tests {
     }
 
     #[test]
-    fn reports_array_literals_as_unsupported_in_ir_lowering() {
+    fn lowers_array_literals_to_explicit_ir_nodes() {
         let expression_span = span(15, 2, 6, 24, 2, 15);
         let program = hir::Program {
             routines: vec![hir::Routine {
@@ -761,17 +769,11 @@ mod tests {
 
         let lowered = lower_program(&program);
 
-        assert_eq!(
-            lowered.errors,
-            vec![LoweringError {
-                message: "array literals are not supported in IR yet".to_owned(),
-                span: expression_span,
-            }]
-        );
+        assert_eq!(lowered.errors, Vec::new());
         assert!(matches!(
             lowered.program.routines[0].body[0],
             Statement::Evaluate(crate::ExpressionStatement {
-                expression: Expression::Error(ErrorExpression { span }),
+                expression: Expression::Array(ArrayLiteral { span, .. }),
                 span: _
             }) if span == expression_span
         ));

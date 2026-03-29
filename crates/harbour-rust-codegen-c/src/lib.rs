@@ -306,6 +306,13 @@ impl Emitter {
                 "harbour_value_from_string_literal(\"{}\")",
                 escape_c_string(&normalize_string_lexeme(&literal.lexeme))
             )),
+            Expression::Array(expression) => {
+                self.push_error(
+                    "C emission for array literals is not implemented yet",
+                    expression.span,
+                );
+                None
+            }
             Expression::Call(expression) => {
                 if let Expression::Symbol(symbol) = expression.callee.as_ref() {
                     let arguments = expression
@@ -780,6 +787,37 @@ mod tests {
         assert_eq!(
             emitted.errors[0].message,
             "C emission for array indexing is not implemented yet"
+        );
+    }
+
+    #[test]
+    fn reports_array_literals_as_unimplemented_in_c_emission() {
+        let array_span = span(12, 2, 4, 22, 2, 14);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Return(ir::ReturnStatement {
+                    value: Some(ir::Expression::Array(ir::ArrayLiteral {
+                        elements: vec![ir::Expression::Integer(ir::IntegerLiteral {
+                            lexeme: "1".to_owned(),
+                            span: span(14, 2, 6, 15, 2, 7),
+                        })],
+                        span: array_span,
+                    })),
+                    span: array_span,
+                })],
+                span: span(0, 1, 1, 22, 2, 14),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert_eq!(emitted.errors.len(), 1);
+        assert_eq!(
+            emitted.errors[0].message,
+            "C emission for array literals is not implemented yet"
         );
     }
 }

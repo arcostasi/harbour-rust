@@ -66,22 +66,43 @@ fn lowers_while_fixture_without_ir_errors() {
 }
 
 #[test]
-fn reports_arrays_fixture_as_ir_placeholder_error() {
+fn lowers_arrays_fixture_to_explicit_ir_array_nodes() {
     let lowered = lower_fixture("tests/fixtures/parser/arrays.prg");
-    assert_eq!(lowered.errors.len(), 1);
-    assert_eq!(
-        lowered.errors[0].message,
-        "array literals are not supported in IR yet"
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
     );
+
+    let Statement::Return(ReturnStatement {
+        value: Some(expression),
+        ..
+    }) = &lowered.program.routines[0].body[0]
+    else {
+        panic!("expected return statement with array expression");
+    };
+
+    let Expression::Array(outer_array) = expression else {
+        panic!("expected outer IR array literal");
+    };
+    assert_eq!(outer_array.elements.len(), 2);
+    assert!(matches!(outer_array.elements[0], Expression::Array(_)));
+    let Expression::Array(inner_array) = &outer_array.elements[1] else {
+        panic!("expected nested array literal");
+    };
+    assert_eq!(inner_array.elements.len(), 3);
+    assert!(matches!(inner_array.elements[0], Expression::Integer(_)));
+    assert!(matches!(inner_array.elements[1], Expression::String(_)));
+    assert!(matches!(inner_array.elements[2], Expression::Symbol(_)));
 }
 
 #[test]
 fn lowers_indexing_fixture_to_explicit_ir_index_nodes() {
     let lowered = lower_fixture("tests/fixtures/parser/indexing.prg");
-    assert_eq!(lowered.errors.len(), 1);
-    assert_eq!(
-        lowered.errors[0].message,
-        "array literals are not supported in IR yet"
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
     );
 
     let Statement::Return(ReturnStatement {
