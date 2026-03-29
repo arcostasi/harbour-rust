@@ -91,6 +91,12 @@ Na slice seguinte da Fase 7, operadores compostos passam a ter superfície está
 - a HIR preserva esse shape sem introduzir nó especial ainda,
 - fixtures com `LOCAL` e `STATIC` agora validam explicitamente esse lowering.
 
+Na slice seguinte da Fase 7, indexação de array deixa de morrer no AST -> HIR:
+
+- `expr[expr]`, `expr[expr, ...]` e encadeamento entram como `Index(target, indices)` na HIR,
+- a semântica passa a caminhar por `target` e por cada índice,
+- a IR continua sem execução de arrays e emite diagnóstico estável nesse ponto.
+
 ### 1.2. Sema inicial com side tables
 
 O primeiro slice de `sema` trabalha sobre a HIR sem reescrevê-la:

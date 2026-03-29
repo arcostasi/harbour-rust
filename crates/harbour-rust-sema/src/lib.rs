@@ -301,6 +301,12 @@ impl<'a> RoutineAnalyzer<'a> {
                     self.analyze_expression(argument, ExpressionContext::Value);
                 }
             }
+            hir::Expression::Index(expression) => {
+                self.analyze_expression(&expression.target, ExpressionContext::Value);
+                for index in &expression.indices {
+                    self.analyze_expression(index, ExpressionContext::Value);
+                }
+            }
             hir::Expression::Assign(expression) => {
                 self.resolve_local_symbol(&expression.target);
                 self.analyze_expression(&expression.value, ExpressionContext::Value);
@@ -704,6 +710,90 @@ mod tests {
                 message: "unresolved local symbol `seed` in routine `Main`".to_owned(),
                 span: span(25, 2, 21, 29, 2, 25),
             }]
+        );
+    }
+
+    #[test]
+    fn resolves_symbols_inside_array_index_expressions() {
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    hir::Statement::Local(hir::LocalStatement {
+                        storage_class: hir::StorageClass::Local,
+                        bindings: vec![
+                            hir::LocalBinding {
+                                name: symbol("matrix", span(11, 2, 7, 17, 2, 13)),
+                                initializer: None,
+                                span: span(11, 2, 7, 17, 2, 13),
+                            },
+                            hir::LocalBinding {
+                                name: symbol("row", span(19, 2, 15, 22, 2, 18)),
+                                initializer: None,
+                                span: span(19, 2, 15, 22, 2, 18),
+                            },
+                            hir::LocalBinding {
+                                name: symbol("col", span(24, 2, 20, 27, 2, 23)),
+                                initializer: None,
+                                span: span(24, 2, 20, 27, 2, 23),
+                            },
+                        ],
+                        span: span(5, 2, 1, 27, 2, 23),
+                    }),
+                    hir::Statement::Return(hir::ReturnStatement {
+                        value: Some(hir::Expression::Index(hir::IndexExpression {
+                            target: Box::new(hir::Expression::Symbol(symbol(
+                                "matrix",
+                                span(35, 3, 8, 41, 3, 14),
+                            ))),
+                            indices: vec![
+                                hir::Expression::Symbol(symbol("row", span(42, 3, 15, 45, 3, 18))),
+                                hir::Expression::Binary(hir::BinaryExpression {
+                                    left: Box::new(hir::Expression::Integer(hir::IntegerLiteral {
+                                        lexeme: "1".to_owned(),
+                                        span: span(47, 3, 20, 48, 3, 21),
+                                    })),
+                                    operator: hir::BinaryOperator::Add,
+                                    right: Box::new(hir::Expression::Symbol(symbol(
+                                        "col",
+                                        span(51, 3, 24, 54, 3, 27),
+                                    ))),
+                                    span: span(47, 3, 20, 54, 3, 27),
+                                }),
+                            ],
+                            span: span(35, 3, 8, 55, 3, 28),
+                        })),
+                        span: span(28, 3, 1, 55, 3, 28),
+                    }),
+                ],
+                span: span(0, 1, 1, 55, 3, 28),
+            }],
+        };
+
+        let analysis = analyze_program(&program);
+
+        assert_eq!(analysis.errors, Vec::new());
+        assert_eq!(
+            analysis.routines[0].resolutions,
+            vec![
+                SymbolResolution {
+                    name: "matrix".to_owned(),
+                    span: span(35, 3, 8, 41, 3, 14),
+                    binding: Binding::Local(0),
+                },
+                SymbolResolution {
+                    name: "row".to_owned(),
+                    span: span(42, 3, 15, 45, 3, 18),
+                    binding: Binding::Local(1),
+                },
+                SymbolResolution {
+                    name: "col".to_owned(),
+                    span: span(51, 3, 24, 54, 3, 27),
+                    binding: Binding::Local(2),
+                },
+            ]
         );
     }
 }

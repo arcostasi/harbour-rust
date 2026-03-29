@@ -74,3 +74,17 @@ fn reports_arrays_fixture_as_ir_placeholder_error() {
         "array literals are not supported in IR yet"
     );
 }
+
+#[test]
+fn reports_indexing_fixture_as_ir_placeholder_error() {
+    let lowered = lower_fixture("tests/fixtures/parser/indexing.prg");
+    assert_eq!(lowered.errors.len(), 2);
+    assert_eq!(
+        lowered.errors[0].message,
+        "array literals are not supported in IR yet"
+    );
+    assert_eq!(
+        lowered.errors[1].message,
+        "array indexing is not supported in IR yet"
+    );
+}

@@ -182,6 +182,7 @@ pub enum Expression {
     Float(FloatLiteral),
     String(StringLiteral),
     Call(CallExpression),
+    Index(IndexExpression),
     Binary(BinaryExpression),
     Unary(UnaryExpression),
     Postfix(PostfixExpression),
@@ -198,6 +199,7 @@ impl Expression {
             Self::Float(literal) => literal.span,
             Self::String(literal) => literal.span,
             Self::Call(expression) => expression.span,
+            Self::Index(expression) => expression.span,
             Self::Binary(expression) => expression.span,
             Self::Unary(expression) => expression.span,
             Self::Postfix(expression) => expression.span,
@@ -245,6 +247,13 @@ pub struct StringLiteral {
 pub struct CallExpression {
     pub callee: Box<Expression>,
     pub arguments: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexExpression {
+    pub target: Box<Expression>,
+    pub indices: Vec<Expression>,
     pub span: Span,
 }
 
@@ -466,6 +475,15 @@ fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError
                 .collect(),
             span: expression.span,
         }),
+        hir::Expression::Index(expression) => {
+            errors.push(LoweringError {
+                message: "array indexing is not supported in IR yet".to_owned(),
+                span: expression.span,
+            });
+            Expression::Error(ErrorExpression {
+                span: expression.span,
+            })
+        }
         hir::Expression::Assign(expression) => {
             errors.push(LoweringError {
                 message: "cannot lower assignment expression outside statement position".to_owned(),
@@ -747,6 +765,50 @@ mod tests {
             lowered.errors,
             vec![LoweringError {
                 message: "array literals are not supported in IR yet".to_owned(),
+                span: expression_span,
+            }]
+        );
+        assert!(matches!(
+            lowered.program.routines[0].body[0],
+            Statement::Evaluate(crate::ExpressionStatement {
+                expression: Expression::Error(ErrorExpression { span }),
+                span: _
+            }) if span == expression_span
+        ));
+    }
+
+    #[test]
+    fn reports_array_indexing_as_unsupported_in_ir_lowering() {
+        let expression_span = span(15, 2, 6, 25, 2, 16);
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![hir::Statement::Evaluate(hir::ExpressionStatement {
+                    expression: hir::Expression::Index(hir::IndexExpression {
+                        target: Box::new(hir::Expression::Symbol(symbol(
+                            "matrix",
+                            span(15, 2, 6, 21, 2, 12),
+                        ))),
+                        indices: vec![hir::Expression::Integer(hir::IntegerLiteral {
+                            lexeme: "1".to_owned(),
+                            span: span(22, 2, 13, 23, 2, 14),
+                        })],
+                        span: expression_span,
+                    }),
+                    span: expression_span,
+                })],
+                span: span(0, 1, 1, 25, 2, 16),
+            }],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(
+            lowered.errors,
+            vec![LoweringError {
+                message: "array indexing is not supported in IR yet".to_owned(),
                 span: expression_span,
             }]
         );

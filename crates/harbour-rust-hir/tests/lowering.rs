@@ -157,3 +157,44 @@ fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
         harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "total"
     ));
 }
+
+#[test]
+fn lowers_indexing_fixture_to_explicit_hir_index_nodes() {
+    let lowered = lower_fixture("tests/fixtures/parser/indexing.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 2);
+
+    let return_value = match &body[1] {
+        harbour_rust_hir::Statement::Return(statement) => statement.value.as_ref(),
+        statement => panic!("expected return statement, found {statement:?}"),
+    };
+
+    let Some(harbour_rust_hir::Expression::Index(outer_index)) = return_value else {
+        panic!("expected outer index expression");
+    };
+    assert_eq!(outer_index.indices.len(), 1);
+    assert!(matches!(
+        outer_index.indices[0],
+        harbour_rust_hir::Expression::Binary(ref binary)
+            if binary.operator == harbour_rust_hir::BinaryOperator::Add
+    ));
+
+    let harbour_rust_hir::Expression::Index(inner_index) = outer_index.target.as_ref() else {
+        panic!("expected nested index expression");
+    };
+    assert_eq!(inner_index.indices.len(), 1);
+    assert!(matches!(
+        inner_index.indices[0],
+        harbour_rust_hir::Expression::Symbol(ref symbol) if symbol.text == "row"
+    ));
+    assert!(matches!(
+        inner_index.target.as_ref(),
+        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "matrix"
+    ));
+}

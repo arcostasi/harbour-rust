@@ -175,6 +175,7 @@ pub enum Expression {
     String(StringLiteral),
     Array(ArrayLiteral),
     Call(CallExpression),
+    Index(IndexExpression),
     Assign(AssignExpression),
     Binary(BinaryExpression),
     Unary(UnaryExpression),
@@ -193,6 +194,7 @@ impl Expression {
             Self::String(literal) => literal.span,
             Self::Array(expression) => expression.span,
             Self::Call(expression) => expression.span,
+            Self::Index(expression) => expression.span,
             Self::Assign(expression) => expression.span,
             Self::Binary(expression) => expression.span,
             Self::Unary(expression) => expression.span,
@@ -247,6 +249,13 @@ pub struct ArrayLiteral {
 pub struct CallExpression {
     pub callee: Box<Expression>,
     pub arguments: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexExpression {
+    pub target: Box<Expression>,
+    pub indices: Vec<Expression>,
     pub span: Span,
 }
 
@@ -482,15 +491,15 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
                 .collect(),
             span: expression.span,
         }),
-        ast::Expression::Index(expression) => {
-            errors.push(LoweringError {
-                message: "array indexing is not supported yet".to_owned(),
-                span: expression.span,
-            });
-            Expression::Error(ErrorExpression {
-                span: expression.span,
-            })
-        }
+        ast::Expression::Index(expression) => Expression::Index(IndexExpression {
+            target: Box::new(lower_expression(&expression.target, errors)),
+            indices: expression
+                .indices
+                .iter()
+                .map(|expression| lower_expression(expression, errors))
+                .collect(),
+            span: expression.span,
+        }),
         ast::Expression::Assignment(expression) => {
             if let ast::Expression::Identifier(identifier) = expression.target.as_ref() {
                 Expression::Assign(AssignExpression {
@@ -838,5 +847,53 @@ mod tests {
         assert!(matches!(array.elements[0], Expression::Integer(_)));
         assert!(matches!(array.elements[1], Expression::Symbol(_)));
         assert_eq!(array.span, array_span);
+    }
+
+    #[test]
+    fn lowers_array_indexing_without_placeholder_errors() {
+        let index_span = span(18, 2, 8, 32, 2, 22);
+        let program = ast::Program {
+            items: vec![ast::Item::Routine(ast::Routine {
+                kind: ast::RoutineKind::Function,
+                name: identifier("Pick", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ast::Statement::Return(ast::ReturnStatement {
+                    value: Some(ast::Expression::Index(ast::IndexExpression {
+                        target: Box::new(ast::Expression::Identifier(identifier(
+                            "matrix",
+                            span(18, 2, 8, 24, 2, 14),
+                        ))),
+                        indices: vec![
+                            ast::Expression::Identifier(identifier(
+                                "row",
+                                span(25, 2, 15, 28, 2, 18),
+                            )),
+                            ast::Expression::Integer(ast::IntegerLiteral {
+                                lexeme: "1".to_owned(),
+                                span: span(30, 2, 20, 31, 2, 21),
+                            }),
+                        ],
+                        span: index_span,
+                    })),
+                    span: span(11, 2, 1, 32, 2, 22),
+                })],
+                span: span(0, 1, 1, 32, 2, 22),
+            })],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Return(statement) = &lowered.program.routines[0].body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Index(index)) = &statement.value else {
+            panic!("expected lowered index expression");
+        };
+        assert!(matches!(index.target.as_ref(), Expression::Symbol(_)));
+        assert_eq!(index.indices.len(), 2);
+        assert!(matches!(index.indices[0], Expression::Symbol(_)));
+        assert!(matches!(index.indices[1], Expression::Integer(_)));
+        assert_eq!(index.span, index_span);
     }
 }
