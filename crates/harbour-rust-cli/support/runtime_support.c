@@ -7,6 +7,7 @@
 typedef struct harbour_runtime_Value harbour_runtime_Value;
 
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value);
+static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t length);
 
 harbour_runtime_Value harbour_value_nil(void) {
     harbour_runtime_Value value;
@@ -318,6 +319,61 @@ struct harbour_runtime_Value harbour_builtin_aclone(
     return harbour_value_clone(arguments[0]);
 }
 
+struct harbour_runtime_Value harbour_builtin_aadd(
+    struct harbour_runtime_Value *array,
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    size_t previous_length;
+
+    if (array == NULL || array->kind != HARBOUR_VALUE_ARRAY) {
+        return harbour_value_nil();
+    }
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_nil();
+    }
+
+    previous_length = array->as.array.length;
+    if (!harbour_value_resize_array(array, previous_length + 1)) {
+        return harbour_value_nil();
+    }
+
+    array->as.array.items[previous_length] = arguments[0];
+    return arguments[0];
+}
+
+struct harbour_runtime_Value harbour_builtin_asize(
+    struct harbour_runtime_Value *array,
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    long long requested_length;
+
+    if (array == NULL || array->kind != HARBOUR_VALUE_ARRAY) {
+        return harbour_value_nil();
+    }
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_INTEGER
+    ) {
+        return harbour_value_nil();
+    }
+
+    requested_length = arguments[0].as.integer;
+    if (requested_length <= 0) {
+        if (!harbour_value_resize_array(array, 0)) {
+            return harbour_value_nil();
+        }
+    } else if (!harbour_value_resize_array(array, (size_t) requested_length)) {
+        return harbour_value_nil();
+    }
+
+    return harbour_value_clone(*array);
+}
+
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value) {
     size_t index;
     harbour_runtime_Value cloned;
@@ -343,4 +399,38 @@ static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value) {
     cloned = harbour_value_from_array_items(items, value.as.array.length);
     free(items);
     return cloned;
+}
+
+static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t length) {
+    harbour_runtime_Value *resized_items;
+    size_t index;
+    size_t copied_length;
+
+    if (value == NULL || value->kind != HARBOUR_VALUE_ARRAY) {
+        return 0;
+    }
+
+    if (length == 0) {
+        value->as.array.items = NULL;
+        value->as.array.length = 0;
+        return 1;
+    }
+
+    resized_items = (harbour_runtime_Value *) malloc(sizeof(harbour_runtime_Value) * length);
+    if (resized_items == NULL) {
+        return 0;
+    }
+
+    copied_length = value->as.array.length < length ? value->as.array.length : length;
+    for (index = 0; index < copied_length; ++index) {
+        resized_items[index] = value->as.array.items[index];
+    }
+
+    for (index = copied_length; index < length; ++index) {
+        resized_items[index] = harbour_value_nil();
+    }
+
+    value->as.array.items = resized_items;
+    value->as.array.length = length;
+    return 1;
 }

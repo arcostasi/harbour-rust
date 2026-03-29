@@ -116,6 +116,29 @@ fn build_command_writes_c_output_for_aclones_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_mutable_builtins_fixture() {
+    let temp_dir = unique_temp_dir("mutable-builtins");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("mutable_builtins.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/mutable_builtins.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_aadd("));
+    assert!(generated.contains("harbour_builtin_asize("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_uses_configured_include_directory_for_preprocess_handoff() {
     let temp_dir = unique_temp_dir("pp-include");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -228,6 +251,20 @@ fn run_command_executes_aclones_fixture_with_expected_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "{ Array(2) }\n");
+}
+
+#[test]
+fn run_command_executes_mutable_builtins_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/mutable_builtins.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "7\n7\n{ Array(3) }\n{ Array(3) }\n");
 }
 
 #[test]

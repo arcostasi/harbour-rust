@@ -123,6 +123,16 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
             .source
             .contains("extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);")
     );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_aadd(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_asize(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
 }
 
 #[test]
@@ -211,5 +221,26 @@ fn emits_aclones_fixture_with_runtime_builtin_helper_calls() {
         emitted
             .source
             .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_aclone((harbour_runtime_Value[]) { source }, 1) }, 1);")
+    );
+}
+
+#[test]
+fn emits_mutable_builtins_fixture_with_addressable_runtime_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/mutable_builtins.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_aadd(&items, (harbour_runtime_Value[]) { harbour_value_from_integer(7LL) }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_asize(&items, (harbour_runtime_Value[]) { harbour_value_from_integer(3LL) }, 1) }, 1);")
     );
 }
