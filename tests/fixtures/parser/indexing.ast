@@ -1,0 +1,30 @@
+Program
+  Routine Function Pick [3:1-7:31]
+    Params
+      Param row [3:15-3:18]
+      Param col [3:20-3:23]
+    Body
+      Local [5:4-5:46]
+        Binding matrix [5:10-5:46]
+          Array [5:20-5:46]
+            Elements
+              Array [5:22-5:32]
+                Elements
+                  Integer 10 [5:24-5:26]
+                  Integer 20 [5:28-5:30]
+              Array [5:34-5:44]
+                Elements
+                  Integer 30 [5:36-5:38]
+                  Integer 40 [5:40-5:42]
+      Return [7:4-7:31]
+        Index [7:11-7:31]
+          Target
+            Index [7:11-7:22]
+              Target
+                Identifier matrix [7:11-7:17]
+              Indices
+                Identifier row [7:18-7:21]
+          Indices
+            Binary Add [7:23-7:30]
+              Integer 1 [7:23-7:24]
+              Identifier col [7:27-7:30]

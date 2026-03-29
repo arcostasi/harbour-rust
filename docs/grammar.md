@@ -120,6 +120,14 @@ Quarta slice da Fase 7:
 
 Nesta etapa, operadores compostos entram no parser apenas para alvo identificador simples. A AST continua estável: o parser desdobra a surface em `Assignment(target=id, value=Binary(id, op, rhs))`.
 
+Quinta slice da Fase 7:
+
+- `expr[expr]`
+- `expr[expr, expr]`
+- encadeamento pós-fixo como `expr[expr][expr]`
+
+Nesta etapa, indexação de array entra no parser como `Index(target, indices)` sobre a expressão-base já existente. Lowering e execução continuam pendentes.
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:

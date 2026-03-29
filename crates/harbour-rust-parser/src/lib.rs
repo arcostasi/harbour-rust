@@ -1,10 +1,10 @@
 use harbour_rust_ast::{
     ArrayLiteral, AssignmentExpression, BinaryExpression, BinaryOperator, CallExpression,
     ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement, FloatLiteral,
-    ForStatement, Identifier, IfStatement, IntegerLiteral, Item, LocalBinding, LocalStatement,
-    LogicalLiteral, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement, Program,
-    ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass,
-    StringLiteral, UnaryExpression, UnaryOperator,
+    ForStatement, Identifier, IfStatement, IndexExpression, IntegerLiteral, Item, LocalBinding,
+    LocalStatement, LogicalLiteral, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement,
+    Program, ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement,
+    StorageClass, StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 use std::fmt;
@@ -690,30 +690,55 @@ impl<'src> Parser<'src> {
         let mut expression = self.parse_primary()?;
 
         loop {
-            if !self.match_token(TokenKind::LeftParen) {
-                break;
+            if self.match_token(TokenKind::LeftParen) {
+                let mut arguments = Vec::new();
+                if !self.at(TokenKind::RightParen) {
+                    loop {
+                        arguments.push(self.parse_expression()?);
+                        if !self.match_token(TokenKind::Comma) {
+                            break;
+                        }
+                    }
+                }
+
+                let right_paren =
+                    self.expect(TokenKind::RightParen, "expected `)` after arguments")?;
+                let span = Span {
+                    start: expression.span().start,
+                    end: right_paren.span.end,
+                };
+                expression = Expression::Call(CallExpression {
+                    callee: Box::new(expression),
+                    arguments,
+                    span,
+                });
+                continue;
             }
 
-            let mut arguments = Vec::new();
-            if !self.at(TokenKind::RightParen) {
+            if self.match_token(TokenKind::LeftBracket) {
+                let mut indices = Vec::new();
                 loop {
-                    arguments.push(self.parse_expression()?);
+                    indices.push(self.parse_expression()?);
                     if !self.match_token(TokenKind::Comma) {
                         break;
                     }
                 }
+
+                let right_bracket =
+                    self.expect(TokenKind::RightBracket, "expected `]` after array index")?;
+                let span = Span {
+                    start: expression.span().start,
+                    end: right_bracket.span.end,
+                };
+                expression = Expression::Index(IndexExpression {
+                    target: Box::new(expression),
+                    indices,
+                    span,
+                });
+                continue;
             }
 
-            let right_paren = self.expect(TokenKind::RightParen, "expected `)` after arguments")?;
-            let span = Span {
-                start: expression.span().start,
-                end: right_paren.span.end,
-            };
-            expression = Expression::Call(CallExpression {
-                callee: Box::new(expression),
-                arguments,
-                span,
-            });
+            break;
         }
 
         Some(expression)
@@ -1188,6 +1213,54 @@ PROCEDURE Main()
                 if binary.operator == BinaryOperator::Multiply
                     && matches!(binary.left.as_ref(), Expression::Identifier(identifier) if identifier.text == "factor")
         ));
+    }
+
+    #[test]
+    fn parses_array_indexing_expressions() {
+        let source = r#"
+FUNCTION Pick(row, col)
+   RETURN Build()[row][1 + col]
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0];
+        let Statement::Return(statement) = &routine.body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Index(outer_index)) = &statement.value else {
+            panic!("expected outer index expression");
+        };
+        assert_eq!(outer_index.indices.len(), 1);
+        assert!(matches!(
+            outer_index.indices[0],
+            Expression::Binary(ref binary) if binary.operator == BinaryOperator::Add
+        ));
+
+        let Expression::Index(inner_index) = outer_index.target.as_ref() else {
+            panic!("expected nested index expression");
+        };
+        assert_eq!(inner_index.indices.len(), 1);
+        assert!(matches!(
+            inner_index.indices[0],
+            Expression::Identifier(ref identifier) if identifier.text == "row"
+        ));
+        assert!(matches!(inner_index.target.as_ref(), Expression::Call(_)));
+    }
+
+    #[test]
+    fn reports_missing_right_bracket_in_array_index() {
+        let source = r#"
+FUNCTION Pick()
+   RETURN values[1 + 2
+"#;
+        let parsed = parse(source);
+
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected `]` after array index; found `\\n` at line 3, column 23"
+        );
     }
 
     #[test]

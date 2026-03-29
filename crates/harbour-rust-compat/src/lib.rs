@@ -1,7 +1,7 @@
 use harbour_rust_ast::{
-    BinaryExpression, BinaryOperator, CallExpression, Expression, Identifier, Item,
-    PostfixExpression, PostfixOperator, Program, Routine, RoutineKind, Statement, UnaryExpression,
-    UnaryOperator,
+    BinaryExpression, BinaryOperator, CallExpression, Expression, Identifier, IndexExpression,
+    Item, PostfixExpression, PostfixOperator, Program, Routine, RoutineKind, Statement,
+    UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{LexedSource, Position, Span, lex};
 use harbour_rust_parser::{ParseOutput, parse};
@@ -298,6 +298,7 @@ fn render_expression(out: &mut String, expression: &Expression, level: usize) {
             }
         }
         Expression::Call(expression) => render_call_expression(out, expression, level),
+        Expression::Index(expression) => render_index_expression(out, expression, level),
         Expression::Assignment(expression) => {
             push_line(
                 out,
@@ -342,6 +343,24 @@ fn render_call_expression(out: &mut String, expression: &CallExpression, level: 
         push_line(out, level + 1, "Args");
         for argument in &expression.arguments {
             render_expression(out, argument, level + 2);
+        }
+    }
+}
+
+fn render_index_expression(out: &mut String, expression: &IndexExpression, level: usize) {
+    push_line(
+        out,
+        level,
+        &format!("Index [{}]", format_span(expression.span)),
+    );
+    push_line(out, level + 1, "Target");
+    render_expression(out, &expression.target, level + 2);
+    if expression.indices.is_empty() {
+        push_line(out, level + 1, "Indices []");
+    } else {
+        push_line(out, level + 1, "Indices");
+        for index in &expression.indices {
+            render_expression(out, index, level + 2);
         }
     }
 }

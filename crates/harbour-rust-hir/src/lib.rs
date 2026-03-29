@@ -482,6 +482,15 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
                 .collect(),
             span: expression.span,
         }),
+        ast::Expression::Index(expression) => {
+            errors.push(LoweringError {
+                message: "array indexing is not supported yet".to_owned(),
+                span: expression.span,
+            });
+            Expression::Error(ErrorExpression {
+                span: expression.span,
+            })
+        }
         ast::Expression::Assignment(expression) => {
             if let ast::Expression::Identifier(identifier) = expression.target.as_ref() {
                 Expression::Assign(AssignExpression {

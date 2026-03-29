@@ -164,6 +164,7 @@ pub enum Expression {
     String(StringLiteral),
     Array(ArrayLiteral),
     Call(CallExpression),
+    Index(IndexExpression),
     Assignment(AssignmentExpression),
     Binary(BinaryExpression),
     Unary(UnaryExpression),
@@ -181,6 +182,7 @@ impl Expression {
             Self::String(expression) => expression.span,
             Self::Array(expression) => expression.span,
             Self::Call(expression) => expression.span,
+            Self::Index(expression) => expression.span,
             Self::Assignment(expression) => expression.span,
             Self::Binary(expression) => expression.span,
             Self::Unary(expression) => expression.span,
@@ -234,6 +236,13 @@ pub struct ArrayLiteral {
 pub struct CallExpression {
     pub callee: Box<Expression>,
     pub arguments: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexExpression {
+    pub target: Box<Expression>,
+    pub indices: Vec<Expression>,
     pub span: Span,
 }
 
@@ -305,9 +314,9 @@ mod tests {
     use crate::{
         ArrayLiteral, BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch,
         DoWhileStatement, Expression, ExpressionStatement, ForStatement, Identifier, IfStatement,
-        Item, LocalBinding, LocalStatement, NilLiteral, PostfixExpression, PostfixOperator,
-        PrintStatement, Program, ReturnStatement, Routine, RoutineKind, Statement, StaticBinding,
-        StaticStatement, StorageClass, StringLiteral,
+        IndexExpression, Item, LocalBinding, LocalStatement, NilLiteral, PostfixExpression,
+        PostfixOperator, PrintStatement, Program, ReturnStatement, Routine, RoutineKind, Statement,
+        StaticBinding, StaticStatement, StorageClass, StringLiteral,
     };
 
     fn span(
@@ -535,5 +544,22 @@ mod tests {
         });
 
         assert_eq!(expression.span(), span(0, 1, 1, 6, 1, 7));
+    }
+
+    #[test]
+    fn index_expression_uses_outer_span() {
+        let expression = Expression::Index(IndexExpression {
+            target: Box::new(Expression::Identifier(Identifier {
+                text: "values".to_owned(),
+                span: span(0, 1, 1, 6, 1, 7),
+            })),
+            indices: vec![Expression::Integer(super::IntegerLiteral {
+                lexeme: "1".to_owned(),
+                span: span(7, 1, 8, 8, 1, 9),
+            })],
+            span: span(0, 1, 1, 9, 1, 10),
+        });
+
+        assert_eq!(expression.span(), span(0, 1, 1, 9, 1, 10));
     }
 }

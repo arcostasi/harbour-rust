@@ -54,3 +54,11 @@ fn compound_assign_fixture_matches_snapshot() {
         "tests/fixtures/parser/compound_assign.ast",
     );
 }
+
+#[test]
+fn indexing_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/indexing.prg",
+        "tests/fixtures/parser/indexing.ast",
+    );
+}
