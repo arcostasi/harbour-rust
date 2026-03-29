@@ -148,6 +148,13 @@ Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 - `AClone(NIL)` e argumentos não-array retornam `NIL` no baseline atual,
 - a slice evita introduzir ainda semântica mais ampla de cópia para tipos complexos além de `Array`.
 
+Na slice seguinte da Fase 7, os diagnósticos de acesso e atualização de arrays ficam mais próximos do baseline xBase:
+
+- leitura usa mensagens/códigos alinhados a `array access` (`1068` e `1132`),
+- escrita usa mensagens/códigos alinhados a `array assign` (`1069` e `1133`),
+- o runtime continua estruturado em `RuntimeError`, mas a mensagem primária já preserva o código estável esperado,
+- erros genéricos de conversão continuam reservados para APIs que não representam acesso/atribuição indexada.
+
 ### Erros de runtime
 
 - nada de `panic!` para erro de usuário,

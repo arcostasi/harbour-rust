@@ -223,7 +223,7 @@ fn public_array_index_diagnostics_cover_type_and_bounds_errors() {
     assert_eq!(
         values.array_get(&Value::from("1")),
         Err(RuntimeError {
-            message: "array index must be Integer".to_owned(),
+            message: "BASE 1068 Argument error (array access)".to_owned(),
             expected: Some(harbour_rust_runtime::ValueKind::Integer),
             actual: Some(harbour_rust_runtime::ValueKind::String),
         })
@@ -231,7 +231,7 @@ fn public_array_index_diagnostics_cover_type_and_bounds_errors() {
     assert_eq!(
         values.array_get(&Value::from(0_i64)),
         Err(RuntimeError {
-            message: "array index 0 out of bounds for length 2".to_owned(),
+            message: "BASE 1132 Bound error (array access)".to_owned(),
             expected: None,
             actual: None,
         })
@@ -251,10 +251,26 @@ fn public_array_set_diagnostics_cover_empty_paths_and_non_array_nested_targets()
         })
     );
     assert_eq!(
+        values.array_set(&Value::from("1"), Value::Nil),
+        Err(RuntimeError {
+            message: "BASE 1069 Argument error (array assign)".to_owned(),
+            expected: Some(harbour_rust_runtime::ValueKind::Integer),
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        values.array_set(&Value::from(3_i64), Value::Nil),
+        Err(RuntimeError {
+            message: "BASE 1133 Bound error (array assign)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
         values.array_set_path(&[Value::from(1_i64), Value::from(1_i64)], Value::Nil),
         Err(RuntimeError {
-            message: "convert value to array".to_owned(),
-            expected: None,
+            message: "BASE 1069 Argument error (array assign)".to_owned(),
+            expected: Some(harbour_rust_runtime::ValueKind::Integer),
             actual: Some(harbour_rust_runtime::ValueKind::Integer),
         })
     );

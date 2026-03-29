@@ -132,11 +132,12 @@ impl Value {
     }
 
     pub fn array_get(&self, index: &Self) -> Result<&Value, RuntimeError> {
-        let values = self.as_array()?;
-        let zero_based_index = array_index_to_zero_based(index, values.len())?;
-        values.get(zero_based_index).ok_or_else(|| {
-            RuntimeError::array_index_out_of_bounds(array_index_integer(index), values.len())
-        })
+        let values = array_for_access(self)?;
+        let zero_based_index =
+            array_index_to_zero_based(index, values.len(), ArrayOperation::Access)?;
+        values
+            .get(zero_based_index)
+            .ok_or_else(|| RuntimeError::array_access_out_of_bounds(array_index_integer(index)))
     }
 
     pub fn array_get_path(&self, indices: &[Value]) -> Result<&Value, RuntimeError> {
@@ -153,12 +154,12 @@ impl Value {
     }
 
     pub fn array_get_mut(&mut self, index: &Self) -> Result<&mut Value, RuntimeError> {
-        let values = self.as_array_mut()?;
+        let values = array_for_assign_mut(self)?;
         let len = values.len();
-        let zero_based_index = array_index_to_zero_based(index, len)?;
+        let zero_based_index = array_index_to_zero_based(index, len, ArrayOperation::Assign)?;
         values
             .get_mut(zero_based_index)
-            .ok_or_else(|| RuntimeError::array_index_out_of_bounds(array_index_integer(index), len))
+            .ok_or_else(|| RuntimeError::array_assign_out_of_bounds(array_index_integer(index)))
     }
 
     pub fn array_set(&mut self, index: &Self, value: Self) -> Result<Self, RuntimeError> {
@@ -181,13 +182,13 @@ impl Value {
     }
 
     pub fn array_resize(&mut self, len: usize) -> Result<(), RuntimeError> {
-        let values = self.as_array_mut()?;
+        let values = array_for_assign_mut(self)?;
         values.resize(len, Self::Nil);
         Ok(())
     }
 
     pub fn array_push(&mut self, value: Self) -> Result<Self, RuntimeError> {
-        let values = self.as_array_mut()?;
+        let values = array_for_assign_mut(self)?;
         values.push(value.clone());
         Ok(value)
     }
@@ -682,17 +683,33 @@ impl RuntimeError {
         }
     }
 
-    pub fn array_index_type_mismatch(actual: ValueKind) -> Self {
+    pub fn array_access_type_mismatch(actual: ValueKind) -> Self {
         Self {
-            message: "array index must be Integer".to_owned(),
+            message: "BASE 1068 Argument error (array access)".to_owned(),
             expected: Some(ValueKind::Integer),
             actual: Some(actual),
         }
     }
 
-    pub fn array_index_out_of_bounds(index: i64, len: usize) -> Self {
+    pub fn array_assign_type_mismatch(actual: ValueKind) -> Self {
         Self {
-            message: format!("array index {} out of bounds for length {}", index, len),
+            message: "BASE 1069 Argument error (array assign)".to_owned(),
+            expected: Some(ValueKind::Integer),
+            actual: Some(actual),
+        }
+    }
+
+    pub fn array_access_out_of_bounds(_index: i64) -> Self {
+        Self {
+            message: "BASE 1132 Bound error (array access)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn array_assign_out_of_bounds(_index: i64) -> Self {
+        Self {
+            message: "BASE 1133 Bound error (array assign)".to_owned(),
             expected: None,
             actual: None,
         }
@@ -712,6 +729,12 @@ enum NumericPair {
     Floats(f64, f64),
 }
 
+#[derive(Debug, Clone, Copy)]
+enum ArrayOperation {
+    Access,
+    Assign,
+}
+
 fn array_index_integer(index: &Value) -> i64 {
     match index {
         Value::Integer(value) => *value,
@@ -719,21 +742,48 @@ fn array_index_integer(index: &Value) -> i64 {
     }
 }
 
-fn array_index_to_zero_based(index: &Value, len: usize) -> Result<usize, RuntimeError> {
+fn array_for_access(value: &Value) -> Result<&[Value], RuntimeError> {
+    match value {
+        Value::Array(values) => Ok(values),
+        _ => Err(RuntimeError::array_access_type_mismatch(value.kind())),
+    }
+}
+
+fn array_for_assign_mut(value: &mut Value) -> Result<&mut Vec<Value>, RuntimeError> {
+    match value {
+        Value::Array(values) => Ok(values),
+        _ => Err(RuntimeError::array_assign_type_mismatch(value.kind())),
+    }
+}
+
+fn array_index_to_zero_based(
+    index: &Value,
+    len: usize,
+    operation: ArrayOperation,
+) -> Result<usize, RuntimeError> {
     let index = match index {
         Value::Integer(value) => *value,
         _ => {
-            return Err(RuntimeError::array_index_type_mismatch(index.kind()));
+            return Err(match operation {
+                ArrayOperation::Access => RuntimeError::array_access_type_mismatch(index.kind()),
+                ArrayOperation::Assign => RuntimeError::array_assign_type_mismatch(index.kind()),
+            });
         }
     };
 
     if index <= 0 {
-        return Err(RuntimeError::array_index_out_of_bounds(index, len));
+        return Err(match operation {
+            ArrayOperation::Access => RuntimeError::array_access_out_of_bounds(index),
+            ArrayOperation::Assign => RuntimeError::array_assign_out_of_bounds(index),
+        });
     }
 
     let zero_based_index = (index - 1) as usize;
     if zero_based_index >= len {
-        return Err(RuntimeError::array_index_out_of_bounds(index, len));
+        return Err(match operation {
+            ArrayOperation::Access => RuntimeError::array_access_out_of_bounds(index),
+            ArrayOperation::Assign => RuntimeError::array_assign_out_of_bounds(index),
+        });
     }
 
     Ok(zero_based_index)
@@ -939,15 +989,15 @@ mod tests {
         assert_eq!(
             Value::from("text").array_get(&Value::from(1_i64)),
             Err(RuntimeError {
-                message: "convert value to array".to_owned(),
-                expected: None,
+                message: "BASE 1068 Argument error (array access)".to_owned(),
+                expected: Some(ValueKind::Integer),
                 actual: Some(ValueKind::String),
             })
         );
         assert_eq!(
             values.array_get(&Value::from("1")),
             Err(RuntimeError {
-                message: "array index must be Integer".to_owned(),
+                message: "BASE 1068 Argument error (array access)".to_owned(),
                 expected: Some(ValueKind::Integer),
                 actual: Some(ValueKind::String),
             })
@@ -955,7 +1005,7 @@ mod tests {
         assert_eq!(
             values.array_get(&Value::from(0_i64)),
             Err(RuntimeError {
-                message: "array index 0 out of bounds for length 2".to_owned(),
+                message: "BASE 1132 Bound error (array access)".to_owned(),
                 expected: None,
                 actual: None,
             })
@@ -963,7 +1013,7 @@ mod tests {
         assert_eq!(
             values.array_get(&Value::from(3_i64)),
             Err(RuntimeError {
-                message: "array index 3 out of bounds for length 2".to_owned(),
+                message: "BASE 1132 Bound error (array access)".to_owned(),
                 expected: None,
                 actual: None,
             })
@@ -979,10 +1029,26 @@ mod tests {
             })
         );
         assert_eq!(
+            mutable_values.array_set(&Value::from("1"), Value::Nil),
+            Err(RuntimeError {
+                message: "BASE 1069 Argument error (array assign)".to_owned(),
+                expected: Some(ValueKind::Integer),
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            mutable_values.array_set(&Value::from(3_i64), Value::Nil),
+            Err(RuntimeError {
+                message: "BASE 1133 Bound error (array assign)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
             mutable_values.array_set_path(&[Value::from(1_i64), Value::from(1_i64)], Value::Nil),
             Err(RuntimeError {
-                message: "convert value to array".to_owned(),
-                expected: None,
+                message: "BASE 1069 Argument error (array assign)".to_owned(),
+                expected: Some(ValueKind::Integer),
                 actual: Some(ValueKind::Integer),
             })
         );
