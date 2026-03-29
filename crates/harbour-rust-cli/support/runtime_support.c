@@ -8,6 +8,16 @@ typedef struct harbour_runtime_Value harbour_runtime_Value;
 
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value);
 static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t length);
+static unsigned long long harbour_allocate_array_identity(void);
+static _Bool harbour_try_numeric_pair(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right,
+    double *left_number,
+    double *right_number
+);
+static harbour_runtime_Value harbour_unsupported_comparison(void);
+
+static unsigned long long harbour_array_identity_seed = 1;
 
 harbour_runtime_Value harbour_value_nil(void) {
     harbour_runtime_Value value;
@@ -53,6 +63,7 @@ harbour_runtime_Value harbour_value_from_array_items(
     value.kind = HARBOUR_VALUE_ARRAY;
     value.as.array.length = length;
     value.as.array.items = NULL;
+    value.as.array.identity = harbour_allocate_array_identity();
 
     if (length == 0) {
         return value;
@@ -64,6 +75,7 @@ harbour_runtime_Value harbour_value_from_array_items(
     if (value.as.array.items == NULL) {
         value.kind = HARBOUR_VALUE_NIL;
         value.as.array.length = 0;
+        value.as.array.identity = 0;
         return value;
     }
 
@@ -170,6 +182,87 @@ harbour_runtime_Value harbour_value_add(
     return harbour_value_nil();
 }
 
+harbour_runtime_Value harbour_value_equals(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    double left_number;
+    double right_number;
+
+    if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_unsupported_comparison();
+    }
+
+    if (left.kind == HARBOUR_VALUE_NIL && right.kind == HARBOUR_VALUE_NIL) {
+        return harbour_value_from_logical(1);
+    }
+
+    if (left.kind == HARBOUR_VALUE_NIL || right.kind == HARBOUR_VALUE_NIL) {
+        return harbour_value_from_logical(0);
+    }
+
+    if (left.kind == HARBOUR_VALUE_LOGICAL && right.kind == HARBOUR_VALUE_LOGICAL) {
+        return harbour_value_from_logical(left.as.logical == right.as.logical);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) == 0);
+    }
+
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
+        return harbour_value_from_logical(left_number == right_number);
+    }
+
+    return harbour_unsupported_comparison();
+}
+
+harbour_runtime_Value harbour_value_exact_equals(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    double left_number;
+    double right_number;
+
+    if (left.kind == HARBOUR_VALUE_NIL && right.kind == HARBOUR_VALUE_NIL) {
+        return harbour_value_from_logical(1);
+    }
+
+    if (left.kind == HARBOUR_VALUE_NIL || right.kind == HARBOUR_VALUE_NIL) {
+        return harbour_value_from_logical(0);
+    }
+
+    if (left.kind == HARBOUR_VALUE_LOGICAL && right.kind == HARBOUR_VALUE_LOGICAL) {
+        return harbour_value_from_logical(left.as.logical == right.as.logical);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) == 0);
+    }
+
+    if (left.kind == HARBOUR_VALUE_ARRAY && right.kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_value_from_logical(left.as.array.identity == right.as.array.identity);
+    }
+
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
+        return harbour_value_from_logical(left_number == right_number);
+    }
+
+    return harbour_unsupported_comparison();
+}
+
+harbour_runtime_Value harbour_value_not_equals(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    harbour_runtime_Value equals = harbour_value_equals(left, right);
+
+    if (equals.kind == HARBOUR_VALUE_LOGICAL) {
+        return harbour_value_from_logical(!equals.as.logical);
+    }
+
+    return equals;
+}
+
 _Bool harbour_value_is_true(harbour_runtime_Value value) {
     switch (value.kind) {
     case HARBOUR_VALUE_NIL:
@@ -193,20 +286,14 @@ harbour_runtime_Value harbour_value_less_than(
     harbour_runtime_Value left,
     harbour_runtime_Value right
 ) {
+    double left_number;
+    double right_number;
+
     if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
         return harbour_value_from_logical(left.as.integer < right.as.integer);
     }
 
-    if (
-        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
-        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
-    ) {
-        double left_number = left.kind == HARBOUR_VALUE_INTEGER
-            ? (double) left.as.integer
-            : left.as.floating;
-        double right_number = right.kind == HARBOUR_VALUE_INTEGER
-            ? (double) right.as.integer
-            : right.as.floating;
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
         return harbour_value_from_logical(left_number < right_number);
     }
 
@@ -221,25 +308,63 @@ harbour_runtime_Value harbour_value_less_than_or_equal(
     harbour_runtime_Value left,
     harbour_runtime_Value right
 ) {
+    double left_number;
+    double right_number;
+
     if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
         return harbour_value_from_logical(left.as.integer <= right.as.integer);
     }
 
-    if (
-        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
-        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
-    ) {
-        double left_number = left.kind == HARBOUR_VALUE_INTEGER
-            ? (double) left.as.integer
-            : left.as.floating;
-        double right_number = right.kind == HARBOUR_VALUE_INTEGER
-            ? (double) right.as.integer
-            : right.as.floating;
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
         return harbour_value_from_logical(left_number <= right_number);
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) <= 0);
+    }
+
+    return harbour_value_from_logical(0);
+}
+
+harbour_runtime_Value harbour_value_greater_than(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    double left_number;
+    double right_number;
+
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_logical(left.as.integer > right.as.integer);
+    }
+
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
+        return harbour_value_from_logical(left_number > right_number);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) > 0);
+    }
+
+    return harbour_value_from_logical(0);
+}
+
+harbour_runtime_Value harbour_value_greater_than_or_equal(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    double left_number;
+    double right_number;
+
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_logical(left.as.integer >= right.as.integer);
+    }
+
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
+        return harbour_value_from_logical(left_number >= right_number);
+    }
+
+    if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) >= 0);
     }
 
     return harbour_value_from_logical(0);
@@ -433,4 +558,34 @@ static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t len
     value->as.array.items = resized_items;
     value->as.array.length = length;
     return 1;
+}
+
+static unsigned long long harbour_allocate_array_identity(void) {
+    return harbour_array_identity_seed++;
+}
+
+static _Bool harbour_try_numeric_pair(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right,
+    double *left_number,
+    double *right_number
+) {
+    if (
+        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
+        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
+    ) {
+        *left_number = left.kind == HARBOUR_VALUE_INTEGER
+            ? (double) left.as.integer
+            : left.as.floating;
+        *right_number = right.kind == HARBOUR_VALUE_INTEGER
+            ? (double) right.as.integer
+            : right.as.floating;
+        return 1;
+    }
+
+    return 0;
+}
+
+static harbour_runtime_Value harbour_unsupported_comparison(void) {
+    return harbour_value_nil();
 }

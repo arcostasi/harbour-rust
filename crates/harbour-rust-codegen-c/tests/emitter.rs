@@ -244,3 +244,37 @@ fn emits_mutable_builtins_fixture_with_addressable_runtime_helper_calls() {
             .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_asize(&items, (harbour_runtime_Value[]) { harbour_value_from_integer(3LL) }, 1) }, 1);")
     );
 }
+
+#[test]
+fn emits_compare_ops_fixture_with_runtime_comparison_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/compare_ops.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_exact_equals(same, same) }, 1);")
+    );
+    assert!(emitted.source.contains(
+        "harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_equals(same, other) }, 1);"
+    ));
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_not_equals(same, other) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_greater_than(same, other) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_greater_than_or_equal(same, other) }, 1);")
+    );
+}

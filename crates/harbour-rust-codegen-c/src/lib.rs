@@ -159,7 +159,22 @@ impl Emitter {
             "extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);",
         );
         self.emit_line(
+            "extern harbour_runtime_Value harbour_value_equals(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_exact_equals(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_not_equals(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_greater_than(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_greater_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);",
@@ -439,9 +454,25 @@ impl Emitter {
                 let right = self.emit_expression(&expression.right)?;
 
                 match expression.operator {
+                    ir::BinaryOperator::Equal => {
+                        Some(format!("harbour_value_equals({}, {})", left, right))
+                    }
+                    ir::BinaryOperator::ExactEqual => {
+                        Some(format!("harbour_value_exact_equals({}, {})", left, right))
+                    }
+                    ir::BinaryOperator::NotEqual => {
+                        Some(format!("harbour_value_not_equals({}, {})", left, right))
+                    }
                     ir::BinaryOperator::Add => {
                         Some(format!("harbour_value_add({}, {})", left, right))
                     }
+                    ir::BinaryOperator::Greater => {
+                        Some(format!("harbour_value_greater_than({}, {})", left, right))
+                    }
+                    ir::BinaryOperator::GreaterEqual => Some(format!(
+                        "harbour_value_greater_than_or_equal({}, {})",
+                        left, right
+                    )),
                     ir::BinaryOperator::Less => {
                         Some(format!("harbour_value_less_than({}, {})", left, right))
                     }
@@ -752,7 +783,12 @@ mod tests {
                     "extern size_t harbour_value_array_len(harbour_runtime_Value value);\n",
                     "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, harbour_runtime_Value index);\n",
                     "extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);\n",
+                    "extern harbour_runtime_Value harbour_value_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_exact_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_not_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_greater_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_greater_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",

@@ -107,6 +107,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `harbour-rust-runtime` -> códigos/mensagens de `array access` e `array assign` mais próximos do baseline (`1068/1069/1132/1133`)
 - `harbour-rust-runtime` -> `==` por identidade observável e `=`/`<>`/ordenação de arrays com erros `1071` a `1076`
 - `tests/fixtures/compat/array_comparison_runtime.prg` -> baseline focado de arrays contra `harbour-core/utils/hbtest/rt_hvm.prg` na surface pública do runtime
+- `tests/fixtures/parser/compare_ops.prg` -> codegen C com `==`, `=`, `<>`, `>` e `>=`
+- `tests/fixtures/parser/array_exact_compare.prg` -> `harbour-rust-cli run` com identidade observável de arrays para `==`
 - `tests/fixtures/parser/aclone.prg` -> codegen C com `harbour_builtin_aclone(...)`
 - `tests/fixtures/parser/mutable_builtins.prg` -> codegen C com `harbour_builtin_aadd(&value, ...)` e `harbour_builtin_asize(&value, ...)`
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
