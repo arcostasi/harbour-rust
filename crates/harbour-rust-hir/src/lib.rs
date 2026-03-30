@@ -74,6 +74,7 @@ pub struct Routine {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Local(LocalStatement),
+    Static(StaticStatement),
     If(Box<IfStatement>),
     DoWhile(Box<DoWhileStatement>),
     For(Box<ForStatement>),
@@ -86,6 +87,7 @@ impl Statement {
     pub fn span(&self) -> Span {
         match self {
             Self::Local(statement) => statement.span,
+            Self::Static(statement) => statement.span,
             Self::If(statement) => statement.span,
             Self::DoWhile(statement) => statement.span,
             Self::For(statement) => statement.span,
@@ -98,19 +100,25 @@ impl Statement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalStatement {
-    pub storage_class: StorageClass,
     pub bindings: Vec<LocalBinding>,
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageClass {
-    Local,
-    Static,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalBinding {
+    pub name: Symbol,
+    pub initializer: Option<Expression>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LocalBinding {
+pub struct StaticStatement {
+    pub bindings: Vec<StaticBinding>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticBinding {
     pub name: Symbol,
     pub initializer: Option<Expression>,
     pub span: Span,
@@ -167,7 +175,7 @@ pub struct ExpressionStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
-    Symbol(Symbol),
+    Read(ReadExpression),
     Nil(NilLiteral),
     Logical(LogicalLiteral),
     Integer(IntegerLiteral),
@@ -186,7 +194,7 @@ pub enum Expression {
 impl Expression {
     pub fn span(&self) -> Span {
         match self {
-            Self::Symbol(symbol) => symbol.span,
+            Self::Read(expression) => expression.span,
             Self::Nil(literal) => literal.span,
             Self::Logical(literal) => literal.span,
             Self::Integer(literal) => literal.span,
@@ -208,6 +216,25 @@ impl Expression {
 pub struct Symbol {
     pub text: String,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReadExpression {
+    pub path: ReadPath,
+    pub span: Span,
+}
+
+impl ReadExpression {
+    pub fn symbol(&self) -> &Symbol {
+        match &self.path {
+            ReadPath::Name(symbol) => symbol,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReadPath {
+    Name(Symbol),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -377,7 +404,6 @@ fn lower_routine_kind(kind: ast::RoutineKind) -> RoutineKind {
 fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) -> Statement {
     match statement {
         ast::Statement::Local(statement) => Statement::Local(LocalStatement {
-            storage_class: lower_storage_class(statement.storage_class),
             bindings: statement
                 .bindings
                 .iter()
@@ -392,12 +418,11 @@ fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) 
                 .collect(),
             span: statement.span,
         }),
-        ast::Statement::Static(statement) => Statement::Local(LocalStatement {
-            storage_class: lower_storage_class(statement.storage_class),
+        ast::Statement::Static(statement) => Statement::Static(StaticStatement {
             bindings: statement
                 .bindings
                 .iter()
-                .map(|binding| LocalBinding {
+                .map(|binding| StaticBinding {
                     name: lower_identifier(&binding.name),
                     initializer: binding
                         .initializer
@@ -478,7 +503,9 @@ fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) 
 
 fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError>) -> Expression {
     match expression {
-        ast::Expression::Identifier(identifier) => Expression::Symbol(lower_identifier(identifier)),
+        ast::Expression::Identifier(identifier) => {
+            Expression::Read(lower_symbol_read(&lower_identifier(identifier)))
+        }
         ast::Expression::Nil(literal) => Expression::Nil(NilLiteral { span: literal.span }),
         ast::Expression::Logical(literal) => Expression::Logical(LogicalLiteral {
             value: literal.value,
@@ -557,6 +584,13 @@ fn lower_identifier(identifier: &ast::Identifier) -> Symbol {
     Symbol {
         text: identifier.text.clone(),
         span: identifier.span,
+    }
+}
+
+fn lower_symbol_read(symbol: &Symbol) -> ReadExpression {
+    ReadExpression {
+        path: ReadPath::Name(symbol.clone()),
+        span: symbol.span,
     }
 }
 
@@ -662,13 +696,6 @@ fn lower_postfix_operator(operator: ast::PostfixOperator) -> PostfixOperator {
     }
 }
 
-fn lower_storage_class(storage_class: ast::StorageClass) -> StorageClass {
-    match storage_class {
-        ast::StorageClass::Local => StorageClass::Local,
-        ast::StorageClass::Static => StorageClass::Static,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use harbour_rust_ast as ast;
@@ -676,8 +703,8 @@ mod tests {
 
     use crate::{
         AssignTarget, Expression, ExpressionStatement, IndexedAssignTarget, LocalBinding,
-        LocalStatement, LoweringOutput, ReturnStatement, Routine, RoutineKind, Statement,
-        StorageClass, Symbol, lower_program,
+        LocalStatement, LoweringOutput, ReadExpression, ReadPath, ReturnStatement, Routine,
+        RoutineKind, Statement, Symbol, lower_program,
     };
 
     fn span(
@@ -758,7 +785,6 @@ mod tests {
                 }],
                 body: vec![
                     Statement::Local(LocalStatement {
-                        storage_class: StorageClass::Local,
                         bindings: vec![LocalBinding {
                             name: Symbol {
                                 text: "x".to_owned(),
@@ -773,8 +799,11 @@ mod tests {
                         span: span(19, 2, 1, 31, 2, 13),
                     }),
                     Statement::Return(ReturnStatement {
-                        value: Some(Expression::Symbol(Symbol {
-                            text: "x".to_owned(),
+                        value: Some(Expression::Read(ReadExpression {
+                            path: ReadPath::Name(Symbol {
+                                text: "x".to_owned(),
+                                span: span(39, 3, 8, 40, 3, 9),
+                            }),
                             span: span(39, 3, 8, 40, 3, 9),
                         })),
                         span: span(32, 3, 1, 40, 3, 9),
@@ -915,7 +944,7 @@ mod tests {
     }
 
     #[test]
-    fn lowers_static_declarations_to_local_surface_with_static_storage_class() {
+    fn lowers_static_declarations_to_explicit_static_nodes() {
         let program = ast::Program {
             items: vec![ast::Item::Routine(ast::Routine {
                 kind: ast::RoutineKind::Procedure,
@@ -950,12 +979,11 @@ mod tests {
 
         assert_eq!(lowered.errors, Vec::new());
         match &lowered.program.routines[0].body[0] {
-            Statement::Local(statement) => {
-                assert_eq!(statement.storage_class, StorageClass::Static);
+            Statement::Static(statement) => {
                 assert_eq!(statement.bindings.len(), 1);
                 assert_eq!(statement.bindings[0].name.text, "cache");
             }
-            statement => panic!("expected lowered local declaration, found {statement:?}"),
+            statement => panic!("expected lowered static declaration, found {statement:?}"),
         }
     }
 
@@ -998,7 +1026,7 @@ mod tests {
         };
         assert_eq!(array.elements.len(), 2);
         assert!(matches!(array.elements[0], Expression::Integer(_)));
-        assert!(matches!(array.elements[1], Expression::Symbol(_)));
+        assert!(matches!(array.elements[1], Expression::Read(_)));
         assert_eq!(array.span, array_span);
     }
 
@@ -1043,10 +1071,45 @@ mod tests {
         let Some(Expression::Index(index)) = &statement.value else {
             panic!("expected lowered index expression");
         };
-        assert!(matches!(index.target.as_ref(), Expression::Symbol(_)));
+        assert!(matches!(index.target.as_ref(), Expression::Read(_)));
         assert_eq!(index.indices.len(), 2);
-        assert!(matches!(index.indices[0], Expression::Symbol(_)));
+        assert!(matches!(index.indices[0], Expression::Read(_)));
         assert!(matches!(index.indices[1], Expression::Integer(_)));
         assert_eq!(index.span, index_span);
+    }
+
+    #[test]
+    fn lowers_identifier_reads_to_explicit_read_paths() {
+        let identifier_span = span(18, 2, 8, 23, 2, 13);
+        let program = ast::Program {
+            items: vec![ast::Item::Routine(ast::Routine {
+                kind: ast::RoutineKind::Function,
+                name: identifier("ReadIt", span(0, 1, 1, 6, 1, 7)),
+                params: Vec::new(),
+                body: vec![ast::Statement::Return(ast::ReturnStatement {
+                    value: Some(ast::Expression::Identifier(identifier(
+                        "cache",
+                        identifier_span,
+                    ))),
+                    span: span(11, 2, 1, 23, 2, 13),
+                })],
+                span: span(0, 1, 1, 23, 2, 13),
+            })],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Return(statement) = &lowered.program.routines[0].body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Read(read)) = &statement.value else {
+            panic!("expected explicit read expression");
+        };
+        assert_eq!(read.span, identifier_span);
+        assert!(matches!(
+            read.path,
+            ReadPath::Name(Symbol { ref text, span }) if text == "cache" && span == identifier_span
+        ));
     }
 }

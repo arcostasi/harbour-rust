@@ -77,8 +77,9 @@ Isso mantém a HIR útil para a semântica sem antecipar tabela de símbolos ou 
 
 Na Fase 7, `STATIC` entra nessa mesma superfície como placeholder explícito:
 
-- o lowering preserva `storage_class` em declarações lowered,
-- `STATIC` não é mais confundido silenciosamente com `LOCAL`,
+- o lowering passa a materializar `Statement::Static` separado de `Statement::Local`,
+- leituras nominais passam a usar `Read(ReadPath::Name(Symbol))` em vez de `Symbol` cru,
+- `STATIC` não é mais confundido silenciosamente com `LOCAL` nem na declaração lowered,
 - a semântica ainda não implementa storage persistente, mas já emite diagnóstico explícito e mantém os símbolos declarados para evitar falsos `unresolved`.
 
 Na slice seguinte da Fase 7, arrays deixam de morrer cedo no lowering:

@@ -89,6 +89,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/compound_assign.prg` -> `compound_assign.ast`
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
+- `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
+- leituras nominais manuais no crate `harbour-rust-hir` -> lowering HIR como `Read(path)` explícito
 - `tests/fixtures/parser/compound_assign.prg` -> lowering HIR estável como `Assignment + Binary`
 - `tests/fixtures/parser/indexing.prg` -> lowering HIR explícito para `Index(target, indices)`
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`

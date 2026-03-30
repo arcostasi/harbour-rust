@@ -21,6 +21,7 @@ AST ──lowering──> HIR ──sema──> HIR anotada ──lowering──
 A HIR é o formato que a análise semântica consome. Ela normaliza:
 
 - Identificadores para símbolos (preservando case original, comparáveis case-insensitive)
+- Leituras nominais para `Read(path)` explícito, separado de alvo de escrita
 - Atribuição restringida a alvo nominal simples
 - Sugar sintático desmontado (ex.: operadores compostos -> `Assignment + Binary`)
 
@@ -43,7 +44,11 @@ HirRoutine {
 ```
 HirLocal {
     name: Symbol,
-    storage_class: Local | Static,
+    initializer: Option<HirExpr>,
+}
+
+HirStatic {
+    name: Symbol,
     initializer: Option<HirExpr>,
 }
 ```
@@ -53,6 +58,8 @@ HirLocal {
 - `Return(Option<HirExpr>)`
 - `Print(Vec<HirExpr>)` — normalização de `?`
 - `Expression(HirExpr)`
+- `Local(Vec<HirLocal>)`
+- `Static(Vec<HirStatic>)`
 - `If { condition, then_body, else_body }`
 - `DoWhile { condition, body }`
 - `For { var, start, stop, step, body }`
@@ -60,7 +67,7 @@ HirLocal {
 
 ### Expressões
 
-- `Symbol(name)` — referência a variável ou função
+- `Read(path)` — leitura nominal explícita; hoje começa como `ReadPath::Name(Symbol)`
 - `Literal(Nil | Logical | Integer | Float | String)`
 - `Binary(op, lhs, rhs)`
 - `Unary(op, expr)`
@@ -81,9 +88,10 @@ HirLocal {
 | AST | HIR |
 | --- | --- |
 | Identificadores como strings | Símbolos normalizados |
+| Leitura de identificador | `Read(ReadPath::Name(Symbol))` |
 | `+=` como operator | `Assignment + Binary` |
 | `?` como statement especial | `Print(exprs)` |
-| `STATIC` como keyword | `storage_class: Static` |
+| `STATIC` como keyword | `Statement::Static` |
 
 ### O que não muda ainda
 
@@ -101,16 +109,19 @@ A HIR começa mínima e cresce incrementalmente. Cada nó novo precisa de justif
 
 A sema anota a HIR via side tables, sem reescrevê-la. Isso mantém a HIR estável entre fases de análise.
 
-### Storage class explícito
+### Storage explícito e leitura explícita
 
-`STATIC` não é confundido com `LOCAL` — o lowering preserva a distinção para que a sema e o codegen possam tratá-los diferentemente.
+`STATIC` não é confundido com `LOCAL` na superfície da HIR: declarações lowered viram `Statement::Static` separado de `Statement::Local`.
+
+Leituras simples também deixam de ser um `Symbol` cru e passam a usar `Read(path)` explícito. Nesta slice, o path inicial ainda é `ReadPath::Name(Symbol)`, mas a forma já fica pronta para storage e endereçamento mais específicos nas próximas fases.
 
 ## Estado atual
 
 Fase 3 + Fase 7 parcial:
 
 - Rotinas, LOCAL, RETURN, IF, DO WHILE, FOR, `?` — completo
-- STATIC com storage_class explícito — lowering OK, runtime pendente
+- STATIC como nó explícito de HIR — lowering OK, runtime pendente
+- Leituras nominais como `Read(path)` explícito — lowering OK
 - Literais de array e indexação — lowering OK
 - Operadores compostos — desugaring OK
 - Atribuição indexada — lowering OK

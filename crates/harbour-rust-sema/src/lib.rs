@@ -206,26 +206,27 @@ impl<'a> RoutineAnalyzer<'a> {
     fn analyze_statement(&mut self, statement: &hir::Statement) {
         match statement {
             hir::Statement::Local(statement) => {
-                if statement.storage_class == hir::StorageClass::Static {
-                    self.errors.push(SemanticError {
-                        message: format!(
-                            "STATIC storage is not supported in routine `{}` yet",
-                            self.routine_name
-                        ),
-                        span: statement.span,
-                    });
+                for binding in &statement.bindings {
+                    if let Some(initializer) = &binding.initializer {
+                        self.analyze_expression(initializer, ExpressionContext::Value);
+                    }
+                    self.declare_local(&binding.name, LocalSymbolKind::Local);
                 }
-
-                let local_kind = match statement.storage_class {
-                    hir::StorageClass::Local => LocalSymbolKind::Local,
-                    hir::StorageClass::Static => LocalSymbolKind::Static,
-                };
+            }
+            hir::Statement::Static(statement) => {
+                self.errors.push(SemanticError {
+                    message: format!(
+                        "STATIC storage is not supported in routine `{}` yet",
+                        self.routine_name
+                    ),
+                    span: statement.span,
+                });
 
                 for binding in &statement.bindings {
                     if let Some(initializer) = &binding.initializer {
                         self.analyze_expression(initializer, ExpressionContext::Value);
                     }
-                    self.declare_local(&binding.name, local_kind);
+                    self.declare_local(&binding.name, LocalSymbolKind::Static);
                 }
             }
             hir::Statement::If(statement) => {
@@ -276,12 +277,12 @@ impl<'a> RoutineAnalyzer<'a> {
 
     fn analyze_expression(&mut self, expression: &hir::Expression, context: ExpressionContext) {
         match expression {
-            hir::Expression::Symbol(symbol) => match context {
+            hir::Expression::Read(read) => match context {
                 ExpressionContext::Value => {
-                    self.resolve_local_symbol(symbol);
+                    self.resolve_local_symbol(read.symbol());
                 }
                 ExpressionContext::CallCallee => {
-                    self.resolve_callable_symbol(symbol);
+                    self.resolve_callable_symbol(read.symbol());
                 }
             },
             hir::Expression::Nil(_)
@@ -446,6 +447,13 @@ mod tests {
         }
     }
 
+    fn read(text: &str, span: Span) -> hir::Expression {
+        hir::Expression::Read(hir::ReadExpression {
+            path: hir::ReadPath::Name(symbol(text, span)),
+            span,
+        })
+    }
+
     #[test]
     fn resolves_routine_calls_and_local_symbols() {
         let program = hir::Program {
@@ -457,35 +465,22 @@ mod tests {
                     body: vec![
                         hir::Statement::Evaluate(hir::ExpressionStatement {
                             expression: hir::Expression::Call(hir::CallExpression {
-                                callee: Box::new(hir::Expression::Symbol(symbol(
-                                    "helper",
-                                    span(20, 2, 1, 26, 2, 7),
-                                ))),
-                                arguments: vec![hir::Expression::Symbol(symbol(
-                                    "value",
-                                    span(27, 2, 8, 32, 2, 13),
-                                ))],
+                                callee: Box::new(read("helper", span(20, 2, 1, 26, 2, 7))),
+                                arguments: vec![read("value", span(27, 2, 8, 32, 2, 13))],
                                 span: span(20, 2, 1, 33, 2, 14),
                             }),
                             span: span(20, 2, 1, 33, 2, 14),
                         }),
                         hir::Statement::Local(hir::LocalStatement {
-                            storage_class: hir::StorageClass::Local,
                             bindings: vec![hir::LocalBinding {
                                 name: symbol("total", span(40, 3, 7, 45, 3, 12)),
-                                initializer: Some(hir::Expression::Symbol(symbol(
-                                    "VALUE",
-                                    span(49, 3, 16, 54, 3, 21),
-                                ))),
+                                initializer: Some(read("VALUE", span(49, 3, 16, 54, 3, 21))),
                                 span: span(40, 3, 7, 54, 3, 21),
                             }],
                             span: span(34, 3, 1, 54, 3, 21),
                         }),
                         hir::Statement::Return(hir::ReturnStatement {
-                            value: Some(hir::Expression::Symbol(symbol(
-                                "Total",
-                                span(62, 4, 8, 67, 4, 13),
-                            ))),
+                            value: Some(read("Total", span(62, 4, 8, 67, 4, 13))),
                             span: span(55, 4, 1, 67, 4, 13),
                         }),
                     ],
@@ -583,7 +578,6 @@ mod tests {
                 params: vec![symbol("value", span(5, 1, 6, 10, 1, 11))],
                 body: vec![
                     hir::Statement::Local(hir::LocalStatement {
-                        storage_class: hir::StorageClass::Local,
                         bindings: vec![hir::LocalBinding {
                             name: symbol("Value", span(11, 2, 7, 16, 2, 12)),
                             initializer: None,
@@ -592,10 +586,7 @@ mod tests {
                         span: span(11, 2, 1, 16, 2, 12),
                     }),
                     hir::Statement::Return(hir::ReturnStatement {
-                        value: Some(hir::Expression::Symbol(symbol(
-                            "missing",
-                            span(17, 3, 8, 24, 3, 15),
-                        ))),
+                        value: Some(read("missing", span(17, 3, 8, 24, 3, 15))),
                         span: span(17, 3, 1, 24, 3, 15),
                     }),
                 ],
@@ -630,9 +621,8 @@ mod tests {
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
                 params: Vec::new(),
                 body: vec![
-                    hir::Statement::Local(hir::LocalStatement {
-                        storage_class: hir::StorageClass::Static,
-                        bindings: vec![hir::LocalBinding {
+                    hir::Statement::Static(hir::StaticStatement {
+                        bindings: vec![hir::StaticBinding {
                             name: symbol("cache", span(11, 2, 11, 16, 2, 16)),
                             initializer: Some(hir::Expression::String(hir::StringLiteral {
                                 lexeme: "memo".to_owned(),
@@ -643,10 +633,7 @@ mod tests {
                         span: span(5, 2, 1, 26, 2, 26),
                     }),
                     hir::Statement::Return(hir::ReturnStatement {
-                        value: Some(hir::Expression::Symbol(symbol(
-                            "cache",
-                            span(34, 3, 8, 39, 3, 13),
-                        ))),
+                        value: Some(read("cache", span(34, 3, 8, 39, 3, 13))),
                         span: span(27, 3, 1, 39, 3, 13),
                     }),
                 ],
@@ -691,7 +678,6 @@ mod tests {
                 params: Vec::new(),
                 body: vec![
                     hir::Statement::Local(hir::LocalStatement {
-                        storage_class: hir::StorageClass::Local,
                         bindings: vec![hir::LocalBinding {
                             name: symbol("cache", span(11, 2, 7, 16, 2, 12)),
                             initializer: Some(hir::Expression::Array(hir::ArrayLiteral {
@@ -700,10 +686,7 @@ mod tests {
                                         lexeme: "1".to_owned(),
                                         span: span(22, 2, 18, 23, 2, 19),
                                     }),
-                                    hir::Expression::Symbol(symbol(
-                                        "seed",
-                                        span(25, 2, 21, 29, 2, 25),
-                                    )),
+                                    read("seed", span(25, 2, 21, 29, 2, 25)),
                                 ],
                                 span: span(20, 2, 16, 30, 2, 26),
                             })),
@@ -712,7 +695,6 @@ mod tests {
                         span: span(5, 2, 1, 30, 2, 26),
                     }),
                     hir::Statement::Local(hir::LocalStatement {
-                        storage_class: hir::StorageClass::Local,
                         bindings: vec![hir::LocalBinding {
                             name: symbol("seed", span(38, 3, 7, 42, 3, 11)),
                             initializer: None,
@@ -745,7 +727,6 @@ mod tests {
                 params: Vec::new(),
                 body: vec![
                     hir::Statement::Local(hir::LocalStatement {
-                        storage_class: hir::StorageClass::Local,
                         bindings: vec![
                             hir::LocalBinding {
                                 name: symbol("matrix", span(11, 2, 7, 17, 2, 13)),
@@ -767,22 +748,16 @@ mod tests {
                     }),
                     hir::Statement::Return(hir::ReturnStatement {
                         value: Some(hir::Expression::Index(hir::IndexExpression {
-                            target: Box::new(hir::Expression::Symbol(symbol(
-                                "matrix",
-                                span(35, 3, 8, 41, 3, 14),
-                            ))),
+                            target: Box::new(read("matrix", span(35, 3, 8, 41, 3, 14))),
                             indices: vec![
-                                hir::Expression::Symbol(symbol("row", span(42, 3, 15, 45, 3, 18))),
+                                read("row", span(42, 3, 15, 45, 3, 18)),
                                 hir::Expression::Binary(hir::BinaryExpression {
                                     left: Box::new(hir::Expression::Integer(hir::IntegerLiteral {
                                         lexeme: "1".to_owned(),
                                         span: span(47, 3, 20, 48, 3, 21),
                                     })),
                                     operator: hir::BinaryOperator::Add,
-                                    right: Box::new(hir::Expression::Symbol(symbol(
-                                        "col",
-                                        span(51, 3, 24, 54, 3, 27),
-                                    ))),
+                                    right: Box::new(read("col", span(51, 3, 24, 54, 3, 27))),
                                     span: span(47, 3, 20, 54, 3, 27),
                                 }),
                             ],
@@ -817,6 +792,70 @@ mod tests {
                     binding: Binding::Local(2),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn resolves_explicit_read_paths_without_hir_rewrite() {
+        let program = hir::Program {
+            routines: vec![
+                hir::Routine {
+                    kind: hir::RoutineKind::Procedure,
+                    name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                    params: Vec::new(),
+                    body: vec![
+                        hir::Statement::Static(hir::StaticStatement {
+                            bindings: vec![hir::StaticBinding {
+                                name: symbol("cache", span(11, 2, 11, 16, 2, 16)),
+                                initializer: None,
+                                span: span(11, 2, 11, 16, 2, 16),
+                            }],
+                            span: span(5, 2, 1, 16, 2, 16),
+                        }),
+                        hir::Statement::Evaluate(hir::ExpressionStatement {
+                            expression: hir::Expression::Call(hir::CallExpression {
+                                callee: Box::new(read("Helper", span(18, 3, 4, 24, 3, 10))),
+                                arguments: vec![read("cache", span(25, 3, 11, 30, 3, 16))],
+                                span: span(18, 3, 4, 31, 3, 17),
+                            }),
+                            span: span(18, 3, 4, 31, 3, 17),
+                        }),
+                    ],
+                    span: span(0, 1, 1, 31, 3, 17),
+                },
+                hir::Routine {
+                    kind: hir::RoutineKind::Function,
+                    name: symbol("Helper", span(32, 5, 1, 38, 5, 7)),
+                    params: Vec::new(),
+                    body: Vec::new(),
+                    span: span(32, 5, 1, 38, 5, 7),
+                },
+            ],
+        };
+
+        let analysis = analyze_program(&program);
+
+        assert_eq!(
+            analysis.routines[0].resolutions,
+            vec![
+                SymbolResolution {
+                    name: "Helper".to_owned(),
+                    span: span(18, 3, 4, 24, 3, 10),
+                    binding: Binding::Routine(1),
+                },
+                SymbolResolution {
+                    name: "cache".to_owned(),
+                    span: span(25, 3, 11, 30, 3, 16),
+                    binding: Binding::Local(0),
+                },
+            ]
+        );
+        assert_eq!(
+            analysis.errors,
+            vec![SemanticError {
+                message: "STATIC storage is not supported in routine `Main` yet".to_owned(),
+                span: span(5, 2, 1, 16, 2, 16),
+            }]
         );
     }
 }

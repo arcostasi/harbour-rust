@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use harbour_rust_hir::{StorageClass, lower_program};
+use harbour_rust_hir::{ReadPath, lower_program};
 use harbour_rust_parser::parse;
 
 fn workspace_fixture(path: &str) -> PathBuf {
@@ -46,7 +46,7 @@ fn lowers_while_fixture_without_errors() {
 }
 
 #[test]
-fn lowers_static_fixture_with_static_storage_placeholder() {
+fn lowers_static_fixture_with_explicit_static_statement() {
     let lowered = lower_fixture("tests/fixtures/parser/static.prg");
     assert!(
         lowered.errors.is_empty(),
@@ -55,11 +55,10 @@ fn lowers_static_fixture_with_static_storage_placeholder() {
     );
 
     let declaration = match &lowered.program.routines[0].body[0] {
-        harbour_rust_hir::Statement::Local(statement) => statement,
-        statement => panic!("expected local-like declaration placeholder, found {statement:?}"),
+        harbour_rust_hir::Statement::Static(statement) => statement,
+        statement => panic!("expected static declaration placeholder, found {statement:?}"),
     };
 
-    assert_eq!(declaration.storage_class, StorageClass::Static);
     assert_eq!(declaration.bindings.len(), 2);
     assert_eq!(declaration.bindings[0].name.text, "cache");
     assert_eq!(declaration.bindings[1].name.text, "hits");
@@ -107,10 +106,9 @@ fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
     assert_eq!(body.len(), 5);
 
     let static_declaration = match &body[1] {
-        harbour_rust_hir::Statement::Local(statement) => statement,
-        statement => panic!("expected static-like declaration, found {statement:?}"),
+        harbour_rust_hir::Statement::Static(statement) => statement,
+        statement => panic!("expected static declaration, found {statement:?}"),
     };
-    assert_eq!(static_declaration.storage_class, StorageClass::Static);
     assert_eq!(static_declaration.bindings[0].name.text, "factor");
 
     let first_assignment = match &body[2] {
@@ -131,7 +129,8 @@ fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
     assert_eq!(binary.operator, harbour_rust_hir::BinaryOperator::Add);
     assert!(matches!(
         binary.left.as_ref(),
-        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "total"
+        harbour_rust_hir::Expression::Read(read)
+            if matches!(&read.path, ReadPath::Name(symbol) if symbol.text == "total")
     ));
     assert!(matches!(
         binary.right.as_ref(),
@@ -156,11 +155,13 @@ fn lowers_compound_assignment_fixture_to_assign_and_binary_nodes() {
     assert_eq!(binary.operator, harbour_rust_hir::BinaryOperator::Multiply);
     assert!(matches!(
         binary.left.as_ref(),
-        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "factor"
+        harbour_rust_hir::Expression::Read(read)
+            if matches!(&read.path, ReadPath::Name(symbol) if symbol.text == "factor")
     ));
     assert!(matches!(
         binary.right.as_ref(),
-        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "total"
+        harbour_rust_hir::Expression::Read(read)
+            if matches!(&read.path, ReadPath::Name(symbol) if symbol.text == "total")
     ));
 }
 
@@ -197,11 +198,13 @@ fn lowers_indexing_fixture_to_explicit_hir_index_nodes() {
     assert_eq!(inner_index.indices.len(), 1);
     assert!(matches!(
         inner_index.indices[0],
-        harbour_rust_hir::Expression::Symbol(ref symbol) if symbol.text == "row"
+        harbour_rust_hir::Expression::Read(ref read)
+            if matches!(&read.path, ReadPath::Name(symbol) if symbol.text == "row")
     ));
     assert!(matches!(
         inner_index.target.as_ref(),
-        harbour_rust_hir::Expression::Symbol(symbol) if symbol.text == "matrix"
+        harbour_rust_hir::Expression::Read(read)
+            if matches!(&read.path, ReadPath::Name(symbol) if symbol.text == "matrix")
     ));
 }
 

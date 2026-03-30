@@ -384,6 +384,21 @@ fn lower_statement(statement: &hir::Statement, errors: &mut Vec<LoweringError>) 
                 .collect(),
             span: statement.span,
         }),
+        hir::Statement::Static(statement) => Statement::Local(LocalStatement {
+            bindings: statement
+                .bindings
+                .iter()
+                .map(|binding| LocalBinding {
+                    name: lower_symbol(&binding.name),
+                    initializer: binding
+                        .initializer
+                        .as_ref()
+                        .map(|expression| lower_expression(expression, errors)),
+                    span: binding.span,
+                })
+                .collect(),
+            span: statement.span,
+        }),
         hir::Statement::If(statement) => Statement::If(Box::new(IfStatement {
             branches: statement
                 .branches
@@ -487,7 +502,7 @@ fn lower_assign_target(
 
 fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError>) -> Expression {
     match expression {
-        hir::Expression::Symbol(symbol) => Expression::Symbol(lower_symbol(symbol)),
+        hir::Expression::Read(read) => Expression::Symbol(lower_symbol(read.symbol())),
         hir::Expression::Nil(literal) => Expression::Nil(NilLiteral { span: literal.span }),
         hir::Expression::Logical(literal) => Expression::Logical(LogicalLiteral {
             value: literal.value,
@@ -684,10 +699,10 @@ mod tests {
                         span: assign_span,
                     }),
                     hir::Statement::Return(hir::ReturnStatement {
-                        value: Some(hir::Expression::Symbol(symbol(
-                            "x",
-                            span(40, 4, 11, 41, 4, 12),
-                        ))),
+                        value: Some(hir::Expression::Read(hir::ReadExpression {
+                            path: hir::ReadPath::Name(symbol("x", span(40, 4, 11, 41, 4, 12))),
+                            span: span(40, 4, 11, 41, 4, 12),
+                        })),
                         span: return_span,
                     }),
                 ],
@@ -832,10 +847,10 @@ mod tests {
                 params: Vec::new(),
                 body: vec![hir::Statement::Evaluate(hir::ExpressionStatement {
                     expression: hir::Expression::Index(hir::IndexExpression {
-                        target: Box::new(hir::Expression::Symbol(symbol(
-                            "matrix",
-                            span(15, 2, 6, 21, 2, 12),
-                        ))),
+                        target: Box::new(hir::Expression::Read(hir::ReadExpression {
+                            path: hir::ReadPath::Name(symbol("matrix", span(15, 2, 6, 21, 2, 12))),
+                            span: span(15, 2, 6, 21, 2, 12),
+                        })),
                         indices: vec![hir::Expression::Integer(hir::IntegerLiteral {
                             lexeme: "1".to_owned(),
                             span: span(22, 2, 13, 23, 2, 14),
