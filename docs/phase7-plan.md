@@ -207,7 +207,7 @@ RETURN
 
 ### Slice 7.7 — IF no caminho executável
 
-**Status:** parse + HIR + IR ✓, codegen-c ✗
+**Status:** parse + HIR + IR + codegen-c + cli run ✓
 
 **Escopo:**
 - Codegen-C: gerar `if/else` em C
@@ -227,7 +227,7 @@ RETURN
 ```
 
 **Aceite:**
-- [ ] IF/ELSE/ENDIF executa corretamente via CLI run
+- [x] IF/ELSE/ENDIF executa corretamente via CLI run
 - [ ] Testes existentes continuam verdes
 
 ---

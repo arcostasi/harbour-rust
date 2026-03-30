@@ -66,7 +66,7 @@ HarbourValue n = harbour_value_from_int(1);
 
 ```c
 // IF
-if (harbour_value_is_truthy(condition)) { ... } else { ... }
+if (harbour_value_is_true(condition)) { ... } else { ... }
 
 // DO WHILE
 while (harbour_value_is_truthy(condition)) { ... }
@@ -129,6 +129,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `examples/hello.prg` | compila e executa |
 | `tests/fixtures/parser/while.prg` | DO WHILE executa |
 | `tests/fixtures/parser/for_sum.prg` | FOR simples executa |
+| `tests/fixtures/parser/if_else.prg` | IF/ELSE executa |
 | `tests/fixtures/parser/arrays.prg` | gera C com array_items |
 | `tests/fixtures/parser/indexing.prg` | gera C com array_get |
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
@@ -139,11 +140,11 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 Fase 5 + Fase 7 parcial:
 
 - Rotinas, RETURN, QOut — completo
+- IF/ELSE simples — completo
 - DO WHILE, FOR — completo
 - LOCAL com inicializador — completo
 - Literais de array — completo
 - Indexação (leitura) — completo
 - Atribuição indexada — completo
 - STATIC com storage persistente no C gerado para leitura no mesmo routine — parcial
-- IF — pendente no caminho executável
-- STATIC no pipeline completo (`sema -> cli run`) — pendente
+- STATIC no pipeline completo (`sema -> cli run`) — parcial

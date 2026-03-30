@@ -95,6 +95,33 @@ fn emits_for_sum_fixture_as_c_with_for_loop_helpers() {
 }
 
 #[test]
+fn emits_if_else_fixture_as_c_with_runtime_condition_checks() {
+    let emitted = emit_fixture("tests/fixtures/parser/if_else.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("if (harbour_value_is_true(harbour_value_greater_than(high, harbour_value_from_integer(5LL)))) {")
+    );
+    assert!(emitted.source.contains("else {"));
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"maior\") }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"menor ou igual\") }, 1);")
+    );
+}
+
+#[test]
 fn emits_static_fixture_with_persistent_c_storage() {
     let emitted = emit_fixture("tests/fixtures/parser/static.prg");
 

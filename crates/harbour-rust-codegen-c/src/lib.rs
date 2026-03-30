@@ -297,10 +297,7 @@ impl Emitter {
                 }
             }
             ir::Statement::Assign(statement) => self.emit_assign_statement(statement),
-            ir::Statement::If(statement) => {
-                self.push_error("C emission for IF is not implemented yet", statement.span);
-                self.emit_line("/* TODO: emit IF */");
-            }
+            ir::Statement::If(statement) => self.emit_if_statement(statement),
             ir::Statement::DoWhile(statement) => {
                 let condition = self
                     .emit_expression(&statement.condition)
@@ -351,6 +348,40 @@ impl Emitter {
                 );
                 self.emit_line("/* TODO: emit expression statement */");
             }
+        }
+    }
+
+    fn emit_if_statement(&mut self, statement: &ir::IfStatement) {
+        for (index, branch) in statement.branches.iter().enumerate() {
+            let condition = self
+                .emit_expression(&branch.condition)
+                .unwrap_or_else(|| "harbour_value_from_logical(false)".to_owned());
+
+            if index == 0 {
+                self.emit_line(&format!("if (harbour_value_is_true({})) {{", condition));
+            } else {
+                self.emit_line(&format!(
+                    "else if (harbour_value_is_true({})) {{",
+                    condition
+                ));
+            }
+
+            self.indent_level += 1;
+            for nested in &branch.body {
+                self.emit_statement(nested);
+            }
+            self.indent_level -= 1;
+            self.emit_line("}");
+        }
+
+        if let Some(else_branch) = &statement.else_branch {
+            self.emit_line("else {");
+            self.indent_level += 1;
+            for nested in else_branch {
+                self.emit_statement(nested);
+            }
+            self.indent_level -= 1;
+            self.emit_line("}");
         }
     }
 

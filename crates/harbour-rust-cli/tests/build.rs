@@ -93,6 +93,30 @@ fn build_command_writes_c_output_for_for_sum_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_if_else_fixture() {
+    let temp_dir = unique_temp_dir("if-else");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("if_else.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/if_else.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("if (harbour_value_is_true("));
+    assert!(generated.contains("harbour_value_greater_than("));
+    assert!(generated.contains("else {"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_aclones_fixture() {
     let temp_dir = unique_temp_dir("aclone");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -301,6 +325,20 @@ fn run_command_executes_for_sum_fixture_with_expected_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "15\n");
+}
+
+#[test]
+fn run_command_executes_if_else_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/if_else.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "maior\nmenor ou igual\n");
 }
 
 #[test]

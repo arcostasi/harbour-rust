@@ -85,6 +85,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/hello.prg` -> `hello.ast`
 - `tests/fixtures/parser/while.prg` -> `while.ast`
 - `tests/fixtures/parser/static.prg` -> `static.ast`
+- `tests/fixtures/parser/if_else.prg` -> `harbour-rust-cli build/run` com IF/ELSE executável
 - `tests/fixtures/parser/arrays.prg` -> `arrays.ast`
 - `tests/fixtures/parser/compound_assign.prg` -> `compound_assign.ast`
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
