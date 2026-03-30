@@ -131,6 +131,13 @@ Na slice seguinte da Fase 7, essa mesma IR passa a preservar também o groundwor
 - o backend C continua aceitando `ReadPath::Name` mecanicamente,
 - `STATIC` no codegen segue como erro explícito até existir storage persistente real.
 
+Na slice seguinte da Fase 7, o backend C passa a materializar o primeiro storage persistente mínimo de `STATIC`:
+
+- cada binding `STATIC` de uma rotina gera storage C em escopo de arquivo e um flag de inicialização,
+- o statement `STATIC` no corpo da rotina passa a emitir guard de inicialização única,
+- leituras e escritas nominais da mesma rotina passam a apontar para esse storage estático no C gerado,
+- o caminho completo ainda não fecha porque a sema continua marcando `STATIC` como não suportado nesta etapa.
+
 ### 1.4. Backend C começa pelo subconjunto observável
 
 Na segunda slice da Fase 5, `harbour-rust-codegen-c` começa emitindo C legível para:

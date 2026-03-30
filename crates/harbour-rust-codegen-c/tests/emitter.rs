@@ -95,15 +95,40 @@ fn emits_for_sum_fixture_as_c_with_for_loop_helpers() {
 }
 
 #[test]
-fn reports_static_fixture_as_explicit_codegen_error() {
+fn emits_static_fixture_with_persistent_c_storage() {
     let emitted = emit_fixture("tests/fixtures/parser/static.prg");
 
-    assert_eq!(emitted.errors.len(), 1);
-    assert_eq!(
-        emitted.errors[0].message,
-        "C emission for STATIC storage is not implemented yet"
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
     );
-    assert!(emitted.source.contains("/* TODO: emit STATIC storage */"));
+    assert!(
+        emitted
+            .source
+            .contains("static harbour_runtime_Value harbour_static_main_cache;")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("static harbour_runtime_Value harbour_static_main_hits;")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("if (!harbour_static_main_cache__initialized) {")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_static_main_cache = harbour_value_from_string_literal(\"memo\");")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_static_main_hits = harbour_value_from_integer(0LL);")
+    );
+    assert!(emitted.source.contains("return harbour_static_main_cache;"));
 }
 
 #[test]

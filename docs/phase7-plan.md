@@ -21,7 +21,7 @@ Após esta fase, programas procedurais reais de pequeno porte devem compilar e e
 
 ### Slice 7.1 — STATIC com runtime completo
 
-**Status:** parcial (parse + HIR + sema placeholder ✓, runtime + codegen ✗)
+**Status:** parcial (parse + HIR + IR + codegen same-routine ✓, sema placeholder + runtime/CLI ✗)
 
 **Escopo:**
 - Runtime: storage persistente para STATIC (inicializado uma vez)

@@ -102,7 +102,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/indexing.prg` -> lowering IR explícito para `Index(target, indices)` sem erro de lowering
 - `tests/fixtures/parser/arrays.prg` -> codegen C com `harbour_value_from_array_items(...)`
 - `tests/fixtures/parser/indexing.prg` -> codegen C com `harbour_value_array_get(...)`
-- `tests/fixtures/parser/static.prg` -> codegen C com erro explícito de `STATIC` ainda não suportado
+- `tests/fixtures/parser/static.prg` -> codegen C com storage estático persistente por rotina
 - `tests/fixtures/parser/indexed_assign.prg` -> lowering HIR/IR e codegen C com `harbour_value_array_set_path(...)`
 - `harbour-rust-runtime` -> helpers públicos de indexação 1-based com diagnóstico de bounds e tipo
 - `harbour-rust-runtime` -> helpers públicos de escrita 1-based com `array_set()` e `array_set_path()`

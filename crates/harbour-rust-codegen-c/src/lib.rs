@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use harbour_rust_ir as ir;
 use harbour_rust_ir::Builtin;
@@ -51,6 +51,13 @@ struct Emitter {
     source: String,
     errors: Vec<CodegenError>,
     indent_level: usize,
+    current_static_bindings: HashMap<String, StaticBindingStorage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct StaticBindingStorage {
+    storage_name: String,
+    initialized_name: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,6 +112,7 @@ impl Emitter {
             source: String::new(),
             errors: Vec::new(),
             indent_level: 0,
+            current_static_bindings: HashMap::new(),
         };
         emitter.emit_prelude();
         emitter
@@ -116,6 +124,18 @@ impl Emitter {
                 "static harbour_runtime_Value {};",
                 routine_signature(routine)
             ));
+        }
+
+        let static_bindings = collect_program_static_bindings(program);
+        if !static_bindings.is_empty() {
+            self.emit_line("");
+            for binding in &static_bindings {
+                self.emit_line(&format!(
+                    "static harbour_runtime_Value {};",
+                    binding.storage_name
+                ));
+                self.emit_line(&format!("static bool {};", binding.initialized_name));
+            }
         }
 
         if !program.routines.is_empty() {
@@ -211,6 +231,7 @@ impl Emitter {
     }
 
     fn emit_routine(&mut self, routine: &ir::Routine) {
+        self.current_static_bindings = routine_static_binding_map(routine);
         self.emit_line(&format!(
             "static harbour_runtime_Value {} {{",
             routine_signature(routine)
@@ -232,6 +253,7 @@ impl Emitter {
         self.indent_level -= 1;
         self.emit_line("}");
         self.emit_line("");
+        self.current_static_bindings.clear();
     }
 
     fn emit_statement(&mut self, statement: &ir::Statement) {
@@ -270,11 +292,9 @@ impl Emitter {
                 }
             }
             ir::Statement::Static(statement) => {
-                self.push_error(
-                    "C emission for STATIC storage is not implemented yet",
-                    statement.span,
-                );
-                self.emit_line("/* TODO: emit STATIC storage */");
+                for binding in &statement.bindings {
+                    self.emit_static_binding_initialization(binding);
+                }
             }
             ir::Statement::Assign(statement) => self.emit_assign_statement(statement),
             ir::Statement::If(statement) => {
@@ -365,7 +385,11 @@ impl Emitter {
 
         match &statement.target {
             ir::AssignTarget::Symbol(target) => {
-                self.emit_line(&format!("{} = {};", mangle_symbol(&target.text), value));
+                self.emit_line(&format!(
+                    "{} = {};",
+                    self.resolve_symbol_storage_name(&target.text),
+                    value
+                ));
             }
             ir::AssignTarget::Index(target) => {
                 let mut indices = Vec::with_capacity(target.indices.len());
@@ -379,7 +403,7 @@ impl Emitter {
 
                 self.emit_line(&format!(
                     "(void) harbour_value_array_set_path(&{}, (harbour_runtime_Value[]) {{ {} }}, {}, {});",
-                    mangle_symbol(&target.root.text),
+                    self.resolve_symbol_storage_name(&target.root.text),
                     indices.join(", "),
                     indices.len(),
                     value
@@ -510,7 +534,7 @@ impl Emitter {
                 ) {
                     (ir::PostfixOperator::Increment, Some(symbol)) => Some(format!(
                         "harbour_value_postfix_increment(&{})",
-                        mangle_symbol(&symbol.text)
+                        self.resolve_symbol_storage_name(&symbol.text)
                     )),
                     _ => {
                         self.push_error(
@@ -604,7 +628,7 @@ impl Emitter {
             emitted_arguments.push(self.emit_expression(argument)?);
         }
 
-        let addressable_target = format!("&{}", mangle_symbol(&symbol.text));
+        let addressable_target = format!("&{}", self.resolve_symbol_storage_name(&symbol.text));
         if emitted_arguments.is_empty() {
             Some(format!(
                 "{}({}, NULL, 0)",
@@ -624,7 +648,7 @@ impl Emitter {
 
     fn emit_read_expression(&mut self, read: &ir::ReadExpression, _span: Span) -> Option<String> {
         match &read.path {
-            ir::ReadPath::Name(symbol) => Some(mangle_symbol(&symbol.text)),
+            ir::ReadPath::Name(symbol) => Some(self.resolve_symbol_storage_name(&symbol.text)),
         }
     }
 
@@ -636,6 +660,125 @@ impl Emitter {
             _ => None,
         }
     }
+
+    fn emit_static_binding_initialization(&mut self, binding: &ir::StaticBinding) {
+        let Some(storage) = self
+            .current_static_bindings
+            .get(&normalize_symbol_name(&binding.name.text))
+            .cloned()
+        else {
+            self.push_error(
+                &format!(
+                    "missing C storage mapping for STATIC symbol `{}`",
+                    binding.name.text
+                ),
+                binding.span,
+            );
+            return;
+        };
+
+        let initializer = if let Some(expression) = &binding.initializer {
+            self.emit_expression(expression)
+                .unwrap_or_else(|| "harbour_value_nil()".to_owned())
+        } else {
+            "harbour_value_nil()".to_owned()
+        };
+
+        self.emit_line(&format!("if (!{}) {{", storage.initialized_name));
+        self.indent_level += 1;
+        self.emit_line(&format!("{} = {};", storage.storage_name, initializer));
+        self.emit_line(&format!("{} = true;", storage.initialized_name));
+        self.indent_level -= 1;
+        self.emit_line("}");
+    }
+
+    fn resolve_symbol_storage_name(&self, name: &str) -> String {
+        self.current_static_bindings
+            .get(&normalize_symbol_name(name))
+            .map(|binding| binding.storage_name.clone())
+            .unwrap_or_else(|| mangle_symbol(name))
+    }
+}
+
+fn collect_program_static_bindings(program: &ir::Program) -> Vec<StaticBindingStorage> {
+    program
+        .routines
+        .iter()
+        .flat_map(collect_routine_static_bindings)
+        .collect()
+}
+
+fn routine_static_binding_map(routine: &ir::Routine) -> HashMap<String, StaticBindingStorage> {
+    let mut seen = HashMap::<String, StaticBindingStorage>::new();
+    collect_statement_static_bindings(&routine.name.text, &routine.body, &mut seen);
+    seen
+}
+
+fn collect_routine_static_bindings(routine: &ir::Routine) -> Vec<StaticBindingStorage> {
+    let mut seen = HashMap::<String, StaticBindingStorage>::new();
+    collect_statement_static_bindings(&routine.name.text, &routine.body, &mut seen);
+    seen.into_values().collect()
+}
+
+fn collect_statement_static_bindings(
+    routine_name: &str,
+    statements: &[ir::Statement],
+    seen: &mut HashMap<String, StaticBindingStorage>,
+) {
+    for statement in statements {
+        match statement {
+            ir::Statement::Static(statement) => {
+                for binding in &statement.bindings {
+                    let normalized_name = normalize_symbol_name(&binding.name.text);
+                    seen.entry(normalized_name)
+                        .or_insert_with(|| StaticBindingStorage {
+                            storage_name: mangle_static_storage_name(
+                                routine_name,
+                                &binding.name.text,
+                            ),
+                            initialized_name: mangle_static_initialized_name(
+                                routine_name,
+                                &binding.name.text,
+                            ),
+                        });
+                }
+            }
+            ir::Statement::If(statement) => {
+                for branch in &statement.branches {
+                    collect_statement_static_bindings(routine_name, &branch.body, seen);
+                }
+                if let Some(else_branch) = &statement.else_branch {
+                    collect_statement_static_bindings(routine_name, else_branch, seen);
+                }
+            }
+            ir::Statement::DoWhile(statement) => {
+                collect_statement_static_bindings(routine_name, &statement.body, seen);
+            }
+            ir::Statement::For(statement) => {
+                collect_statement_static_bindings(routine_name, &statement.body, seen);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn mangle_static_storage_name(routine_name: &str, symbol_name: &str) -> String {
+    format!(
+        "harbour_static_{}_{}",
+        mangle_symbol(routine_name),
+        mangle_symbol(symbol_name)
+    )
+}
+
+fn mangle_static_initialized_name(routine_name: &str, symbol_name: &str) -> String {
+    format!(
+        "{}__initialized",
+        mangle_static_storage_name(routine_name, symbol_name)
+    )
+}
+
+fn normalize_symbol_name(name: &str) -> String {
+    name.to_ascii_lowercase()
 }
 
 fn routine_signature(routine: &ir::Routine) -> String {
@@ -1199,7 +1342,7 @@ mod tests {
     }
 
     #[test]
-    fn reports_static_statements_as_explicit_codegen_errors() {
+    fn emits_static_statements_as_persistent_c_storage() {
         let static_span = span(12, 2, 4, 32, 2, 24);
         let program = ir::Program {
             routines: vec![ir::Routine {
@@ -1220,11 +1363,31 @@ mod tests {
 
         let emitted = emit_program(&program);
 
-        assert_eq!(emitted.errors.len(), 1);
-        assert_eq!(
-            emitted.errors[0].message,
-            "C emission for STATIC storage is not implemented yet"
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted
+                .source
+                .contains("static harbour_runtime_Value harbour_static_main_cache;")
         );
-        assert!(emitted.source.contains("/* TODO: emit STATIC storage */"));
+        assert!(
+            emitted
+                .source
+                .contains("static bool harbour_static_main_cache__initialized;")
+        );
+        assert!(
+            emitted
+                .source
+                .contains("if (!harbour_static_main_cache__initialized) {")
+        );
+        assert!(
+            emitted
+                .source
+                .contains("harbour_static_main_cache = harbour_value_nil();")
+        );
+        assert!(
+            emitted
+                .source
+                .contains("harbour_static_main_cache__initialized = true;")
+        );
     }
 }
