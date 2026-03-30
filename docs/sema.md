@@ -36,7 +36,7 @@ Cada rotina mantém uma tabela com:
 
 - Parâmetros formais
 - Variáveis `LOCAL`
-- Variáveis `STATIC` (com diagnóstico de storage não implementado)
+- Variáveis `STATIC`
 
 ### Resolução case-insensitive
 
@@ -49,7 +49,6 @@ Consistente com Clipper/Harbour: `myFunc`, `MYFUNC` e `MyFunc` resolvem para a m
 | — | Unresolved symbol | Variável ou função usada sem declaração visível |
 | — | Duplicate local | Variável declarada mais de uma vez no mesmo escopo |
 | — | Unresolved callable | Chamada a função/procedimento não declarado |
-| — | Static storage unsupported | `STATIC` reconhecido mas sem runtime ainda |
 
 ## Decisões de design
 
@@ -76,11 +75,11 @@ A sema percorre todos os nós da HIR, incluindo:
 | --- | --- |
 | `tests/fixtures/sema/control_flow_missing_locals.prg` | `.errors` |
 | `tests/fixtures/sema/control_flow_missing_callables.prg` | `.errors` |
-| `tests/fixtures/parser/static.prg` | `static_unsupported.errors` |
+| `tests/fixtures/parser/static.prg` | sucesso semântico com bindings `STATIC` |
 
 ## Próximos passos (Fase 7+)
 
-- Runtime de `STATIC` com persistent storage
+- Storage de `STATIC` compartilhado entre rotinas do mesmo módulo
 - Resolução mais fina de tipos
 - Diagnósticos de type mismatch quando viável
 - Suporte a memvars (PRIVATE/PUBLIC) na Fase 8
@@ -93,5 +92,5 @@ Fase 3 + Fase 7 parcial:
 - Tabela local com LOCAL e parâmetros — completo
 - Resolução case-insensitive — completo
 - Diagnósticos de símbolo ausente — completo
-- STATIC com placeholder e diagnóstico — completo
+- STATIC declarado e resolvido na sema — completo
 - Walk de arrays e indexação — completo

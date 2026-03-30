@@ -214,14 +214,6 @@ impl<'a> RoutineAnalyzer<'a> {
                 }
             }
             hir::Statement::Static(statement) => {
-                self.errors.push(SemanticError {
-                    message: format!(
-                        "STATIC storage is not supported in routine `{}` yet",
-                        self.routine_name
-                    ),
-                    span: statement.span,
-                });
-
                 for binding in &statement.bindings {
                     if let Some(initializer) = &binding.initializer {
                         self.analyze_expression(initializer, ExpressionContext::Value);
@@ -614,7 +606,7 @@ mod tests {
     }
 
     #[test]
-    fn reports_static_storage_as_unsupported_but_declares_symbols() {
+    fn resolves_static_symbols_without_placeholder_diagnostics() {
         let program = hir::Program {
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
@@ -660,13 +652,7 @@ mod tests {
                 binding: Binding::Local(0),
             }]
         );
-        assert_eq!(
-            analysis.errors,
-            vec![SemanticError {
-                message: "STATIC storage is not supported in routine `Main` yet".to_owned(),
-                span: span(5, 2, 1, 26, 2, 26),
-            }]
-        );
+        assert_eq!(analysis.errors, Vec::new());
     }
 
     #[test]
@@ -850,12 +836,6 @@ mod tests {
                 },
             ]
         );
-        assert_eq!(
-            analysis.errors,
-            vec![SemanticError {
-                message: "STATIC storage is not supported in routine `Main` yet".to_owned(),
-                span: span(5, 2, 1, 16, 2, 16),
-            }]
-        );
+        assert_eq!(analysis.errors, Vec::new());
     }
 }

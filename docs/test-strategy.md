@@ -97,7 +97,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - leituras nominais manuais no crate `harbour-rust-ir` -> lowering IR como `Read(path)` explícito
 - `tests/fixtures/sema/control_flow_missing_locals.prg` -> `control_flow_missing_locals.errors`
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
-- `tests/fixtures/parser/static.prg` -> `tests/fixtures/sema/static_unsupported.errors`
+- `tests/fixtures/parser/static.prg` -> sema sem erro com bindings `STATIC`
 - `tests/fixtures/parser/arrays.prg` -> lowering IR explícito para `Array(elements)` sem erro de lowering
 - `tests/fixtures/parser/indexing.prg` -> lowering IR explícito para `Index(target, indices)` sem erro de lowering
 - `tests/fixtures/parser/arrays.prg` -> codegen C com `harbour_value_from_array_items(...)`

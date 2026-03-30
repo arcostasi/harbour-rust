@@ -80,7 +80,7 @@ Na Fase 7, `STATIC` entra nessa mesma superfície como placeholder explícito:
 - o lowering passa a materializar `Statement::Static` separado de `Statement::Local`,
 - leituras nominais passam a usar `Read(ReadPath::Name(Symbol))` em vez de `Symbol` cru,
 - `STATIC` não é mais confundido silenciosamente com `LOCAL` nem na declaração lowered,
-- a semântica ainda não implementa storage persistente, mas já emite diagnóstico explícito e mantém os símbolos declarados para evitar falsos `unresolved`.
+- a semântica ainda não modela todo o storage persistente de módulo, mas já aceita `STATIC` como binding real e evita falsos `unresolved`.
 
 Na slice seguinte da Fase 7, arrays deixam de morrer cedo no lowering:
 
@@ -136,7 +136,7 @@ Na slice seguinte da Fase 7, o backend C passa a materializar o primeiro storage
 - cada binding `STATIC` de uma rotina gera storage C em escopo de arquivo e um flag de inicialização,
 - o statement `STATIC` no corpo da rotina passa a emitir guard de inicialização única,
 - leituras e escritas nominais da mesma rotina passam a apontar para esse storage estático no C gerado,
-- o caminho completo ainda não fecha porque a sema continua marcando `STATIC` como não suportado nesta etapa.
+- a sema deixa de bloquear esse caminho same-routine, enquanto storage compartilhado entre rotinas do mesmo módulo continua como próximo passo.
 
 ### 1.4. Backend C começa pelo subconjunto observável
 

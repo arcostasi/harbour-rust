@@ -87,10 +87,23 @@ fn reports_unresolved_callables_across_control_flow_fixture() {
 }
 
 #[test]
-fn reports_static_storage_placeholder_diagnostics() {
-    assert_fixture_errors(
-        "tests/fixtures/parser/static.prg",
-        "tests/fixtures/sema/static_unsupported.errors",
+fn analyzes_static_fixture_with_static_bindings() {
+    let analysis = analyze_fixture("tests/fixtures/parser/static.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+    assert_eq!(analysis.routines.len(), 1);
+    assert_eq!(analysis.routines[0].locals.len(), 2);
+    assert_eq!(analysis.routines[0].locals[0].kind, LocalSymbolKind::Static);
+    assert_eq!(analysis.routines[0].locals[0].name, "cache");
+    assert_eq!(analysis.routines[0].locals[1].kind, LocalSymbolKind::Static);
+    assert_eq!(analysis.routines[0].locals[1].name, "hits");
+    assert_eq!(analysis.routines[0].resolutions.len(), 1);
+    assert_eq!(
+        analysis.routines[0].resolutions[0].binding,
+        Binding::Local(0)
     );
 }
 
