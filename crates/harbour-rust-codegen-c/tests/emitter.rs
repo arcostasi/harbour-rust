@@ -122,6 +122,30 @@ fn emits_if_else_fixture_as_c_with_runtime_condition_checks() {
 }
 
 #[test]
+fn emits_compound_assignment_fixture_with_arithmetic_runtime_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/compound_assign.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("total = harbour_value_add(total, harbour_value_from_integer(3LL));")
+    );
+    assert!(emitted.source.contains(
+        "harbour_static_main_factor = harbour_value_multiply(harbour_static_main_factor, total);"
+    ));
+    assert!(
+        emitted
+            .source
+            .contains("return harbour_static_main_factor;")
+    );
+}
+
+#[test]
 fn emits_static_fixture_with_persistent_c_storage() {
     let emitted = emit_fixture("tests/fixtures/parser/static.prg");
 

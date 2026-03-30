@@ -117,6 +117,33 @@ fn build_command_writes_c_output_for_if_else_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_compound_assign_run_fixture() {
+    let temp_dir = unique_temp_dir("compound-assign-run");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("compound_assign_run.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/compound_assign_run.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_value_add("));
+    assert!(generated.contains("harbour_value_subtract("));
+    assert!(generated.contains("harbour_value_multiply("));
+    assert!(generated.contains("harbour_value_divide("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_aclones_fixture() {
     let temp_dir = unique_temp_dir("aclone");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -284,6 +311,23 @@ fn build_command_reports_preprocess_error_for_missing_include_search_path() {
 }
 
 #[test]
+fn build_command_reports_codegen_error_for_unsupported_compound_assign_operator() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/compound_assign_mod.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(!output.status.success(), "expected failing build status");
+
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("codegen-c failed"));
+    assert!(stderr.contains("C emission for this binary operator is not implemented yet"));
+}
+
+#[test]
 fn run_command_executes_hello_example_with_host_compiler() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
@@ -339,6 +383,22 @@ fn run_command_executes_if_else_fixture_with_expected_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "maior\nmenor ou igual\n");
+}
+
+#[test]
+fn run_command_executes_compound_assign_run_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/compound_assign_run.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "15\n12\n24\n6\n");
 }
 
 #[test]

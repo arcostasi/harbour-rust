@@ -191,6 +191,15 @@ impl Emitter {
             "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);",
         );
         self.emit_line(
+            "extern harbour_runtime_Value harbour_value_subtract(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_multiply(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_divide(harbour_runtime_Value left, harbour_runtime_Value right);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_value_greater_than(harbour_runtime_Value left, harbour_runtime_Value right);",
         );
         self.emit_line(
@@ -527,6 +536,15 @@ impl Emitter {
                     }
                     ir::BinaryOperator::Add => {
                         Some(format!("harbour_value_add({}, {})", left, right))
+                    }
+                    ir::BinaryOperator::Subtract => {
+                        Some(format!("harbour_value_subtract({}, {})", left, right))
+                    }
+                    ir::BinaryOperator::Multiply => {
+                        Some(format!("harbour_value_multiply({}, {})", left, right))
+                    }
+                    ir::BinaryOperator::Divide => {
+                        Some(format!("harbour_value_divide({}, {})", left, right))
                     }
                     ir::BinaryOperator::Greater => {
                         Some(format!("harbour_value_greater_than({}, {})", left, right))
@@ -993,6 +1011,9 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_exact_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_not_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_subtract(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_multiply(harbour_runtime_Value left, harbour_runtime_Value right);\n",
+                    "extern harbour_runtime_Value harbour_value_divide(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_greater_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_greater_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",

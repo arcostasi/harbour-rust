@@ -44,6 +44,18 @@ struct harbour_runtime_Value harbour_value_add(
     struct harbour_runtime_Value left,
     struct harbour_runtime_Value right
 );
+struct harbour_runtime_Value harbour_value_subtract(
+    struct harbour_runtime_Value left,
+    struct harbour_runtime_Value right
+);
+struct harbour_runtime_Value harbour_value_multiply(
+    struct harbour_runtime_Value left,
+    struct harbour_runtime_Value right
+);
+struct harbour_runtime_Value harbour_value_divide(
+    struct harbour_runtime_Value left,
+    struct harbour_runtime_Value right
+);
 struct harbour_runtime_Value harbour_value_less_than(
     struct harbour_runtime_Value left,
     struct harbour_runtime_Value right

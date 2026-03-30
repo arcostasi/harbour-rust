@@ -88,11 +88,13 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/if_else.prg` -> `harbour-rust-cli build/run` com IF/ELSE executável
 - `tests/fixtures/parser/arrays.prg` -> `arrays.ast`
 - `tests/fixtures/parser/compound_assign.prg` -> `compound_assign.ast`
+- `tests/fixtures/parser/compound_assign_run.prg` -> `harbour-rust-cli build/run` com `+= -= *= /=`
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-hir` -> lowering HIR como `Read(path)` explícito
 - `tests/fixtures/parser/compound_assign.prg` -> lowering HIR estável como `Assignment + Binary`
+- `tests/fixtures/parser/compound_assign_mod.prg` -> erro explícito de `codegen-c` para operador ainda não executável
 - `tests/fixtures/parser/indexing.prg` -> lowering HIR explícito para `Index(target, indices)`
 - `tests/fixtures/parser/static.prg` -> lowering IR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-ir` -> lowering IR como `Read(path)` explícito

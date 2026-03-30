@@ -125,7 +125,7 @@ RETURN
 
 ### Slice 7.4 — Operadores compostos no caminho executável
 
-**Status:** parse e HIR ✓ (desugaring para Assignment + Binary), runtime/codegen ✗
+**Status:** parse + HIR + codegen-c + cli run ✓ para `+= -= *= /=`; `%= ^=` ainda pendentes
 
 **Escopo:**
 - Codegen-C: garantir que `x += 1` gere `x = harbour_value_add(x, 1)`
@@ -150,9 +150,9 @@ RETURN
 ```
 
 **Aceite:**
-- [ ] Todos os operadores compostos executam corretamente
-- [ ] Teste de integração CLI run
-- [ ] Sem regressão nos testes existentes
+- [x] `+=`, `-=`, `*=`, `/=` executam corretamente
+- [x] Teste de integração CLI run
+- [x] Sem regressão nos testes existentes
 
 ---
 

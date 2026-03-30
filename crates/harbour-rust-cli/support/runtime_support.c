@@ -190,6 +190,72 @@ harbour_runtime_Value harbour_value_add(
     return harbour_value_nil();
 }
 
+harbour_runtime_Value harbour_value_subtract(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_integer(left.as.integer - right.as.integer);
+    }
+
+    if (
+        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
+        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
+    ) {
+        double left_number = left.kind == HARBOUR_VALUE_INTEGER
+            ? (double) left.as.integer
+            : left.as.floating;
+        double right_number = right.kind == HARBOUR_VALUE_INTEGER
+            ? (double) right.as.integer
+            : right.as.floating;
+        return harbour_value_from_float(left_number - right_number);
+    }
+
+    return harbour_value_nil();
+}
+
+harbour_runtime_Value harbour_value_multiply(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_integer(left.as.integer * right.as.integer);
+    }
+
+    if (
+        (left.kind == HARBOUR_VALUE_INTEGER || left.kind == HARBOUR_VALUE_FLOAT) &&
+        (right.kind == HARBOUR_VALUE_INTEGER || right.kind == HARBOUR_VALUE_FLOAT)
+    ) {
+        double left_number = left.kind == HARBOUR_VALUE_INTEGER
+            ? (double) left.as.integer
+            : left.as.floating;
+        double right_number = right.kind == HARBOUR_VALUE_INTEGER
+            ? (double) right.as.integer
+            : right.as.floating;
+        return harbour_value_from_float(left_number * right_number);
+    }
+
+    return harbour_value_nil();
+}
+
+harbour_runtime_Value harbour_value_divide(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right
+) {
+    double left_number;
+    double right_number;
+
+    if (!harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
+        return harbour_value_nil();
+    }
+
+    if (right_number == 0.0) {
+        return harbour_value_error_literal("divide by zero");
+    }
+
+    return harbour_value_from_float(left_number / right_number);
+}
+
 harbour_runtime_Value harbour_value_equals(
     harbour_runtime_Value left,
     harbour_runtime_Value right

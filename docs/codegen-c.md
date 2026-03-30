@@ -130,6 +130,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/while.prg` | DO WHILE executa |
 | `tests/fixtures/parser/for_sum.prg` | FOR simples executa |
 | `tests/fixtures/parser/if_else.prg` | IF/ELSE executa |
+| `tests/fixtures/parser/compound_assign_run.prg` | `+= -= *= /=` executam |
 | `tests/fixtures/parser/arrays.prg` | gera C com array_items |
 | `tests/fixtures/parser/indexing.prg` | gera C com array_get |
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
@@ -142,9 +143,11 @@ Fase 5 + Fase 7 parcial:
 - Rotinas, RETURN, QOut — completo
 - IF/ELSE simples — completo
 - DO WHILE, FOR — completo
+- `+= -= *= /=` em alvos nominais simples — completo
 - LOCAL com inicializador — completo
 - Literais de array — completo
 - Indexação (leitura) — completo
 - Atribuição indexada — completo
+- `%= ^=` — pendente no caminho executável
 - STATIC com storage persistente no C gerado para leitura no mesmo routine — parcial
 - STATIC no pipeline completo (`sema -> cli run`) — parcial
