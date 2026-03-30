@@ -95,6 +95,18 @@ fn emits_for_sum_fixture_as_c_with_for_loop_helpers() {
 }
 
 #[test]
+fn reports_static_fixture_as_explicit_codegen_error() {
+    let emitted = emit_fixture("tests/fixtures/parser/static.prg");
+
+    assert_eq!(emitted.errors.len(), 1);
+    assert_eq!(
+        emitted.errors[0].message,
+        "C emission for STATIC storage is not implemented yet"
+    );
+    assert!(emitted.source.contains("/* TODO: emit STATIC storage */"));
+}
+
+#[test]
 fn emits_array_runtime_helper_declarations_in_c_prelude() {
     let emitted = emit_fixture("tests/fixtures/parser/hello.prg");
 

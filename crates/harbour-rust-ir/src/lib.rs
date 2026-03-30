@@ -74,6 +74,7 @@ pub struct Routine {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Local(LocalStatement),
+    Static(StaticStatement),
     Assign(AssignStatement),
     If(Box<IfStatement>),
     DoWhile(Box<DoWhileStatement>),
@@ -87,6 +88,7 @@ impl Statement {
     pub fn span(&self) -> Span {
         match self {
             Self::Local(statement) => statement.span,
+            Self::Static(statement) => statement.span,
             Self::Assign(statement) => statement.span,
             Self::If(statement) => statement.span,
             Self::DoWhile(statement) => statement.span,
@@ -106,6 +108,19 @@ pub struct LocalStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalBinding {
+    pub name: Symbol,
+    pub initializer: Option<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticStatement {
+    pub bindings: Vec<StaticBinding>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticBinding {
     pub name: Symbol,
     pub initializer: Option<Expression>,
     pub span: Span,
@@ -197,7 +212,7 @@ pub struct ExpressionStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
-    Symbol(Symbol),
+    Read(ReadExpression),
     Nil(NilLiteral),
     Logical(LogicalLiteral),
     Integer(IntegerLiteral),
@@ -215,7 +230,7 @@ pub enum Expression {
 impl Expression {
     pub fn span(&self) -> Span {
         match self {
-            Self::Symbol(symbol) => symbol.span,
+            Self::Read(expression) => expression.span,
             Self::Nil(literal) => literal.span,
             Self::Logical(literal) => literal.span,
             Self::Integer(literal) => literal.span,
@@ -236,6 +251,25 @@ impl Expression {
 pub struct Symbol {
     pub text: String,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReadExpression {
+    pub path: ReadPath,
+    pub span: Span,
+}
+
+impl ReadExpression {
+    pub fn symbol(&self) -> &Symbol {
+        match &self.path {
+            ReadPath::Name(symbol) => symbol,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReadPath {
+    Name(Symbol),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -384,11 +418,11 @@ fn lower_statement(statement: &hir::Statement, errors: &mut Vec<LoweringError>) 
                 .collect(),
             span: statement.span,
         }),
-        hir::Statement::Static(statement) => Statement::Local(LocalStatement {
+        hir::Statement::Static(statement) => Statement::Static(StaticStatement {
             bindings: statement
                 .bindings
                 .iter()
-                .map(|binding| LocalBinding {
+                .map(|binding| StaticBinding {
                     name: lower_symbol(&binding.name),
                     initializer: binding
                         .initializer
@@ -502,7 +536,10 @@ fn lower_assign_target(
 
 fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError>) -> Expression {
     match expression {
-        hir::Expression::Read(read) => Expression::Symbol(lower_symbol(read.symbol())),
+        hir::Expression::Read(read) => Expression::Read(ReadExpression {
+            path: lower_read_path(&read.path),
+            span: read.span,
+        }),
         hir::Expression::Nil(literal) => Expression::Nil(NilLiteral { span: literal.span }),
         hir::Expression::Logical(literal) => Expression::Logical(LogicalLiteral {
             value: literal.value,
@@ -590,6 +627,12 @@ fn lower_symbol(symbol: &hir::Symbol) -> Symbol {
     }
 }
 
+fn lower_read_path(path: &hir::ReadPath) -> ReadPath {
+    match path {
+        hir::ReadPath::Name(symbol) => ReadPath::Name(lower_symbol(symbol)),
+    }
+}
+
 fn lower_binary_operator(operator: hir::BinaryOperator) -> BinaryOperator {
     match operator {
         hir::BinaryOperator::Or => BinaryOperator::Or,
@@ -633,7 +676,8 @@ mod tests {
     use crate::{
         ArrayLiteral, AssignStatement, AssignTarget, Builtin, BuiltinCallStatement,
         ErrorExpression, Expression, IndexedAssignTarget, LoweringError, LoweringOutput,
-        ReturnStatement, Routine, RoutineKind, Statement, Symbol, lower_program,
+        ReadExpression, ReadPath, ReturnStatement, Routine, RoutineKind, Statement, StaticBinding,
+        StaticStatement, Symbol, lower_program,
     };
 
     fn span(
@@ -743,8 +787,11 @@ mod tests {
                         span: assign_span,
                     }),
                     Statement::Return(ReturnStatement {
-                        value: Some(Expression::Symbol(Symbol {
-                            text: "x".to_owned(),
+                        value: Some(Expression::Read(ReadExpression {
+                            path: ReadPath::Name(Symbol {
+                                text: "x".to_owned(),
+                                span: span(40, 4, 11, 41, 4, 12),
+                            }),
                             span: span(40, 4, 11, 41, 4, 12),
                         })),
                         span: return_span,
@@ -838,6 +885,51 @@ mod tests {
     }
 
     #[test]
+    fn lowers_static_statements_to_explicit_ir_nodes() {
+        let statement_span = span(12, 2, 4, 33, 2, 25);
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![hir::Statement::Static(hir::StaticStatement {
+                    bindings: vec![hir::StaticBinding {
+                        name: symbol("cache", span(19, 2, 11, 24, 2, 16)),
+                        initializer: Some(hir::Expression::String(hir::StringLiteral {
+                            lexeme: "memo".to_owned(),
+                            span: span(28, 2, 20, 34, 2, 26),
+                        })),
+                        span: span(19, 2, 11, 34, 2, 26),
+                    }],
+                    span: statement_span,
+                })],
+                span: span(0, 1, 1, 34, 2, 26),
+            }],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        assert_eq!(
+            lowered.program.routines[0].body,
+            vec![Statement::Static(StaticStatement {
+                bindings: vec![StaticBinding {
+                    name: Symbol {
+                        text: "cache".to_owned(),
+                        span: span(19, 2, 11, 24, 2, 16),
+                    },
+                    initializer: Some(Expression::String(crate::StringLiteral {
+                        lexeme: "memo".to_owned(),
+                        span: span(28, 2, 20, 34, 2, 26),
+                    })),
+                    span: span(19, 2, 11, 34, 2, 26),
+                }],
+                span: statement_span,
+            })]
+        );
+    }
+
+    #[test]
     fn lowers_array_indexing_to_explicit_ir_nodes() {
         let expression_span = span(15, 2, 6, 25, 2, 16);
         let program = hir::Program {
@@ -874,10 +966,46 @@ mod tests {
         let Expression::Index(index) = expression else {
             panic!("expected lowered index expression");
         };
-        assert!(matches!(index.target.as_ref(), Expression::Symbol(_)));
+        assert!(matches!(index.target.as_ref(), Expression::Read(_)));
         assert_eq!(index.indices.len(), 1);
         assert!(matches!(index.indices[0], Expression::Integer(_)));
         assert_eq!(index.span, expression_span);
+    }
+
+    #[test]
+    fn lowers_identifier_reads_to_explicit_ir_read_paths() {
+        let expression_span = span(12, 2, 4, 17, 2, 9);
+        let program = hir::Program {
+            routines: vec![hir::Routine {
+                kind: hir::RoutineKind::Function,
+                name: symbol("ReadIt", span(0, 1, 1, 6, 1, 7)),
+                params: Vec::new(),
+                body: vec![hir::Statement::Return(hir::ReturnStatement {
+                    value: Some(hir::Expression::Read(hir::ReadExpression {
+                        path: hir::ReadPath::Name(symbol("cache", expression_span)),
+                        span: expression_span,
+                    })),
+                    span: expression_span,
+                })],
+                span: span(0, 1, 1, 17, 2, 9),
+            }],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        let Statement::Return(ReturnStatement {
+            value: Some(Expression::Read(read)),
+            ..
+        }) = &lowered.program.routines[0].body[0]
+        else {
+            panic!("expected return with explicit read");
+        };
+        assert_eq!(read.span, expression_span);
+        assert!(matches!(
+            read.path,
+            ReadPath::Name(Symbol { ref text, span }) if text == "cache" && span == expression_span
+        ));
     }
 
     #[test]

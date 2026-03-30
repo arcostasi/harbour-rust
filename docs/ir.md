@@ -45,6 +45,8 @@ IrRoutine {
 
 - `Return(Option<IrExpr>)`
 - `BuiltinCall(name, args)` — ex.: `QOut`
+- `Local(Vec<IrLocal>)`
+- `Static(Vec<IrStatic>)`
 - `Assign { target, value }`
 - `Expression(IrExpr)`
 - `If { condition, then_body, else_body }`
@@ -53,7 +55,7 @@ IrRoutine {
 
 ### Expressões
 
-- `Symbol(name)`
+- `Read(path)` — leitura nominal explícita, hoje iniciando em `ReadPath::Name(Symbol)`
 - `Literal(Nil | Logical | Integer | Float | String)`
 - `Binary(op, lhs, rhs)`
 - `Unary(op, expr)`
@@ -74,7 +76,8 @@ IrRoutine {
 | HIR | IR |
 | --- | --- |
 | `Print(exprs)` | `BuiltinCall("QOut", exprs)` |
-| Símbolos | Strings normalizadas |
+| `Read(ReadPath::Name(Symbol))` | `Read(ReadPath::Name(Symbol))` |
+| `Statement::Static` | `Statement::Static` |
 | Expressões inválidas | Erro de lowering explícito |
 
 ### O que se preserva
@@ -82,6 +85,8 @@ IrRoutine {
 - Estrutura de controle de fluxo (sem flattening para labels/gotos)
 - Arrays e indexação como nós explícitos
 - Atribuição indexada como `AssignTarget::Index`
+- Distinção entre `Local` e `Static`
+- Leituras nominais explícitas como `Read(path)`
 
 ## Decisões de design
 
@@ -104,6 +109,7 @@ Fase 5 + Fase 7 parcial:
 - Rotinas, RETURN, BuiltinCall(QOut) — completo
 - IF, DO WHILE, FOR — completo
 - Atribuição simples — completo
+- `STATIC` e `Read(path)` explícitos — lowering OK, execução de `STATIC` ainda pendente
 - Literais de array — completo
 - Indexação (leitura e escrita) — completo
 - Flattening de controle de fluxo — não planejado para esta fase

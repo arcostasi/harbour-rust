@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 use harbour_rust_hir::lower_program as lower_hir_program;
 use harbour_rust_ir::{
-    AssignTarget, Builtin, Expression, ReturnStatement, Statement, lower_program,
+    AssignTarget, Builtin, Expression, ReadPath, ReturnStatement, Statement, lower_program,
 };
 use harbour_rust_parser::parse;
 
@@ -95,7 +95,39 @@ fn lowers_arrays_fixture_to_explicit_ir_array_nodes() {
     assert_eq!(inner_array.elements.len(), 3);
     assert!(matches!(inner_array.elements[0], Expression::Integer(_)));
     assert!(matches!(inner_array.elements[1], Expression::String(_)));
-    assert!(matches!(inner_array.elements[2], Expression::Symbol(_)));
+    assert!(matches!(inner_array.elements[2], Expression::Read(_)));
+}
+
+#[test]
+fn lowers_static_fixture_to_explicit_ir_static_nodes() {
+    let lowered = lower_fixture("tests/fixtures/parser/static.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 2);
+
+    let Statement::Static(statement) = &body[0] else {
+        panic!("expected explicit IR static statement");
+    };
+    assert_eq!(statement.bindings.len(), 2);
+    assert_eq!(statement.bindings[0].name.text, "cache");
+    assert_eq!(statement.bindings[1].name.text, "hits");
+
+    let Statement::Return(ReturnStatement {
+        value: Some(Expression::Read(read)),
+        ..
+    }) = &body[1]
+    else {
+        panic!("expected return with explicit IR read");
+    };
+    assert!(matches!(
+        &read.path,
+        ReadPath::Name(symbol) if symbol.text == "cache"
+    ));
 }
 
 #[test]
@@ -121,9 +153,9 @@ fn lowers_indexing_fixture_to_explicit_ir_index_nodes() {
     let Expression::Index(inner_index) = outer_index.target.as_ref() else {
         panic!("expected nested IR index expression");
     };
-    assert!(matches!(inner_index.target.as_ref(), Expression::Symbol(_)));
+    assert!(matches!(inner_index.target.as_ref(), Expression::Read(_)));
     assert_eq!(inner_index.indices.len(), 1);
-    assert!(matches!(inner_index.indices[0], Expression::Symbol(_)));
+    assert!(matches!(inner_index.indices[0], Expression::Read(_)));
     assert_eq!(outer_index.indices.len(), 1);
     assert!(matches!(outer_index.indices[0], Expression::Binary(_)));
 }

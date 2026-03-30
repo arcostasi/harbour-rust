@@ -124,6 +124,13 @@ Na primeira slice da Fase 5, a IR começa como lowering de HIR para uma forma ma
 
 O objetivo desta etapa é estabilizar a superfície de lowering antes de introduzir flattening de controle de fluxo ou detalhes de codegen C.
 
+Na slice seguinte da Fase 7, essa mesma IR passa a preservar também o groundwork de storage:
+
+- `Statement::Static` deixa de ser achatado para `Local` e atravessa o lowering como nó explícito,
+- leituras nominais deixam de virar `Symbol` cru e passam a atravessar a IR como `Read(ReadPath::Name(Symbol))`,
+- o backend C continua aceitando `ReadPath::Name` mecanicamente,
+- `STATIC` no codegen segue como erro explícito até existir storage persistente real.
+
 ### 1.4. Backend C começa pelo subconjunto observável
 
 Na segunda slice da Fase 5, `harbour-rust-codegen-c` começa emitindo C legível para:

@@ -269,6 +269,13 @@ impl Emitter {
                     }
                 }
             }
+            ir::Statement::Static(statement) => {
+                self.push_error(
+                    "C emission for STATIC storage is not implemented yet",
+                    statement.span,
+                );
+                self.emit_line("/* TODO: emit STATIC storage */");
+            }
             ir::Statement::Assign(statement) => self.emit_assign_statement(statement),
             ir::Statement::If(statement) => {
                 self.push_error("C emission for IF is not implemented yet", statement.span);
@@ -383,7 +390,7 @@ impl Emitter {
 
     fn emit_expression(&mut self, expression: &Expression) -> Option<String> {
         match expression {
-            Expression::Symbol(symbol) => Some(mangle_symbol(&symbol.text)),
+            Expression::Read(read) => self.emit_read_expression(read, read.span),
             Expression::Nil(_) => Some("harbour_value_nil()".to_owned()),
             Expression::Logical(literal) => Some(format!(
                 "harbour_value_from_logical({})",
@@ -416,7 +423,7 @@ impl Emitter {
                 }
             }
             Expression::Call(expression) => {
-                if let Expression::Symbol(symbol) = expression.callee.as_ref() {
+                if let Some(symbol) = self.named_read_symbol(expression.callee.as_ref()) {
                     if let Some(builtin) = RuntimeBuiltin::lookup(&symbol.text) {
                         self.emit_runtime_builtin_expression(
                             builtin,
@@ -497,8 +504,11 @@ impl Emitter {
                 None
             }
             Expression::Postfix(expression) => {
-                match (expression.operator, expression.operand.as_ref()) {
-                    (ir::PostfixOperator::Increment, Expression::Symbol(symbol)) => Some(format!(
+                match (
+                    expression.operator,
+                    self.named_read_symbol(expression.operand.as_ref()),
+                ) {
+                    (ir::PostfixOperator::Increment, Some(symbol)) => Some(format!(
                         "harbour_value_postfix_increment(&{})",
                         mangle_symbol(&symbol.text)
                     )),
@@ -578,7 +588,7 @@ impl Emitter {
             return Some(format!("{}(NULL, NULL, 0)", builtin.helper_name()));
         };
 
-        let Expression::Symbol(symbol) = target else {
+        let Some(symbol) = self.named_read_symbol(target) else {
             self.push_error(
                 &format!(
                     "C emission for mutable builtin {} requires an addressable first argument",
@@ -609,6 +619,21 @@ impl Emitter {
                 emitted_arguments.join(", "),
                 emitted_arguments.len()
             ))
+        }
+    }
+
+    fn emit_read_expression(&mut self, read: &ir::ReadExpression, _span: Span) -> Option<String> {
+        match &read.path {
+            ir::ReadPath::Name(symbol) => Some(mangle_symbol(&symbol.text)),
+        }
+    }
+
+    fn named_read_symbol<'a>(&self, expression: &'a Expression) -> Option<&'a ir::Symbol> {
+        match expression {
+            Expression::Read(read) => match &read.path {
+                ir::ReadPath::Name(symbol) => Some(symbol),
+            },
+            _ => None,
         }
     }
 }
@@ -737,6 +762,13 @@ mod tests {
         }
     }
 
+    fn read(text: &str, span: Span) -> ir::Expression {
+        ir::Expression::Read(ir::ReadExpression {
+            path: ir::ReadPath::Name(symbol(text, span)),
+            span,
+        })
+    }
+
     #[test]
     fn emits_c_for_hello_style_procedure() {
         let program = ir::Program {
@@ -839,10 +871,7 @@ mod tests {
                     ir::Statement::DoWhile(Box::new(ir::DoWhileStatement {
                         condition: ir::Expression::Binary(ir::BinaryExpression {
                             left: Box::new(ir::Expression::Postfix(ir::PostfixExpression {
-                                operand: Box::new(ir::Expression::Symbol(symbol(
-                                    "x",
-                                    span(18, 3, 8, 19, 3, 9),
-                                ))),
+                                operand: Box::new(read("x", span(18, 3, 8, 19, 3, 9))),
                                 operator: ir::PostfixOperator::Increment,
                                 span: span(18, 3, 8, 21, 3, 11),
                             })),
@@ -855,10 +884,7 @@ mod tests {
                         }),
                         body: vec![ir::Statement::BuiltinCall(ir::BuiltinCallStatement {
                             builtin: ir::Builtin::QOut,
-                            arguments: vec![ir::Expression::Symbol(symbol(
-                                "x",
-                                span(32, 4, 6, 33, 4, 7),
-                            ))],
+                            arguments: vec![read("x", span(32, 4, 6, 33, 4, 7))],
                             span: span(30, 4, 4, 33, 4, 7),
                         })],
                         span: loop_span,
@@ -933,15 +959,9 @@ mod tests {
                                 span(30, 4, 7, 33, 4, 10),
                             )),
                             value: ir::Expression::Binary(ir::BinaryExpression {
-                                left: Box::new(ir::Expression::Symbol(symbol(
-                                    "sum",
-                                    span(37, 4, 14, 40, 4, 17),
-                                ))),
+                                left: Box::new(read("sum", span(37, 4, 14, 40, 4, 17))),
                                 operator: ir::BinaryOperator::Add,
-                                right: Box::new(ir::Expression::Symbol(symbol(
-                                    "n",
-                                    span(43, 4, 20, 44, 4, 21),
-                                ))),
+                                right: Box::new(read("n", span(43, 4, 20, 44, 4, 21))),
                                 span: span(37, 4, 14, 44, 4, 21),
                             }),
                             span: span(30, 4, 7, 44, 4, 21),
@@ -984,10 +1004,7 @@ mod tests {
                 params: Vec::new(),
                 body: vec![ir::Statement::Return(ir::ReturnStatement {
                     value: Some(ir::Expression::Index(ir::IndexExpression {
-                        target: Box::new(ir::Expression::Symbol(symbol(
-                            "matrix",
-                            span(12, 2, 4, 18, 2, 10),
-                        ))),
+                        target: Box::new(read("matrix", span(12, 2, 4, 18, 2, 10))),
                         indices: vec![ir::Expression::Integer(ir::IntegerLiteral {
                             lexeme: "1".to_owned(),
                             span: span(19, 2, 11, 20, 2, 12),
@@ -1093,14 +1110,8 @@ mod tests {
                 params: Vec::new(),
                 body: vec![ir::Statement::Return(ir::ReturnStatement {
                     value: Some(ir::Expression::Call(ir::CallExpression {
-                        callee: Box::new(ir::Expression::Symbol(symbol(
-                            "AClone",
-                            span(12, 2, 4, 18, 2, 10),
-                        ))),
-                        arguments: vec![ir::Expression::Symbol(symbol(
-                            "source",
-                            span(20, 2, 12, 26, 2, 18),
-                        ))],
+                        callee: Box::new(read("AClone", span(12, 2, 4, 18, 2, 10))),
+                        arguments: vec![read("source", span(20, 2, 12, 26, 2, 18))],
                         span: call_span,
                     })),
                     span: call_span,
@@ -1129,10 +1140,7 @@ mod tests {
                 params: Vec::new(),
                 body: vec![ir::Statement::Return(ir::ReturnStatement {
                     value: Some(ir::Expression::Call(ir::CallExpression {
-                        callee: Box::new(ir::Expression::Symbol(symbol(
-                            "AAdd",
-                            span(12, 2, 4, 16, 2, 8),
-                        ))),
+                        callee: Box::new(read("AAdd", span(12, 2, 4, 16, 2, 8))),
                         arguments: vec![ir::Expression::Array(ir::ArrayLiteral {
                             elements: vec![],
                             span: span(18, 2, 10, 20, 2, 12),
@@ -1164,12 +1172,9 @@ mod tests {
                 params: Vec::new(),
                 body: vec![ir::Statement::Return(ir::ReturnStatement {
                     value: Some(ir::Expression::Call(ir::CallExpression {
-                        callee: Box::new(ir::Expression::Symbol(symbol(
-                            "ASize",
-                            span(12, 2, 4, 17, 2, 9),
-                        ))),
+                        callee: Box::new(read("ASize", span(12, 2, 4, 17, 2, 9))),
                         arguments: vec![
-                            ir::Expression::Symbol(symbol("items", span(18, 2, 10, 23, 2, 15))),
+                            read("items", span(18, 2, 10, 23, 2, 15)),
                             ir::Expression::Integer(ir::IntegerLiteral {
                                 lexeme: "3".to_owned(),
                                 span: span(25, 2, 17, 26, 2, 18),
@@ -1191,5 +1196,35 @@ mod tests {
                 "return harbour_builtin_asize(&items, (harbour_runtime_Value[]) { harbour_value_from_integer(3LL) }, 1);"
             )
         );
+    }
+
+    #[test]
+    fn reports_static_statements_as_explicit_codegen_errors() {
+        let static_span = span(12, 2, 4, 32, 2, 24);
+        let program = ir::Program {
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Static(ir::StaticStatement {
+                    bindings: vec![ir::StaticBinding {
+                        name: symbol("cache", span(19, 2, 11, 24, 2, 16)),
+                        initializer: None,
+                        span: span(19, 2, 11, 24, 2, 16),
+                    }],
+                    span: static_span,
+                })],
+                span: span(0, 1, 1, 32, 2, 24),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert_eq!(emitted.errors.len(), 1);
+        assert_eq!(
+            emitted.errors[0].message,
+            "C emission for STATIC storage is not implemented yet"
+        );
+        assert!(emitted.source.contains("/* TODO: emit STATIC storage */"));
     }
 }
