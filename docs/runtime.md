@@ -183,6 +183,14 @@ Na slice seguinte da Fase 7, entram `Trim()`, `LTrim()` e `RTrim()` como builtin
 - `LTrim()` agora emite `BASE 1101 Argument error (LTRIM)` para argumentos inválidos,
 - nesta fase os três continuam parciais: `Chr(0)`, regras completas de whitespace/codepage e by-ref observados no upstream continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `At()` como builtin imutável de busca em string:
+
+- `at()` cobre o recorte clássico de `At( cNeedle, cHaystack )` com retorno 1-based,
+- substring ausente retorna `0`,
+- string vazia também retorna `0` no baseline Harbour atual usado como oráculo,
+- argumentos inválidos agora emitem `BASE 1108 Argument error (AT)`,
+- nesta fase o builtin continua parcial: `hb_AT()` com `start/to`, codepage multibyte e as divergências históricas do otimizador Clipper para string vazia continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

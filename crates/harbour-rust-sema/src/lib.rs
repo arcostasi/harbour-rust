@@ -404,6 +404,7 @@ fn is_runtime_builtin(name: &str) -> bool {
         || name.eq_ignore_ascii_case("TRIM")
         || name.eq_ignore_ascii_case("LTRIM")
         || name.eq_ignore_ascii_case("RTRIM")
+        || name.eq_ignore_ascii_case("AT")
         || name.eq_ignore_ascii_case("ACLONE")
         || name.eq_ignore_ascii_case("AADD")
         || name.eq_ignore_ascii_case("ASIZE")

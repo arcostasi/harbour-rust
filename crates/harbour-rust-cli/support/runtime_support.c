@@ -770,6 +770,37 @@ struct harbour_runtime_Value harbour_builtin_rtrim(
     return harbour_substr_from_bounds(text, strlen(text), 0, length);
 }
 
+struct harbour_runtime_Value harbour_builtin_at(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *needle;
+    const char *haystack;
+    const char *found;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING ||
+        arguments[1].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1108 Argument error (AT)");
+    }
+
+    needle = arguments[0].as.string;
+    haystack = arguments[1].as.string;
+    if (needle[0] == '\0' || haystack[0] == '\0') {
+        return harbour_value_from_integer(0);
+    }
+
+    found = strstr(haystack, needle);
+    if (found == NULL) {
+        return harbour_value_from_integer(0);
+    }
+
+    return harbour_value_from_integer((long long) (found - haystack) + 1);
+}
+
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

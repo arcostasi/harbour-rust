@@ -1,0 +1,8 @@
+At("", "") => 0
+At("", "ABCDEF") => 0
+At("ABCDEF", "") => 0
+At("AB", "AB") => 1
+At("AB", "AAB") => 2
+At("X", "ABCDEF") => 0
+At(90, 100) => BASE 1108 Argument error (AT)
+At("", 100) => BASE 1108 Argument error (AT)

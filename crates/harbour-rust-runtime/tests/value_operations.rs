@@ -1,5 +1,5 @@
 use harbour_rust_runtime::{
-    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, call_builtin,
+    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, at, call_builtin,
     call_builtin_mut, left, lower, ltrim, qout, right, rtrim, substr, trim, upper,
 };
 
@@ -399,6 +399,71 @@ fn public_upper_and_lower_dispatch_through_the_immutable_builtin_surface() {
         Ok(Value::from("MIXED"))
     );
     assert_eq!(mutable_arguments[0], Value::from("MiXeD"));
+}
+
+#[test]
+fn public_at_matches_the_current_harbour_runtime_baseline() {
+    assert_eq!(
+        at(Some(&Value::from("")), Some(&Value::from(""))),
+        Ok(Value::from(0_i64))
+    );
+    assert_eq!(
+        at(Some(&Value::from("")), Some(&Value::from("ABCDEF"))),
+        Ok(Value::from(0_i64))
+    );
+    assert_eq!(
+        at(Some(&Value::from("ABCDEF")), Some(&Value::from(""))),
+        Ok(Value::from(0_i64))
+    );
+    assert_eq!(
+        at(Some(&Value::from("AB")), Some(&Value::from("AB"))),
+        Ok(Value::from(1_i64))
+    );
+    assert_eq!(
+        at(Some(&Value::from("AB")), Some(&Value::from("AAB"))),
+        Ok(Value::from(2_i64))
+    );
+    assert_eq!(
+        at(Some(&Value::from("X")), Some(&Value::from("ABCDEF"))),
+        Ok(Value::from(0_i64))
+    );
+}
+
+#[test]
+fn public_at_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        at(Some(&Value::from(90_i64)), Some(&Value::from(100_i64))),
+        Err(RuntimeError {
+            message: "BASE 1108 Argument error (AT)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+    assert_eq!(
+        at(Some(&Value::from("")), Some(&Value::from(100_i64))),
+        Err(RuntimeError {
+            message: "BASE 1108 Argument error (AT)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
+
+#[test]
+fn public_at_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("AT", &[Value::from("AB"), Value::from("AAB")], &mut context,),
+        Ok(Value::from(2_i64))
+    );
+
+    let mut mutable_arguments = [Value::from("X"), Value::from("ABCDEF")];
+    assert_eq!(
+        call_builtin_mut("at", &mut mutable_arguments, &mut context),
+        Ok(Value::from(0_i64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("X"));
 }
 
 #[test]

@@ -466,6 +466,7 @@ pub enum Builtin {
     Trim,
     LTrim,
     RTrim,
+    At,
     AAdd,
     ASize,
     AClone,
@@ -493,6 +494,8 @@ impl Builtin {
             Some(Self::LTrim)
         } else if name.eq_ignore_ascii_case("RTRIM") {
             Some(Self::RTrim)
+        } else if name.eq_ignore_ascii_case("AT") {
+            Some(Self::At)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -695,6 +698,33 @@ pub fn rtrim(value: Option<&Value>) -> Result<Value, RuntimeError> {
     Ok(Value::from(text.trim_end_matches(' ')))
 }
 
+pub fn at(needle: Option<&Value>, haystack: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(needle) = needle else {
+        return Err(RuntimeError::at_argument_error(None));
+    };
+    let Value::String(needle) = needle else {
+        return Err(RuntimeError::at_argument_error(Some(needle.kind())));
+    };
+
+    let Some(haystack) = haystack else {
+        return Err(RuntimeError::at_argument_error(None));
+    };
+    let Value::String(haystack) = haystack else {
+        return Err(RuntimeError::at_argument_error(Some(haystack.kind())));
+    };
+
+    if needle.is_empty() || haystack.is_empty() {
+        return Ok(Value::from(0_i64));
+    }
+
+    let Some(byte_index) = haystack.find(needle) else {
+        return Ok(Value::from(0_i64));
+    };
+
+    let position = haystack[..byte_index].chars().count() as i64 + 1;
+    Ok(Value::from(position))
+}
+
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
     if matches!(array, Value::Array(_)) {
         array.array_push(value)
@@ -750,6 +780,7 @@ pub fn call_builtin(
         Some(Builtin::Trim) => trim(arguments.first()),
         Some(Builtin::LTrim) => ltrim(arguments.first()),
         Some(Builtin::RTrim) => rtrim(arguments.first()),
+        Some(Builtin::At) => at(arguments.first(), arguments.get(1)),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -774,6 +805,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Trim) => trim(arguments.first()),
         Some(Builtin::LTrim) => ltrim(arguments.first()),
         Some(Builtin::RTrim) => rtrim(arguments.first()),
+        Some(Builtin::At) => at(arguments.first(), arguments.get(1)),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -988,6 +1020,14 @@ impl RuntimeError {
     pub fn ltrim_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1101 Argument error (LTRIM)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn at_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1108 Argument error (AT)".to_owned(),
             expected: None,
             actual,
         }

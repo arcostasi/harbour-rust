@@ -1,0 +1,10 @@
+PROCEDURE Main()
+   ? At( "", "" )
+   ? At( "", "ABCDEF" )
+   ? At( "ABCDEF", "" )
+   ? At( "AB", "AB" )
+   ? At( "AB", "AAB" )
+   ? At( "X", "ABCDEF" )
+   ? At( 90, 100 )
+   ? At( "", 100 )
+RETURN
