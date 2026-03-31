@@ -1,0 +1,8 @@
+Trim("UA   ") => UA
+Trim("   UA  ") =>    UA
+Trim(100) => BASE 1100 Argument error (TRIM)
+RTrim("   UA  ") =>    UA
+RTrim(NIL) => BASE 1100 Argument error (TRIM)
+LTrim("   UA  ") => UA  
+LTrim(" \tUA  ") => UA  
+LTrim(100) => BASE 1101 Argument error (LTRIM)

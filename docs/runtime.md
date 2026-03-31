@@ -174,6 +174,15 @@ Na slice seguinte da Fase 7, entram `Upper()` e `Lower()` como builtins imutáve
 - `Lower()` agora emite `BASE 1103 Argument error (LOWER)` para argumentos inválidos,
 - nesta fase ambos continuam parciais: `Chr(0)`, codepage multibyte e by-ref observados no upstream continuam pendentes.
 
+Na slice seguinte da Fase 7, entram `Trim()`, `LTrim()` e `RTrim()` como builtins imutáveis de string:
+
+- `trim()` segue o baseline histórico de sinônimo de `rtrim()`,
+- `rtrim()` remove apenas espaços `' '` à direita no recorte atual,
+- `ltrim()` remove whitespace ASCII à esquerda no recorte atual,
+- `Trim()` e `RTrim()` agora emitem `BASE 1100 Argument error (TRIM)` para argumentos inválidos,
+- `LTrim()` agora emite `BASE 1101 Argument error (LTRIM)` para argumentos inválidos,
+- nesta fase os três continuam parciais: `Chr(0)`, regras completas de whitespace/codepage e by-ref observados no upstream continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

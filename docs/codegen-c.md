@@ -135,6 +135,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/substr_builtin.prg` | `SubStr()` em string executa |
 | `tests/fixtures/parser/left_right_builtin.prg` | `Left()` e `Right()` em string executam |
 | `tests/fixtures/parser/upper_lower_builtin.prg` | `Upper()` e `Lower()` em string executam |
+| `tests/fixtures/parser/trim_builtin.prg` | `Trim()`, `LTrim()` e `RTrim()` executam |
 | `tests/fixtures/parser/arrays.prg` | gera C com array_items |
 | `tests/fixtures/parser/indexing.prg` | gera C com array_get |
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
@@ -152,6 +153,7 @@ Fase 5 + Fase 7 parcial:
 - `SubStr()` para string via dispatch de builtin — parcial
 - `Left()` e `Right()` para string via dispatch de builtin — parcial
 - `Upper()` e `Lower()` para string via dispatch de builtin — parcial
+- `Trim()`, `LTrim()` e `RTrim()` para string via dispatch de builtin — parcial
 - LOCAL com inicializador — completo
 - Literais de array — completo
 - Indexação (leitura) — completo
@@ -161,5 +163,6 @@ Fase 5 + Fase 7 parcial:
 - `SubStr()` para codepage multibyte, `Chr(0)` e argumentos numéricos não-inteiros — pendente
 - `Left()`/`Right()` para codepage multibyte, `Chr(0)` e argumentos numéricos não-inteiros — pendente
 - `Upper()`/`Lower()` para `Chr(0)`, codepage multibyte e semântica by-ref do upstream — pendente
+- `Trim()`/`LTrim()`/`RTrim()` para `Chr(0)`, by-ref, whitespace não-ASCII e extensão Harbour de segundo parâmetro — pendente
 - STATIC com storage persistente no C gerado para leitura no mesmo routine — parcial
 - STATIC no pipeline completo (`sema -> cli run`) — parcial

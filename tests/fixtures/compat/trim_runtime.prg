@@ -1,0 +1,10 @@
+PROCEDURE Main()
+   ? Trim( "UA   " )
+   ? Trim( "   UA  " )
+   ? Trim( 100 )
+   ? RTrim( "   UA  " )
+   ? RTrim( NIL )
+   ? LTrim( "   UA  " )
+   ? LTrim( " " + Chr( 9 ) + "UA  " )
+   ? LTrim( 100 )
+RETURN

@@ -1,6 +1,6 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, call_builtin,
-    call_builtin_mut, left, lower, qout, right, substr, upper,
+    call_builtin_mut, left, lower, ltrim, qout, right, rtrim, substr, trim, upper,
 };
 
 #[test]
@@ -399,6 +399,77 @@ fn public_upper_and_lower_dispatch_through_the_immutable_builtin_surface() {
         Ok(Value::from("MIXED"))
     );
     assert_eq!(mutable_arguments[0], Value::from("MiXeD"));
+}
+
+#[test]
+fn public_trim_variants_match_the_current_runtime_baseline() {
+    assert_eq!(trim(Some(&Value::from("UA   "))), Ok(Value::from("UA")));
+    assert_eq!(
+        trim(Some(&Value::from("   UA  "))),
+        Ok(Value::from("   UA"))
+    );
+    assert_eq!(
+        rtrim(Some(&Value::from("   UA  "))),
+        Ok(Value::from("   UA"))
+    );
+    assert_eq!(
+        ltrim(Some(&Value::from("   UA  "))),
+        Ok(Value::from("UA  "))
+    );
+    assert_eq!(ltrim(Some(&Value::from(" \tU\t"))), Ok(Value::from("U\t")));
+}
+
+#[test]
+fn public_trim_variants_report_xbase_style_argument_errors() {
+    assert_eq!(
+        trim(Some(&Value::from(100_i64))),
+        Err(RuntimeError {
+            message: "BASE 1100 Argument error (TRIM)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+    assert_eq!(
+        rtrim(Some(&Value::Nil)),
+        Err(RuntimeError {
+            message: "BASE 1100 Argument error (TRIM)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        ltrim(Some(&Value::from(100_i64))),
+        Err(RuntimeError {
+            message: "BASE 1101 Argument error (LTRIM)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
+
+#[test]
+fn public_trim_variants_dispatch_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("TRIM", &[Value::from("UA   ")], &mut context),
+        Ok(Value::from("UA"))
+    );
+    assert_eq!(
+        call_builtin("ltrim", &[Value::from("   UA  ")], &mut context),
+        Ok(Value::from("UA  "))
+    );
+    assert_eq!(
+        call_builtin("RTRIM", &[Value::from("   UA  ")], &mut context),
+        Ok(Value::from("   UA"))
+    );
+
+    let mut mutable_arguments = [Value::from("  X  ")];
+    assert_eq!(
+        call_builtin_mut("TRIM", &mut mutable_arguments, &mut context),
+        Ok(Value::from("  X"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("  X  "));
 }
 
 #[test]

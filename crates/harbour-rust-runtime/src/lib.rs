@@ -463,6 +463,9 @@ pub enum Builtin {
     Right,
     Upper,
     Lower,
+    Trim,
+    LTrim,
+    RTrim,
     AAdd,
     ASize,
     AClone,
@@ -484,6 +487,12 @@ impl Builtin {
             Some(Self::Upper)
         } else if name.eq_ignore_ascii_case("LOWER") {
             Some(Self::Lower)
+        } else if name.eq_ignore_ascii_case("TRIM") {
+            Some(Self::Trim)
+        } else if name.eq_ignore_ascii_case("LTRIM") {
+            Some(Self::LTrim)
+        } else if name.eq_ignore_ascii_case("RTRIM") {
+            Some(Self::RTrim)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -660,6 +669,32 @@ pub fn lower(value: Option<&Value>) -> Result<Value, RuntimeError> {
     Ok(Value::from(text.to_ascii_lowercase()))
 }
 
+pub fn trim(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    rtrim(value)
+}
+
+pub fn ltrim(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::ltrim_argument_error(None));
+    };
+    let Value::String(text) = value else {
+        return Err(RuntimeError::ltrim_argument_error(Some(value.kind())));
+    };
+
+    Ok(Value::from(text.trim_start_matches(char::is_whitespace)))
+}
+
+pub fn rtrim(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::trim_argument_error(None));
+    };
+    let Value::String(text) = value else {
+        return Err(RuntimeError::trim_argument_error(Some(value.kind())));
+    };
+
+    Ok(Value::from(text.trim_end_matches(' ')))
+}
+
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
     if matches!(array, Value::Array(_)) {
         array.array_push(value)
@@ -712,6 +747,9 @@ pub fn call_builtin(
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
         Some(Builtin::Upper) => upper(arguments.first()),
         Some(Builtin::Lower) => lower(arguments.first()),
+        Some(Builtin::Trim) => trim(arguments.first()),
+        Some(Builtin::LTrim) => ltrim(arguments.first()),
+        Some(Builtin::RTrim) => rtrim(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -733,6 +771,9 @@ pub fn call_builtin_mut(
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
         Some(Builtin::Upper) => upper(arguments.first()),
         Some(Builtin::Lower) => lower(arguments.first()),
+        Some(Builtin::Trim) => trim(arguments.first()),
+        Some(Builtin::LTrim) => ltrim(arguments.first()),
+        Some(Builtin::RTrim) => rtrim(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -931,6 +972,22 @@ impl RuntimeError {
     pub fn lower_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1103 Argument error (LOWER)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn trim_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1100 Argument error (TRIM)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn ltrim_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1101 Argument error (LTRIM)".to_owned(),
             expected: None,
             actual,
         }

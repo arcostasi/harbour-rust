@@ -230,6 +230,32 @@ fn emits_upper_lower_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_trim_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/trim_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_trim((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"UA   \") }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_ltrim((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"   UA  \") }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_rtrim((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"   UA  \") }, 1) }, 1);")
+    );
+}
+
+#[test]
 fn emits_static_fixture_with_persistent_c_storage() {
     let emitted = emit_fixture("tests/fixtures/parser/static.prg");
 
@@ -319,6 +345,21 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
         emitted
             .source
             .contains("extern harbour_runtime_Value harbour_builtin_lower(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_trim(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_ltrim(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_rtrim(const harbour_runtime_Value *arguments, size_t argument_count);")
     );
     assert!(
         emitted

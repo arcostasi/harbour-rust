@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -711,6 +712,62 @@ struct harbour_runtime_Value harbour_builtin_lower(
     }
 
     return harbour_ascii_case_transform(arguments[0].as.string, tolower);
+}
+
+struct harbour_runtime_Value harbour_builtin_trim(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    return harbour_builtin_rtrim(arguments, argument_count);
+}
+
+struct harbour_runtime_Value harbour_builtin_ltrim(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *text;
+    size_t length;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1101 Argument error (LTRIM)");
+    }
+
+    text = arguments[0].as.string;
+    while (*text != '\0' && isspace((unsigned char) *text)) {
+        text++;
+    }
+
+    length = strlen(text);
+    return harbour_substr_from_bounds(text, length, 0, length);
+}
+
+struct harbour_runtime_Value harbour_builtin_rtrim(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *text;
+    size_t length;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1100 Argument error (TRIM)");
+    }
+
+    text = arguments[0].as.string;
+    length = strlen(text);
+
+    while (length > 0 && text[length - 1] == ' ') {
+        length--;
+    }
+
+    return harbour_substr_from_bounds(text, strlen(text), 0, length);
 }
 
 struct harbour_runtime_Value harbour_builtin_aclone(
