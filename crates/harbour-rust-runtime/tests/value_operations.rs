@@ -1,6 +1,6 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, call_builtin,
-    call_builtin_mut, qout, substr,
+    call_builtin_mut, left, qout, right, substr,
 };
 
 #[test]
@@ -249,6 +249,99 @@ fn public_substr_dispatches_through_the_immutable_builtin_surface() {
     assert_eq!(
         call_builtin_mut("substr", &mut mutable_arguments, &mut context),
         Ok(Value::from("ef"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("abcdef"));
+}
+
+#[test]
+fn public_left_matches_the_current_runtime_baseline() {
+    assert_eq!(
+        left(Some(&Value::from("abcdef")), Some(&Value::from(-2_i64))),
+        Ok(Value::from(""))
+    );
+    assert_eq!(
+        left(Some(&Value::from("abcdef")), Some(&Value::from(2_i64))),
+        Ok(Value::from("ab"))
+    );
+    assert_eq!(
+        left(Some(&Value::from("abcdef")), Some(&Value::from(10_i64))),
+        Ok(Value::from("abcdef"))
+    );
+    assert_eq!(
+        left(Some(&Value::from("abcdef")), Some(&Value::from(0_i64))),
+        Ok(Value::from(""))
+    );
+}
+
+#[test]
+fn public_left_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        left(Some(&Value::from(100_i64)), Some(&Value::from(-10_i64))),
+        Err(RuntimeError {
+            message: "BASE 1124 Argument error (LEFT)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+    assert_eq!(
+        left(Some(&Value::from("abcdef")), Some(&Value::from("A"))),
+        Err(RuntimeError {
+            message: "BASE 1124 Argument error (LEFT)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+}
+
+#[test]
+fn public_right_matches_the_current_lenient_runtime_baseline() {
+    assert_eq!(
+        right(Some(&Value::from(100_i64)), Some(&Value::from(-10_i64))),
+        Ok(Value::from(""))
+    );
+    assert_eq!(
+        right(Some(&Value::from("abcdef")), Some(&Value::from("A"))),
+        Ok(Value::from(""))
+    );
+    assert_eq!(
+        right(Some(&Value::from("abcdef")), Some(&Value::from(-2_i64))),
+        Ok(Value::from(""))
+    );
+    assert_eq!(
+        right(Some(&Value::from("abcdef")), Some(&Value::from(2_i64))),
+        Ok(Value::from("ef"))
+    );
+    assert_eq!(
+        right(Some(&Value::from("abcdef")), Some(&Value::from(10_i64))),
+        Ok(Value::from("abcdef"))
+    );
+}
+
+#[test]
+fn public_left_and_right_dispatch_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "LEFT",
+            &[Value::from("abcdef"), Value::from(2_i64)],
+            &mut context,
+        ),
+        Ok(Value::from("ab"))
+    );
+    assert_eq!(
+        call_builtin(
+            "right",
+            &[Value::from("abcdef"), Value::from(2_i64)],
+            &mut context,
+        ),
+        Ok(Value::from("ef"))
+    );
+
+    let mut mutable_arguments = [Value::from("abcdef"), Value::from(10_i64)];
+    assert_eq!(
+        call_builtin_mut("RIGHT", &mut mutable_arguments, &mut context),
+        Ok(Value::from("abcdef"))
     );
     assert_eq!(mutable_arguments[0], Value::from("abcdef"));
 }

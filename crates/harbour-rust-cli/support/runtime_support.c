@@ -609,6 +609,75 @@ struct harbour_runtime_Value harbour_builtin_substr(
     return harbour_substr_from_bounds(text, text_length, start_index, (size_t) count);
 }
 
+struct harbour_runtime_Value harbour_builtin_left(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *text;
+    size_t text_length;
+    long long count;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING ||
+        arguments[1].kind != HARBOUR_VALUE_INTEGER
+    ) {
+        return harbour_value_error_literal("BASE 1124 Argument error (LEFT)");
+    }
+
+    text = arguments[0].as.string;
+    text_length = strlen(text);
+    count = arguments[1].as.integer;
+
+    if (count <= 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    if ((size_t) count >= text_length) {
+        return harbour_value_from_string_literal(text);
+    }
+
+    return harbour_substr_from_bounds(text, text_length, 0, (size_t) count);
+}
+
+struct harbour_runtime_Value harbour_builtin_right(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *text;
+    size_t text_length;
+    long long count;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING ||
+        arguments[1].kind != HARBOUR_VALUE_INTEGER
+    ) {
+        return harbour_value_from_string_literal("");
+    }
+
+    text = arguments[0].as.string;
+    text_length = strlen(text);
+    count = arguments[1].as.integer;
+
+    if (count <= 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    if ((size_t) count >= text_length) {
+        return harbour_value_from_string_literal(text);
+    }
+
+    return harbour_substr_from_bounds(
+        text,
+        text_length,
+        text_length - (size_t) count,
+        (size_t) count
+    );
+}
+
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

@@ -1,0 +1,12 @@
+PROCEDURE Main()
+   ? Left( "abcdef", -2 )
+   ? Left( "abcdef", 2 )
+   ? Left( "abcdef", 10 )
+   ? Left( 100, -10 )
+   ? Left( "abcdef", "A" )
+   ? Right( "abcdef", -2 )
+   ? Right( "abcdef", 2 )
+   ? Right( "abcdef", 10 )
+   ? Right( 100, -10 )
+   ? Right( "abcdef", "A" )
+RETURN

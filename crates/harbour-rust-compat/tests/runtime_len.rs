@@ -12,7 +12,10 @@ fn workspace_fixture(path: &str) -> PathBuf {
 
 fn runtime_len_baseline() -> String {
     let mut out = String::new();
-    out.push_str(&format!("Len(\"123\") => {}\n", result_text(len(Some(&Value::from("123"))))));
+    out.push_str(&format!(
+        "Len(\"123\") => {}\n",
+        result_text(len(Some(&Value::from("123"))))
+    ));
     out.push_str(&format!(
         "Len({{1,2,3}}) => {}\n",
         result_text(len(Some(&Value::array(vec![
@@ -21,7 +24,10 @@ fn runtime_len_baseline() -> String {
             Value::from(3_i64),
         ]))))
     ));
-    out.push_str(&format!("Len(NIL) => {}\n", result_text(len(Some(&Value::Nil)))));
+    out.push_str(&format!(
+        "Len(NIL) => {}\n",
+        result_text(len(Some(&Value::Nil)))
+    ));
     out.push_str(&format!(
         "Len(123) => {}\n",
         result_text(len(Some(&Value::from(123_i64))))
@@ -53,9 +59,8 @@ fn len_fixture_parses_without_errors() {
 fn len_runtime_matches_upstream_oracle_snapshot() {
     let upstream = fs::read_to_string(workspace_fixture("harbour-core/utils/hbtest/rt_hvma.prg"))
         .expect("upstream hbtest");
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/compat/len_runtime.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/compat/len_runtime.out"))
+        .expect("fixture snapshot");
 
     assert!(upstream.contains("HBTEST Len( NIL )"));
     assert!(upstream.contains("BASE 1111 Argument error (LEN)"));

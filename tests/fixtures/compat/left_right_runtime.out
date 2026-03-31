@@ -1,0 +1,10 @@
+Left("abcdef", -2) => 
+Left("abcdef", 2) => ab
+Left("abcdef", 10) => abcdef
+Left(100, -10) => BASE 1124 Argument error (LEFT)
+Left("abcdef", "A") => BASE 1124 Argument error (LEFT)
+Right("abcdef", -2) => 
+Right("abcdef", 2) => ef
+Right("abcdef", 10) => abcdef
+Right(100, -10) => 
+Right("abcdef", "A") => 

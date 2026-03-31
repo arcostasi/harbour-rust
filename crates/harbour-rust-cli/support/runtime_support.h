@@ -102,6 +102,14 @@ struct harbour_runtime_Value harbour_builtin_substr(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_left(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
+struct harbour_runtime_Value harbour_builtin_right(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

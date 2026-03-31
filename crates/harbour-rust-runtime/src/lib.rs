@@ -459,6 +459,8 @@ pub enum Builtin {
     QOut,
     Len,
     SubStr,
+    Left,
+    Right,
     AAdd,
     ASize,
     AClone,
@@ -472,6 +474,10 @@ impl Builtin {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
             Some(Self::SubStr)
+        } else if name.eq_ignore_ascii_case("LEFT") {
+            Some(Self::Left)
+        } else if name.eq_ignore_ascii_case("RIGHT") {
+            Some(Self::Right)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -561,9 +567,69 @@ pub fn substr(
     }
 
     let start_index = start_index as usize;
-    let end_index = start_index + count as usize;
-    let slice: String = characters[start_index..end_index].iter().copied().collect();
-    Ok(Value::from(slice))
+    Ok(Value::from(string_slice(
+        &characters,
+        start_index,
+        count as usize,
+    )))
+}
+
+pub fn left(source: Option<&Value>, count: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(source) = source else {
+        return Err(RuntimeError::left_argument_error(None));
+    };
+    let Value::String(text) = source else {
+        return Err(RuntimeError::left_argument_error(Some(source.kind())));
+    };
+
+    let Some(count) = count else {
+        return Err(RuntimeError::left_argument_error(None));
+    };
+    let count = match count {
+        Value::Integer(value) => *value,
+        other => return Err(RuntimeError::left_argument_error(Some(other.kind()))),
+    };
+
+    if count <= 0 {
+        return Ok(Value::from(""));
+    }
+
+    let characters: Vec<char> = text.chars().collect();
+    let count = usize::min(count as usize, characters.len());
+    Ok(Value::from(string_slice(&characters, 0, count)))
+}
+
+pub fn right(source: Option<&Value>, count: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(source) = source else {
+        return Ok(Value::from(""));
+    };
+    let Value::String(text) = source else {
+        return Ok(Value::from(""));
+    };
+
+    let Some(count) = count else {
+        return Ok(Value::from(""));
+    };
+    let count = match count {
+        Value::Integer(value) => *value,
+        _ => return Ok(Value::from("")),
+    };
+
+    if count <= 0 {
+        return Ok(Value::from(""));
+    }
+
+    let characters: Vec<char> = text.chars().collect();
+    if count as usize >= characters.len() {
+        return Ok(Value::from(text.clone()));
+    }
+
+    let start = characters.len() - count as usize;
+    Ok(Value::from(string_slice(
+        &characters,
+        start,
+        count as usize,
+    )))
 }
 
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
@@ -614,6 +680,8 @@ pub fn call_builtin(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
+        Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
+        Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -631,6 +699,8 @@ pub fn call_builtin_mut(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
+        Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
+        Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -805,6 +875,14 @@ impl RuntimeError {
     pub fn substr_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1110 Argument error (SUBSTR)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn left_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1124 Argument error (LEFT)".to_owned(),
             expected: None,
             actual,
         }
@@ -986,6 +1064,10 @@ impl fmt::Display for RuntimeError {
 }
 
 impl Error for RuntimeError {}
+
+fn string_slice(characters: &[char], start: usize, count: usize) -> String {
+    characters[start..start + count].iter().copied().collect()
+}
 
 #[cfg(test)]
 mod tests {

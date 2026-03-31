@@ -156,6 +156,15 @@ Na slice seguinte da Fase 7, entra `SubStr()` como builtin imutável de string:
 - argumentos inválidos agora produzem `BASE 1110 Argument error (SUBSTR)`,
 - nesta fase o builtin continua parcial: `start/count` ainda exigem `Integer`, e codepage multibyte + `Chr(0)` no host C permanecem pendentes.
 
+Na slice seguinte da Fase 7, entram `Left()` e `Right()` como builtins imutáveis de string:
+
+- `left()` cobre o baseline inicial de `Left( cText, nCount )` para `String`,
+- `right()` cobre o baseline inicial de `Right( cText, nCount )` para `String`,
+- `nCount <= 0` retorna string vazia e valores acima do tamanho fazem clipping para a string inteira,
+- `Left()` agora emite `BASE 1124 Argument error (LEFT)` para argumentos inválidos,
+- `Right()` segue o recorte leniente observado em `rt_str.prg` e retorna string vazia para argumentos inválidos,
+- nesta fase ambos continuam parciais: `count` ainda exige `Integer`, e codepage multibyte + `Chr(0)` no host C permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,
