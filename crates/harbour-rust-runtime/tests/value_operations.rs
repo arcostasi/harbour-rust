@@ -1,6 +1,6 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, call_builtin,
-    call_builtin_mut, qout,
+    call_builtin_mut, qout, substr,
 };
 
 #[test]
@@ -142,6 +142,115 @@ fn public_builtin_dispatch_routes_print_calls_through_runtime_context() {
         Ok(Value::Nil)
     );
     assert_eq!(context.into_output().into_string(), "sum 3 4.5\n");
+}
+
+#[test]
+fn public_substr_matches_the_current_ascii_runtime_baseline() {
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from(0_i64)),
+            Some(&Value::from(1_i64)),
+        ),
+        Ok(Value::from("a"))
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from(2_i64)),
+            Some(&Value::from(7_i64)),
+        ),
+        Ok(Value::from("bcdef"))
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from(-2_i64)),
+            None,
+        ),
+        Ok(Value::from("ef"))
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from(10_i64)),
+            None,
+        ),
+        Ok(Value::from(""))
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from(2_i64)),
+            Some(&Value::from(-1_i64)),
+        ),
+        Ok(Value::from(""))
+    );
+}
+
+#[test]
+fn public_substr_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        substr(
+            Some(&Value::from(100_i64)),
+            Some(&Value::from(0_i64)),
+            Some(&Value::from(-1_i64)),
+        ),
+        Err(RuntimeError {
+            message: "BASE 1110 Argument error (SUBSTR)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+    assert_eq!(
+        substr(Some(&Value::from("abcdef")), None, None),
+        Err(RuntimeError {
+            message: "BASE 1110 Argument error (SUBSTR)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from("a")),
+            Some(&Value::from(1_i64)),
+        ),
+        Err(RuntimeError {
+            message: "BASE 1110 Argument error (SUBSTR)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+}
+
+#[test]
+fn public_substr_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "SUBSTR",
+            &[
+                Value::from("abcdef"),
+                Value::from(2_i64),
+                Value::from(3_i64),
+            ],
+            &mut context,
+        ),
+        Ok(Value::from("bcd"))
+    );
+
+    let mut mutable_arguments = [
+        Value::from("abcdef"),
+        Value::from(-2_i64),
+        Value::from(7_i64),
+    ];
+    assert_eq!(
+        call_builtin_mut("substr", &mut mutable_arguments, &mut context),
+        Ok(Value::from("ef"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("abcdef"));
 }
 
 #[test]

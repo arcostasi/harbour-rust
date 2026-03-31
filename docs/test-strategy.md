@@ -90,6 +90,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/compound_assign.prg` -> `compound_assign.ast`
 - `tests/fixtures/parser/compound_assign_run.prg` -> `harbour-rust-cli build/run` com `+= -= *= /=`
 - `tests/fixtures/parser/len_builtin.prg` -> `harbour-rust-cli build/run` com `Len()` para string e array
+- `tests/fixtures/parser/substr_builtin.prg` -> `harbour-rust-cli build/run` com `SubStr()` para string
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
@@ -97,6 +98,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/compound_assign.prg` -> lowering HIR estável como `Assignment + Binary`
 - `tests/fixtures/parser/compound_assign_mod.prg` -> erro explícito de `codegen-c` para operador ainda não executável
 - `tests/fixtures/compat/len_runtime.prg` -> baseline focado de `Len()` contra `harbour-core/utils/hbtest/rt_hvma.prg`
+- `tests/fixtures/compat/substr_runtime.prg` -> baseline focado de `SubStr()` contra `harbour-core/utils/hbtest/rt_str.prg`
 - `tests/fixtures/parser/indexing.prg` -> lowering HIR explícito para `Index(target, indices)`
 - `tests/fixtures/parser/static.prg` -> lowering IR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-ir` -> lowering IR como `Read(path)` explícito

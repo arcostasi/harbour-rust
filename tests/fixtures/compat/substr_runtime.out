@@ -1,0 +1,7 @@
+SubStr("abcdef", 0, 1) => a
+SubStr("abcdef", 2, 7) => bcdef
+SubStr("abcdef", -2) => ef
+SubStr("abcdef", 10) => 
+SubStr("abcdef", 2, -1) => 
+SubStr(100, 0, -1) => BASE 1110 Argument error (SUBSTR)
+SubStr("abcdef", "a") => BASE 1110 Argument error (SUBSTR)

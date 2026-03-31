@@ -167,6 +167,27 @@ fn emits_len_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_substr_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/substr_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_substr((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"abcdef\"), harbour_value_from_integer(0LL), harbour_value_from_integer(1LL) }, 3) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_substr((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"abcdef\"), harbour_value_from_integer(10LL) }, 2) }, 1);")
+    );
+}
+
+#[test]
 fn emits_static_fixture_with_persistent_c_storage() {
     let emitted = emit_fixture("tests/fixtures/parser/static.prg");
 
@@ -231,6 +252,11 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
         emitted
             .source
             .contains("extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_substr(const harbour_runtime_Value *arguments, size_t argument_count);")
     );
     assert!(
         emitted

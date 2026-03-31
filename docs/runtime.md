@@ -148,6 +148,14 @@ Na slice seguinte da Fase 7, entra `Len()` como builtin imutável compartilhado 
 - `call_builtin()` e `call_builtin_mut()` passam a despachar `LEN` de forma case-insensitive,
 - nesta fase o builtin ainda não cobre hashes, objetos nem semântica de codepage multibyte observada no upstream completo.
 
+Na slice seguinte da Fase 7, entra `SubStr()` como builtin imutável de string:
+
+- `substr()` cobre o baseline inicial de `SubStr( cText, nStart, [nCount] )` para `String`,
+- `nStart` aceita `0`, positivos e negativos, com clipping alinhado ao recorte observado em `rt_str.prg`,
+- `nCount <= 0` retorna string vazia, ausência de `nCount` devolve a cauda da string,
+- argumentos inválidos agora produzem `BASE 1110 Argument error (SUBSTR)`,
+- nesta fase o builtin continua parcial: `start/count` ainda exigem `Integer`, e codepage multibyte + `Chr(0)` no host C permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

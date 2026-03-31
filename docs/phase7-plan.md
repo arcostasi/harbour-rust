@@ -158,7 +158,7 @@ RETURN
 
 ### Slice 7.5 — Builtins essenciais de string
 
-**Status:** parcial (`Len()` ✓)
+**Status:** parcial (`Len()` ✓, `SubStr()` ✓)
 
 **Escopo (por prioridade):**
 

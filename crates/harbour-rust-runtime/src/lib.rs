@@ -458,6 +458,7 @@ impl RuntimeContext {
 pub enum Builtin {
     QOut,
     Len,
+    SubStr,
     AAdd,
     ASize,
     AClone,
@@ -469,6 +470,8 @@ impl Builtin {
             Some(Self::QOut)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
+        } else if name.eq_ignore_ascii_case("SUBSTR") {
+            Some(Self::SubStr)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -496,6 +499,71 @@ pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
         Value::Array(values) => Ok(Value::from(values.len() as i64)),
         other => Err(RuntimeError::len_argument_error(Some(other.kind()))),
     }
+}
+
+pub fn substr(
+    source: Option<&Value>,
+    start: Option<&Value>,
+    count: Option<&Value>,
+) -> Result<Value, RuntimeError> {
+    let Some(source) = source else {
+        return Err(RuntimeError::substr_argument_error(None));
+    };
+    let Value::String(text) = source else {
+        return Err(RuntimeError::substr_argument_error(Some(source.kind())));
+    };
+
+    let Some(start) = start else {
+        return Err(RuntimeError::substr_argument_error(None));
+    };
+    let mut start = match start {
+        Value::Integer(value) => *value,
+        other => return Err(RuntimeError::substr_argument_error(Some(other.kind()))),
+    };
+
+    let mut count = match count {
+        Some(Value::Integer(value)) => *value,
+        Some(other) => return Err(RuntimeError::substr_argument_error(Some(other.kind()))),
+        None => text.chars().count() as i64,
+    };
+
+    let characters: Vec<char> = text.chars().collect();
+    let size = characters.len() as i64;
+
+    if start > 0 {
+        start -= 1;
+        if start > size {
+            count = 0;
+        }
+    }
+
+    if count <= 0 {
+        return Ok(Value::from(""));
+    }
+
+    if start < 0 {
+        start += size;
+    }
+
+    let mut start_index = 0_i64;
+    let mut available = size;
+    if start > 0 {
+        start_index = start;
+        available = size - start;
+    }
+
+    if count > available {
+        count = available;
+    }
+
+    if count <= 0 {
+        return Ok(Value::from(""));
+    }
+
+    let start_index = start_index as usize;
+    let end_index = start_index + count as usize;
+    let slice: String = characters[start_index..end_index].iter().copied().collect();
+    Ok(Value::from(slice))
 }
 
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
@@ -545,6 +613,7 @@ pub fn call_builtin(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
+        Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -561,6 +630,7 @@ pub fn call_builtin_mut(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
+        Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -727,6 +797,14 @@ impl RuntimeError {
     pub fn len_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1111 Argument error (LEN)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn substr_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1110 Argument error (SUBSTR)".to_owned(),
             expected: None,
             actual,
         }

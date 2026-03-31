@@ -9,6 +9,12 @@ typedef struct harbour_runtime_Value harbour_runtime_Value;
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value);
 static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t length);
 static unsigned long long harbour_allocate_array_identity(void);
+static harbour_runtime_Value harbour_substr_from_bounds(
+    const char *text,
+    size_t length,
+    size_t start,
+    size_t count
+);
 static _Bool harbour_try_numeric_pair(
     harbour_runtime_Value left,
     harbour_runtime_Value right,
@@ -545,6 +551,64 @@ struct harbour_runtime_Value harbour_builtin_len(
     return harbour_value_error_literal("BASE 1111 Argument error (LEN)");
 }
 
+struct harbour_runtime_Value harbour_builtin_substr(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *text;
+    size_t text_length;
+    long long start;
+    long long count;
+    size_t start_index = 0;
+    size_t available;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING ||
+        arguments[1].kind != HARBOUR_VALUE_INTEGER ||
+        ( argument_count >= 3 && arguments[2].kind != HARBOUR_VALUE_INTEGER )
+    ) {
+        return harbour_value_error_literal("BASE 1110 Argument error (SUBSTR)");
+    }
+
+    text = arguments[0].as.string;
+    text_length = strlen(text);
+    start = arguments[1].as.integer;
+    count = argument_count < 3 ? (long long) text_length : arguments[2].as.integer;
+
+    if (start > 0) {
+        start -= 1;
+        if (start > (long long) text_length) {
+            count = 0;
+        }
+    }
+
+    if (count <= 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    if (start < 0) {
+        start += (long long) text_length;
+    }
+
+    available = text_length;
+    if (start > 0) {
+        start_index = (size_t) start;
+        available = text_length - start_index;
+    }
+
+    if (count > (long long) available) {
+        count = (long long) available;
+    }
+
+    if (count <= 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    return harbour_substr_from_bounds(text, text_length, start_index, (size_t) count);
+}
+
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -674,6 +738,32 @@ static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t len
     value->as.array.items = resized_items;
     value->as.array.length = length;
     return 1;
+}
+
+static harbour_runtime_Value harbour_substr_from_bounds(
+    const char *text,
+    size_t length,
+    size_t start,
+    size_t count
+) {
+    char *slice;
+
+    if (count == 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    if (start == 0 && count == length) {
+        return harbour_value_from_string_literal(text);
+    }
+
+    slice = (char *) malloc(count + 1);
+    if (slice == NULL) {
+        return harbour_value_nil();
+    }
+
+    memcpy(slice, text + start, count);
+    slice[count] = '\0';
+    return harbour_value_from_string_literal(slice);
 }
 
 static unsigned long long harbour_allocate_array_identity(void) {
