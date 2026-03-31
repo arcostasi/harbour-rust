@@ -1,0 +1,6 @@
+Upper("aAZAZa") => AAZAZA
+Upper("") => 
+Upper(100) => BASE 1102 Argument error (UPPER)
+Lower("AazazA") => aazaza
+Lower("") => 
+Lower(100) => BASE 1103 Argument error (LOWER)

@@ -1,6 +1,6 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, call_builtin,
-    call_builtin_mut, left, qout, right, substr,
+    call_builtin_mut, left, lower, qout, right, substr, upper,
 };
 
 #[test]
@@ -344,6 +344,61 @@ fn public_left_and_right_dispatch_through_the_immutable_builtin_surface() {
         Ok(Value::from("abcdef"))
     );
     assert_eq!(mutable_arguments[0], Value::from("abcdef"));
+}
+
+#[test]
+fn public_upper_and_lower_match_the_current_ascii_runtime_baseline() {
+    assert_eq!(
+        upper(Some(&Value::from("aAZAZa"))),
+        Ok(Value::from("AAZAZA"))
+    );
+    assert_eq!(upper(Some(&Value::from("2"))), Ok(Value::from("2")));
+    assert_eq!(
+        lower(Some(&Value::from("AazazA"))),
+        Ok(Value::from("aazaza"))
+    );
+    assert_eq!(lower(Some(&Value::from("{"))), Ok(Value::from("{")));
+}
+
+#[test]
+fn public_upper_and_lower_report_xbase_style_argument_errors() {
+    assert_eq!(
+        upper(Some(&Value::from(100_i64))),
+        Err(RuntimeError {
+            message: "BASE 1102 Argument error (UPPER)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+    assert_eq!(
+        lower(Some(&Value::from(100_i64))),
+        Err(RuntimeError {
+            message: "BASE 1103 Argument error (LOWER)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
+
+#[test]
+fn public_upper_and_lower_dispatch_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("UPPER", &[Value::from("harbour")], &mut context),
+        Ok(Value::from("HARBOUR"))
+    );
+    assert_eq!(
+        call_builtin("lower", &[Value::from("HARBOUR")], &mut context),
+        Ok(Value::from("harbour"))
+    );
+
+    let mut mutable_arguments = [Value::from("MiXeD")];
+    assert_eq!(
+        call_builtin_mut("UPPER", &mut mutable_arguments, &mut context),
+        Ok(Value::from("MIXED"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("MiXeD"));
 }
 
 #[test]

@@ -399,6 +399,8 @@ fn is_runtime_builtin(name: &str) -> bool {
         || name.eq_ignore_ascii_case("SUBSTR")
         || name.eq_ignore_ascii_case("LEFT")
         || name.eq_ignore_ascii_case("RIGHT")
+        || name.eq_ignore_ascii_case("UPPER")
+        || name.eq_ignore_ascii_case("LOWER")
         || name.eq_ignore_ascii_case("ACLONE")
         || name.eq_ignore_ascii_case("AADD")
         || name.eq_ignore_ascii_case("ASIZE")

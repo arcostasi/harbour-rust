@@ -213,6 +213,31 @@ fn build_command_writes_c_output_for_left_right_builtin_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_upper_lower_builtin_fixture() {
+    let temp_dir = unique_temp_dir("upper-lower-builtin");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("upper_lower_builtin.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/upper_lower_builtin.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_upper("));
+    assert!(generated.contains("harbour_builtin_lower("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_aclones_fixture() {
     let temp_dir = unique_temp_dir("aclone");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -486,6 +511,41 @@ fn run_command_executes_left_right_builtin_invalid_fixture_with_expected_output(
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "BASE 1124 Argument error (LEFT)\n\n");
+}
+
+#[test]
+fn run_command_executes_upper_lower_builtin_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/upper_lower_builtin.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "AAZAZA\naazaza\n2\n{\n");
+}
+
+#[test]
+fn run_command_executes_upper_lower_builtin_invalid_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/upper_lower_builtin_invalid.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(
+        stdout,
+        "BASE 1102 Argument error (UPPER)\nBASE 1103 Argument error (LOWER)\n"
+    );
 }
 
 #[test]

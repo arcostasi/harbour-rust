@@ -461,6 +461,8 @@ pub enum Builtin {
     SubStr,
     Left,
     Right,
+    Upper,
+    Lower,
     AAdd,
     ASize,
     AClone,
@@ -478,6 +480,10 @@ impl Builtin {
             Some(Self::Left)
         } else if name.eq_ignore_ascii_case("RIGHT") {
             Some(Self::Right)
+        } else if name.eq_ignore_ascii_case("UPPER") {
+            Some(Self::Upper)
+        } else if name.eq_ignore_ascii_case("LOWER") {
+            Some(Self::Lower)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -632,6 +638,28 @@ pub fn right(source: Option<&Value>, count: Option<&Value>) -> Result<Value, Run
     )))
 }
 
+pub fn upper(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::upper_argument_error(None));
+    };
+    let Value::String(text) = value else {
+        return Err(RuntimeError::upper_argument_error(Some(value.kind())));
+    };
+
+    Ok(Value::from(text.to_ascii_uppercase()))
+}
+
+pub fn lower(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::lower_argument_error(None));
+    };
+    let Value::String(text) = value else {
+        return Err(RuntimeError::lower_argument_error(Some(value.kind())));
+    };
+
+    Ok(Value::from(text.to_ascii_lowercase()))
+}
+
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
     if matches!(array, Value::Array(_)) {
         array.array_push(value)
@@ -682,6 +710,8 @@ pub fn call_builtin(
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
+        Some(Builtin::Upper) => upper(arguments.first()),
+        Some(Builtin::Lower) => lower(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -701,6 +731,8 @@ pub fn call_builtin_mut(
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
+        Some(Builtin::Upper) => upper(arguments.first()),
+        Some(Builtin::Lower) => lower(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -883,6 +915,22 @@ impl RuntimeError {
     pub fn left_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1124 Argument error (LEFT)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn upper_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1102 Argument error (UPPER)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn lower_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1103 Argument error (LOWER)".to_owned(),
             expected: None,
             actual,
         }

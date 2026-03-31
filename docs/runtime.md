@@ -165,6 +165,15 @@ Na slice seguinte da Fase 7, entram `Left()` e `Right()` como builtins imutávei
 - `Right()` segue o recorte leniente observado em `rt_str.prg` e retorna string vazia para argumentos inválidos,
 - nesta fase ambos continuam parciais: `count` ainda exige `Integer`, e codepage multibyte + `Chr(0)` no host C permanecem pendentes.
 
+Na slice seguinte da Fase 7, entram `Upper()` e `Lower()` como builtins imutáveis de string:
+
+- `upper()` cobre o baseline inicial ASCII de `Upper( cText )`,
+- `lower()` cobre o baseline inicial ASCII de `Lower( cText )`,
+- ambos preservam bytes não-ASCII no recorte atual e transformam apenas letras ASCII,
+- `Upper()` agora emite `BASE 1102 Argument error (UPPER)` para argumentos inválidos,
+- `Lower()` agora emite `BASE 1103 Argument error (LOWER)` para argumentos inválidos,
+- nesta fase ambos continuam parciais: `Chr(0)`, codepage multibyte e by-ref observados no upstream continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

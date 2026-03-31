@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,10 @@ static harbour_runtime_Value harbour_substr_from_bounds(
     size_t length,
     size_t start,
     size_t count
+);
+static harbour_runtime_Value harbour_ascii_case_transform(
+    const char *text,
+    int (*transform)(int)
 );
 static _Bool harbour_try_numeric_pair(
     harbour_runtime_Value left,
@@ -678,6 +683,36 @@ struct harbour_runtime_Value harbour_builtin_right(
     );
 }
 
+struct harbour_runtime_Value harbour_builtin_upper(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1102 Argument error (UPPER)");
+    }
+
+    return harbour_ascii_case_transform(arguments[0].as.string, toupper);
+}
+
+struct harbour_runtime_Value harbour_builtin_lower(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1103 Argument error (LOWER)");
+    }
+
+    return harbour_ascii_case_transform(arguments[0].as.string, tolower);
+}
+
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -867,4 +902,29 @@ static harbour_runtime_Value harbour_unsupported_comparison(void) {
 
 static harbour_runtime_Value harbour_array_comparison_error(const char *message) {
     return harbour_value_error_literal(message);
+}
+static harbour_runtime_Value harbour_ascii_case_transform(
+    const char *text,
+    int (*transform)(int)
+) {
+    size_t index;
+    size_t length;
+    char *buffer;
+
+    length = strlen(text);
+    if (length == 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    buffer = (char *) malloc(length + 1);
+    if (buffer == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    for (index = 0; index < length; ++index) {
+        buffer[index] = (char) transform((unsigned char) text[index]);
+    }
+    buffer[length] = '\0';
+
+    return harbour_value_from_string_literal(buffer);
 }
