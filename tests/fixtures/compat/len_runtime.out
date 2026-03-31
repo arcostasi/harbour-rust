@@ -1,0 +1,4 @@
+Len("123") => 3
+Len({1,2,3}) => 3
+Len(NIL) => BASE 1111 Argument error (LEN)
+Len(123) => BASE 1111 Argument error (LEN)

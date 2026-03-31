@@ -144,6 +144,28 @@ fn build_command_writes_c_output_for_compound_assign_run_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_len_builtin_fixture() {
+    let temp_dir = unique_temp_dir("len-builtin");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("len_builtin.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/len_builtin.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_len("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_aclones_fixture() {
     let temp_dir = unique_temp_dir("aclone");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -325,6 +347,36 @@ fn build_command_reports_codegen_error_for_unsupported_compound_assign_operator(
     let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
     assert!(stderr.contains("codegen-c failed"));
     assert!(stderr.contains("C emission for this binary operator is not implemented yet"));
+}
+
+#[test]
+fn run_command_executes_len_builtin_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/len_builtin.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "4\n3\n");
+}
+
+#[test]
+fn run_command_executes_len_builtin_invalid_fixture_with_xbase_error_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/len_builtin_invalid.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "BASE 1111 Argument error (LEN)\n");
 }
 
 #[test]

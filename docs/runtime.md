@@ -141,6 +141,13 @@ Na slice seguinte da Fase 7, entram os primeiros builtins de array sobre essa in
 - `call_builtin_mut()` passa a existir como surface separada para builtins mutantes,
 - `call_builtin()` continua atendendo builtins imutáveis e reporta erro explícito se `AAdd` ou `ASize` forem chamados pela surface errada.
 
+Na slice seguinte da Fase 7, entra `Len()` como builtin imutável compartilhado entre strings e arrays:
+
+- `len()` retorna `Integer` para `String` e `Array`,
+- `Len(NIL)` e `Len(123)` agora produzem `BASE 1111 Argument error (LEN)` no baseline atual,
+- `call_builtin()` e `call_builtin_mut()` passam a despachar `LEN` de forma case-insensitive,
+- nesta fase o builtin ainda não cobre hashes, objetos nem semântica de codepage multibyte observada no upstream completo.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

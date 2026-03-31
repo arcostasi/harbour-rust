@@ -526,6 +526,25 @@ harbour_runtime_Value harbour_builtin_qout(
     return harbour_value_nil();
 }
 
+struct harbour_runtime_Value harbour_builtin_len(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_error_literal("BASE 1111 Argument error (LEN)");
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_STRING) {
+        return harbour_value_from_integer((long long) strlen(arguments[0].as.string));
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_ARRAY) {
+        return harbour_value_from_integer((long long) arguments[0].as.array.length);
+    }
+
+    return harbour_value_error_literal("BASE 1111 Argument error (LEN)");
+}
+
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

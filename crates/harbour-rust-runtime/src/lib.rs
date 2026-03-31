@@ -457,6 +457,7 @@ impl RuntimeContext {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Builtin {
     QOut,
+    Len,
     AAdd,
     ASize,
     AClone,
@@ -466,6 +467,8 @@ impl Builtin {
     pub fn lookup(name: &str) -> Option<Self> {
         if name.eq_ignore_ascii_case("QOUT") {
             Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("LEN") {
+            Some(Self::Len)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -481,6 +484,18 @@ impl Builtin {
 pub fn qout(values: &[Value], output: &mut OutputBuffer) -> Result<Value, RuntimeError> {
     output.push_qout_line(values);
     Ok(Value::Nil)
+}
+
+pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::len_argument_error(None));
+    };
+
+    match value {
+        Value::String(text) => Ok(Value::from(text.len() as i64)),
+        Value::Array(values) => Ok(Value::from(values.len() as i64)),
+        other => Err(RuntimeError::len_argument_error(Some(other.kind()))),
+    }
 }
 
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
@@ -529,6 +544,7 @@ pub fn call_builtin(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -544,6 +560,7 @@ pub fn call_builtin_mut(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -704,6 +721,14 @@ impl RuntimeError {
             message: format!("builtin {} requires mutable dispatch", name),
             expected: None,
             actual: None,
+        }
+    }
+
+    pub fn len_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1111 Argument error (LEN)".to_owned(),
+            expected: None,
+            actual,
         }
     }
 
@@ -888,7 +913,7 @@ impl Error for RuntimeError {}
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize,
-        call_builtin, call_builtin_mut, qout,
+        call_builtin, call_builtin_mut, len, qout,
     };
 
     #[test]
@@ -1319,6 +1344,60 @@ mod tests {
             Ok(Value::Nil)
         );
         assert_eq!(context.output().as_str(), "hello 7\n");
+    }
+
+    #[test]
+    fn len_supports_strings_and_arrays_with_xbase_style_errors() {
+        assert_eq!(len(Some(&Value::from("123"))), Ok(Value::from(3_i64)));
+        assert_eq!(
+            len(Some(&Value::array(vec![
+                Value::from(1_i64),
+                Value::from(2_i64),
+                Value::from(3_i64),
+            ]))),
+            Ok(Value::from(3_i64))
+        );
+        assert_eq!(
+            len(Some(&Value::Nil)),
+            Err(RuntimeError {
+                message: "BASE 1111 Argument error (LEN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            len(Some(&Value::from(123_i64))),
+            Err(RuntimeError {
+                message: "BASE 1111 Argument error (LEN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
+    }
+
+    #[test]
+    fn len_dispatches_through_the_immutable_builtin_surface() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("len", &[Value::from("abcd")], &mut context),
+            Ok(Value::from(4_i64))
+        );
+
+        let mut mutable_arguments = [Value::array(vec![Value::from(1_i64), Value::from(2_i64)])];
+        assert_eq!(
+            call_builtin_mut("LEN", &mut mutable_arguments, &mut context),
+            Ok(Value::from(2_i64))
+        );
+
+        assert_eq!(
+            call_builtin("LEN", &[], &mut context),
+            Err(RuntimeError {
+                message: "BASE 1111 Argument error (LEN)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
     }
 
     #[test]

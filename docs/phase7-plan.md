@@ -60,7 +60,7 @@ RETURN
 
 ### Slice 7.2 — Arrays: construtores e travessia completa
 
-**Status:** parcial (parse + HIR + IR + codegen para literais e indexação ✓)
+**Status:** parcial (parse + HIR + IR + codegen para literais e indexação ✓, `Len()` para arrays ✓)
 
 **Escopo:**
 - Runtime: `Array` como tipo passável por referência
@@ -94,7 +94,7 @@ RETURN
 
 **Aceite:**
 - [ ] Literais, indexação (leitura/escrita) e passagem como argumento
-- [ ] `Len()` funciona para arrays
+- [x] `Len()` funciona para arrays
 - [ ] Multidimensional executável
 - [ ] Testes unitários + integração + CLI run
 
@@ -157,6 +157,8 @@ RETURN
 ---
 
 ### Slice 7.5 — Builtins essenciais de string
+
+**Status:** parcial (`Len()` ✓)
 
 **Escopo (por prioridade):**
 

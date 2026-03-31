@@ -63,6 +63,7 @@ struct StaticBindingStorage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RuntimeBuiltin {
     QOut,
+    Len,
     AClone,
     AAdd,
     ASize,
@@ -72,6 +73,8 @@ impl RuntimeBuiltin {
     fn lookup(name: &str) -> Option<Self> {
         if name.eq_ignore_ascii_case("QOUT") {
             Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("LEN") {
+            Some(Self::Len)
         } else if name.eq_ignore_ascii_case("ACLONE") {
             Some(Self::AClone)
         } else if name.eq_ignore_ascii_case("AADD") {
@@ -86,6 +89,7 @@ impl RuntimeBuiltin {
     fn helper_name(self) -> &'static str {
         match self {
             Self::QOut => "harbour_builtin_qout",
+            Self::Len => "harbour_builtin_len",
             Self::AClone => "harbour_builtin_aclone",
             Self::AAdd => "harbour_builtin_aadd",
             Self::ASize => "harbour_builtin_asize",
@@ -95,6 +99,7 @@ impl RuntimeBuiltin {
     fn source_name(self) -> &'static str {
         match self {
             Self::QOut => "QOut",
+            Self::Len => "Len",
             Self::AClone => "AClone",
             Self::AAdd => "AAdd",
             Self::ASize => "ASize",
@@ -216,6 +221,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -1020,6 +1028,7 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",
                     "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_aadd(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_asize(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
