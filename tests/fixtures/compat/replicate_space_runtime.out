@@ -1,0 +1,11 @@
+Replicate(200, 0) => BASE 1106 Argument error (REPLICATE)
+Replicate("", 10) => 
+Replicate("A", "B") => BASE 1106 Argument error (REPLICATE)
+Replicate("A", 2) => AA
+Replicate("HE", 3.7) => HEHEHE
+Replicate("HE", -3) => 
+Space("A") => BASE 1105 Argument error (SPACE)
+Space(0) => 
+Space(-10) => 
+Space(3) =>    
+Space(3.7) =>    

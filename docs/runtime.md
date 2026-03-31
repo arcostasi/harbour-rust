@@ -191,6 +191,16 @@ Na slice seguinte da Fase 7, entra `At()` como builtin imutável de busca em str
 - argumentos inválidos agora emitem `BASE 1108 Argument error (AT)`,
 - nesta fase o builtin continua parcial: `hb_AT()` com `start/to`, codepage multibyte e as divergências históricas do otimizador Clipper para string vazia continuam pendentes.
 
+Na slice seguinte da Fase 7, entram `Replicate()` e `Space()` como builtins imutáveis de construção de string:
+
+- `replicate()` cobre o recorte inicial de `Replicate( cText, nCount )`,
+- `space()` cobre o recorte inicial de `Space( nCount )`,
+- `nCount` aceita `Integer` e `Float`, com truncamento para zero casas decimais no baseline atual,
+- valores `<= 0` retornam string vazia,
+- `Replicate()` agora emite `BASE 1106 Argument error (REPLICATE)` para argumentos inválidos,
+- `Space()` agora emite `BASE 1105 Argument error (SPACE)` para argumentos inválidos,
+- nesta fase ambos continuam parciais: overflow completo do upstream, `Chr(0)` em `Replicate()` e codepage multibyte no host C continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

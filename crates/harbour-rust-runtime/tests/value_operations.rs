@@ -1,6 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, at, call_builtin,
-    call_builtin_mut, left, lower, ltrim, qout, right, rtrim, substr, trim, upper,
+    call_builtin_mut, left, lower, ltrim, qout, replicate, right, rtrim, space, substr, trim,
+    upper,
 };
 
 #[test]
@@ -464,6 +465,84 @@ fn public_at_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from(0_i64))
     );
     assert_eq!(mutable_arguments[0], Value::from("X"));
+}
+
+#[test]
+fn public_replicate_and_space_match_the_current_runtime_baseline() {
+    assert_eq!(
+        replicate(Some(&Value::from("")), Some(&Value::from(10_i64))),
+        Ok(Value::from(""))
+    );
+    assert_eq!(
+        replicate(Some(&Value::from("A")), Some(&Value::from(2_i64))),
+        Ok(Value::from("AA"))
+    );
+    assert_eq!(
+        replicate(Some(&Value::from("HE")), Some(&Value::from(3.7_f64))),
+        Ok(Value::from("HEHEHE"))
+    );
+    assert_eq!(
+        replicate(Some(&Value::from("HE")), Some(&Value::from(-3_i64))),
+        Ok(Value::from(""))
+    );
+
+    assert_eq!(space(Some(&Value::from(0_i64))), Ok(Value::from("")));
+    assert_eq!(space(Some(&Value::from(-10_i64))), Ok(Value::from("")));
+    assert_eq!(space(Some(&Value::from(3_i64))), Ok(Value::from("   ")));
+    assert_eq!(space(Some(&Value::from(3.7_f64))), Ok(Value::from("   ")));
+}
+
+#[test]
+fn public_replicate_and_space_report_xbase_style_argument_errors() {
+    assert_eq!(
+        replicate(Some(&Value::from(200_i64)), Some(&Value::from(0_i64))),
+        Err(RuntimeError {
+            message: "BASE 1106 Argument error (REPLICATE)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+    assert_eq!(
+        replicate(Some(&Value::from("A")), Some(&Value::from("B"))),
+        Err(RuntimeError {
+            message: "BASE 1106 Argument error (REPLICATE)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        space(Some(&Value::from("A"))),
+        Err(RuntimeError {
+            message: "BASE 1105 Argument error (SPACE)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+}
+
+#[test]
+fn public_replicate_and_space_dispatch_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "REPLICATE",
+            &[Value::from("HE"), Value::from(3.1_f64)],
+            &mut context,
+        ),
+        Ok(Value::from("HEHEHE"))
+    );
+    assert_eq!(
+        call_builtin("space", &[Value::from(4_i64)], &mut context),
+        Ok(Value::from("    "))
+    );
+
+    let mut mutable_arguments = [Value::from("A"), Value::from(1_i64)];
+    assert_eq!(
+        call_builtin_mut("REPLICATE", &mut mutable_arguments, &mut context),
+        Ok(Value::from("A"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("A"));
 }
 
 #[test]

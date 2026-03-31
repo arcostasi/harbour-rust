@@ -95,6 +95,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/upper_lower_builtin.prg` -> `harbour-rust-cli build/run` com `Upper()` e `Lower()` para string
 - `tests/fixtures/parser/trim_builtin.prg` -> `harbour-rust-cli build/run` com `Trim()`, `LTrim()` e `RTrim()` para string
 - `tests/fixtures/parser/at_builtin.prg` -> `harbour-rust-cli build/run` com `At()` para string
+- `tests/fixtures/parser/replicate_space_builtin.prg` -> `harbour-rust-cli build/run` com `Replicate()` e `Space()` para string
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
@@ -107,6 +108,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/compat/upper_lower_runtime.prg` -> baseline focado de `Upper()`/`Lower()` contra `harbour-core/utils/hbtest/rt_str.prg`
 - `tests/fixtures/compat/trim_runtime.prg` -> baseline focado de `Trim()`/`LTrim()`/`RTrim()` contra `harbour-core/utils/hbtest/rt_str.prg`
 - `tests/fixtures/compat/at_runtime.prg` -> baseline focado de `At()` contra `harbour-core/utils/hbtest/rt_str.prg`
+- `tests/fixtures/compat/replicate_space_runtime.prg` -> baseline focado de `Replicate()`/`Space()` contra `harbour-core/utils/hbtest/rt_str.prg`
 - `tests/fixtures/parser/indexing.prg` -> lowering HIR explícito para `Index(target, indices)`
 - `tests/fixtures/parser/static.prg` -> lowering IR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-ir` -> lowering IR como `Read(path)` explícito

@@ -73,6 +73,8 @@ enum RuntimeBuiltin {
     LTrim,
     RTrim,
     At,
+    Replicate,
+    Space,
     AClone,
     AAdd,
     ASize,
@@ -102,6 +104,10 @@ impl RuntimeBuiltin {
             Some(Self::RTrim)
         } else if name.eq_ignore_ascii_case("AT") {
             Some(Self::At)
+        } else if name.eq_ignore_ascii_case("REPLICATE") {
+            Some(Self::Replicate)
+        } else if name.eq_ignore_ascii_case("SPACE") {
+            Some(Self::Space)
         } else if name.eq_ignore_ascii_case("ACLONE") {
             Some(Self::AClone)
         } else if name.eq_ignore_ascii_case("AADD") {
@@ -126,6 +132,8 @@ impl RuntimeBuiltin {
             Self::LTrim => "harbour_builtin_ltrim",
             Self::RTrim => "harbour_builtin_rtrim",
             Self::At => "harbour_builtin_at",
+            Self::Replicate => "harbour_builtin_replicate",
+            Self::Space => "harbour_builtin_space",
             Self::AClone => "harbour_builtin_aclone",
             Self::AAdd => "harbour_builtin_aadd",
             Self::ASize => "harbour_builtin_asize",
@@ -145,6 +153,8 @@ impl RuntimeBuiltin {
             Self::LTrim => "LTrim",
             Self::RTrim => "RTrim",
             Self::At => "At",
+            Self::Replicate => "Replicate",
+            Self::Space => "Space",
             Self::AClone => "AClone",
             Self::AAdd => "AAdd",
             Self::ASize => "ASize",
@@ -296,6 +306,12 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_at(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_replicate(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_space(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -1110,6 +1126,8 @@ mod tests {
                     "extern harbour_runtime_Value harbour_builtin_ltrim(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_rtrim(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_at(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_replicate(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_space(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_aadd(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_asize(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",

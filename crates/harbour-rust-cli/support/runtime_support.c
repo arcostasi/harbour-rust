@@ -21,6 +21,10 @@ static harbour_runtime_Value harbour_ascii_case_transform(
     const char *text,
     int (*transform)(int)
 );
+static _Bool harbour_try_truncated_repeat_count(
+    harbour_runtime_Value value,
+    long long *count
+);
 static _Bool harbour_try_numeric_pair(
     harbour_runtime_Value left,
     harbour_runtime_Value right,
@@ -801,6 +805,89 @@ struct harbour_runtime_Value harbour_builtin_at(
     return harbour_value_from_integer((long long) (found - haystack) + 1);
 }
 
+struct harbour_runtime_Value harbour_builtin_replicate(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *text;
+    size_t unit_length;
+    long long repeat_count;
+    size_t total_length;
+    char *buffer;
+    size_t offset = 0;
+    size_t index;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING ||
+        !harbour_try_truncated_repeat_count(arguments[1], &repeat_count)
+    ) {
+        return harbour_value_error_literal("BASE 1106 Argument error (REPLICATE)");
+    }
+
+    if (repeat_count <= 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    text = arguments[0].as.string;
+    unit_length = strlen(text);
+    if (unit_length == 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    if ((size_t) repeat_count > ((size_t) -1) / unit_length) {
+        return harbour_value_error_literal("BASE 1234 String overflow (REPLICATE)");
+    }
+
+    total_length = (size_t) repeat_count * unit_length;
+    buffer = (char *) malloc(total_length + 1);
+    if (buffer == NULL) {
+        return harbour_value_error_literal("BASE 1234 String overflow (REPLICATE)");
+    }
+
+    for (index = 0; index < (size_t) repeat_count; ++index) {
+        memcpy(buffer + offset, text, unit_length);
+        offset += unit_length;
+    }
+    buffer[total_length] = '\0';
+
+    return harbour_value_from_string_literal(buffer);
+}
+
+struct harbour_runtime_Value harbour_builtin_space(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    long long repeat_count;
+    char *buffer;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        !harbour_try_truncated_repeat_count(arguments[0], &repeat_count)
+    ) {
+        return harbour_value_error_literal("BASE 1105 Argument error (SPACE)");
+    }
+
+    if (repeat_count <= 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    if ((size_t) repeat_count == (size_t) -1) {
+        return harbour_value_error_literal("BASE 1234 String overflow (SPACE)");
+    }
+
+    buffer = (char *) malloc((size_t) repeat_count + 1);
+    if (buffer == NULL) {
+        return harbour_value_error_literal("BASE 1234 String overflow (SPACE)");
+    }
+
+    memset(buffer, ' ', (size_t) repeat_count);
+    buffer[repeat_count] = '\0';
+    return harbour_value_from_string_literal(buffer);
+}
+
 struct harbour_runtime_Value harbour_builtin_aclone(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -1015,4 +1102,25 @@ static harbour_runtime_Value harbour_ascii_case_transform(
     buffer[length] = '\0';
 
     return harbour_value_from_string_literal(buffer);
+}
+
+static _Bool harbour_try_truncated_repeat_count(
+    harbour_runtime_Value value,
+    long long *count
+) {
+    if (count == NULL) {
+        return 0;
+    }
+
+    if (value.kind == HARBOUR_VALUE_INTEGER) {
+        *count = value.as.integer;
+        return 1;
+    }
+
+    if (value.kind == HARBOUR_VALUE_FLOAT) {
+        *count = (long long) value.as.floating;
+        return 1;
+    }
+
+    return 0;
 }

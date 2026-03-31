@@ -1,0 +1,13 @@
+PROCEDURE Main()
+   ? Replicate( 200, 0 )
+   ? Replicate( "", 10 )
+   ? Replicate( "A", "B" )
+   ? Replicate( "A", 2 )
+   ? Replicate( "HE", 3.7 )
+   ? Replicate( "HE", -3 )
+   ? Space( "A" )
+   ? Space( 0 )
+   ? Space( -10 )
+   ? Space( 3 )
+   ? Space( 3.7 )
+RETURN

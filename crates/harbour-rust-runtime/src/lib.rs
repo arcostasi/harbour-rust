@@ -467,6 +467,8 @@ pub enum Builtin {
     LTrim,
     RTrim,
     At,
+    Replicate,
+    Space,
     AAdd,
     ASize,
     AClone,
@@ -496,6 +498,10 @@ impl Builtin {
             Some(Self::RTrim)
         } else if name.eq_ignore_ascii_case("AT") {
             Some(Self::At)
+        } else if name.eq_ignore_ascii_case("REPLICATE") {
+            Some(Self::Replicate)
+        } else if name.eq_ignore_ascii_case("SPACE") {
+            Some(Self::Space)
         } else if name.eq_ignore_ascii_case("AADD") {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
@@ -725,6 +731,41 @@ pub fn at(needle: Option<&Value>, haystack: Option<&Value>) -> Result<Value, Run
     Ok(Value::from(position))
 }
 
+pub fn replicate(source: Option<&Value>, count: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(source) = source else {
+        return Err(RuntimeError::replicate_argument_error(None));
+    };
+    let Value::String(source) = source else {
+        return Err(RuntimeError::replicate_argument_error(Some(source.kind())));
+    };
+
+    let count = numeric_string_count(
+        count,
+        RuntimeError::replicate_argument_error,
+        RuntimeError::replicate_overflow_error,
+        source.len(),
+    )?;
+    if count == 0 || source.is_empty() {
+        return Ok(Value::from(""));
+    }
+
+    Ok(Value::from(source.repeat(count)))
+}
+
+pub fn space(count: Option<&Value>) -> Result<Value, RuntimeError> {
+    let count = numeric_string_count(
+        count,
+        RuntimeError::space_argument_error,
+        RuntimeError::space_overflow_error,
+        1,
+    )?;
+    if count == 0 {
+        return Ok(Value::from(""));
+    }
+
+    Ok(Value::from(" ".repeat(count)))
+}
+
 pub fn aadd(array: &mut Value, value: Value) -> Result<Value, RuntimeError> {
     if matches!(array, Value::Array(_)) {
         array.array_push(value)
@@ -781,6 +822,8 @@ pub fn call_builtin(
         Some(Builtin::LTrim) => ltrim(arguments.first()),
         Some(Builtin::RTrim) => rtrim(arguments.first()),
         Some(Builtin::At) => at(arguments.first(), arguments.get(1)),
+        Some(Builtin::Replicate) => replicate(arguments.first(), arguments.get(1)),
+        Some(Builtin::Space) => space(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd | Builtin::ASize) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
@@ -806,6 +849,8 @@ pub fn call_builtin_mut(
         Some(Builtin::LTrim) => ltrim(arguments.first()),
         Some(Builtin::RTrim) => rtrim(arguments.first()),
         Some(Builtin::At) => at(arguments.first(), arguments.get(1)),
+        Some(Builtin::Replicate) => replicate(arguments.first(), arguments.get(1)),
+        Some(Builtin::Space) => space(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
@@ -1033,6 +1078,38 @@ impl RuntimeError {
         }
     }
 
+    pub fn replicate_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1106 Argument error (REPLICATE)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn replicate_overflow_error() -> Self {
+        Self {
+            message: "BASE 1234 String overflow (REPLICATE)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
+    pub fn space_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1105 Argument error (SPACE)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn space_overflow_error() -> Self {
+        Self {
+            message: "BASE 1234 String overflow (SPACE)".to_owned(),
+            expected: None,
+            actual: None,
+        }
+    }
+
     pub fn array_access_type_mismatch(actual: ValueKind) -> Self {
         Self {
             message: "BASE 1068 Argument error (array access)".to_owned(),
@@ -1214,11 +1291,39 @@ fn string_slice(characters: &[char], start: usize, count: usize) -> String {
     characters[start..start + count].iter().copied().collect()
 }
 
+fn numeric_string_count(
+    value: Option<&Value>,
+    argument_error: fn(Option<ValueKind>) -> RuntimeError,
+    overflow_error: fn() -> RuntimeError,
+    unit_len: usize,
+) -> Result<usize, RuntimeError> {
+    let Some(value) = value else {
+        return Err(argument_error(None));
+    };
+
+    let count = match value {
+        Value::Integer(value) => *value,
+        Value::Float(value) => value.trunc() as i64,
+        other => return Err(argument_error(Some(other.kind()))),
+    };
+
+    if count <= 0 {
+        return Ok(0);
+    }
+
+    let count = count as usize;
+    if unit_len > 0 && count.checked_mul(unit_len).is_none() {
+        return Err(overflow_error());
+    }
+
+    Ok(count)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
-        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize,
-        call_builtin, call_builtin_mut, len, qout,
+        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize, at,
+        call_builtin, call_builtin_mut, len, qout, replicate, space,
     };
 
     #[test]
@@ -1742,6 +1847,87 @@ mod tests {
         assert_eq!(aclone(Some(&Value::Nil)), Ok(Value::Nil));
         assert_eq!(aclone(Some(&Value::from("nope"))), Ok(Value::Nil));
         assert_eq!(aclone(Some(&values)), Ok(values.clone()));
+    }
+
+    #[test]
+    fn replicate_and_space_follow_the_current_string_runtime_baseline() {
+        assert_eq!(
+            replicate(Some(&Value::from("")), Some(&Value::from(10_i64))),
+            Ok(Value::from(""))
+        );
+        assert_eq!(
+            replicate(Some(&Value::from("HE")), Some(&Value::from(3.7_f64))),
+            Ok(Value::from("HEHEHE"))
+        );
+        assert_eq!(
+            replicate(Some(&Value::from("HE")), Some(&Value::from(-3_i64))),
+            Ok(Value::from(""))
+        );
+
+        assert_eq!(space(Some(&Value::from(0_i64))), Ok(Value::from("")));
+        assert_eq!(space(Some(&Value::from(-10_i64))), Ok(Value::from("")));
+        assert_eq!(space(Some(&Value::from(3.1_f64))), Ok(Value::from("   ")));
+    }
+
+    #[test]
+    fn replicate_and_space_dispatch_through_the_immutable_builtin_surface() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin(
+                "REPLICATE",
+                &[Value::from("A"), Value::from(2_i64)],
+                &mut context,
+            ),
+            Ok(Value::from("AA"))
+        );
+        assert_eq!(
+            call_builtin("SPACE", &[Value::from(4_i64)], &mut context),
+            Ok(Value::from("    "))
+        );
+
+        let mut mutable_arguments = [Value::from("HE"), Value::from(3.1_f64)];
+        assert_eq!(
+            call_builtin_mut("REPLICATE", &mut mutable_arguments, &mut context),
+            Ok(Value::from("HEHEHE"))
+        );
+        assert_eq!(mutable_arguments[0], Value::from("HE"));
+    }
+
+    #[test]
+    fn replicate_and_space_report_xbase_style_argument_errors() {
+        assert_eq!(
+            replicate(Some(&Value::from(200_i64)), Some(&Value::from(0_i64))),
+            Err(RuntimeError {
+                message: "BASE 1106 Argument error (REPLICATE)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
+        assert_eq!(
+            replicate(Some(&Value::from("A")), Some(&Value::from("B"))),
+            Err(RuntimeError {
+                message: "BASE 1106 Argument error (REPLICATE)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            space(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1105 Argument error (SPACE)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            at(Some(&Value::from(90_i64)), Some(&Value::from(100_i64))),
+            Err(RuntimeError {
+                message: "BASE 1108 Argument error (AT)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
     }
 
     #[test]
