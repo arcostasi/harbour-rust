@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -552,6 +553,31 @@ harbour_runtime_Value harbour_builtin_qout(
     fflush(stdout);
 
     return harbour_value_nil();
+}
+
+harbour_runtime_Value harbour_builtin_abs(
+    const harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_error_literal("BASE 1089 Argument error (ABS)");
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_INTEGER) {
+        if (arguments[0].as.integer >= 0) {
+            return harbour_value_from_integer(arguments[0].as.integer);
+        }
+        if (arguments[0].as.integer == (-9223372036854775807LL - 1LL)) {
+            return harbour_value_from_float(fabs((double) arguments[0].as.integer));
+        }
+        return harbour_value_from_integer(-arguments[0].as.integer);
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_FLOAT) {
+        return harbour_value_from_float(fabs(arguments[0].as.floating));
+    }
+
+    return harbour_value_error_literal("BASE 1089 Argument error (ABS)");
 }
 
 struct harbour_runtime_Value harbour_builtin_len(

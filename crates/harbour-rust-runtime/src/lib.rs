@@ -457,6 +457,7 @@ impl RuntimeContext {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Builtin {
     QOut,
+    Abs,
     Len,
     Str,
     Val,
@@ -481,6 +482,8 @@ impl Builtin {
     pub fn lookup(name: &str) -> Option<Self> {
         if name.eq_ignore_ascii_case("QOUT") {
             Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("ABS") {
+            Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
@@ -526,6 +529,24 @@ impl Builtin {
 pub fn qout(values: &[Value], output: &mut OutputBuffer) -> Result<Value, RuntimeError> {
     output.push_qout_line(values);
     Ok(Value::Nil)
+}
+
+pub fn abs(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::abs_argument_error(None));
+    };
+
+    match value {
+        Value::Integer(number) => {
+            if let Some(absolute) = number.checked_abs() {
+                Ok(Value::from(absolute))
+            } else {
+                Ok(Value::from((*number as i128).abs() as f64))
+            }
+        }
+        Value::Float(number) => Ok(Value::from(number.abs())),
+        other => Err(RuntimeError::abs_argument_error(Some(other.kind()))),
+    }
 }
 
 pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -873,6 +894,7 @@ pub fn call_builtin(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -903,6 +925,7 @@ pub fn call_builtin_mut(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -1084,6 +1107,14 @@ impl RuntimeError {
     pub fn len_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1111 Argument error (LEN)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn abs_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1089 Argument error (ABS)".to_owned(),
             expected: None,
             actual,
         }
@@ -1539,7 +1570,7 @@ fn numeric_string_count(
 #[cfg(test)]
 mod tests {
     use crate::{
-        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize, at,
+        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
         call_builtin, call_builtin_mut, len, qout, replicate, space, str_value, val,
     };
 
@@ -1956,6 +1987,55 @@ mod tests {
 
         assert_eq!(qout(&[], &mut output), Ok(Value::Nil));
         assert_eq!(output.as_str(), "\n");
+    }
+
+    #[test]
+    fn abs_follows_the_current_numeric_runtime_baseline() {
+        assert_eq!(abs(Some(&Value::from(0_i64))), Ok(Value::from(0_i64)));
+        assert_eq!(abs(Some(&Value::from(10_i64))), Ok(Value::from(10_i64)));
+        assert_eq!(abs(Some(&Value::from(-10_i64))), Ok(Value::from(10_i64)));
+        assert_eq!(abs(Some(&Value::from(0.1_f64))), Ok(Value::from(0.1_f64)));
+        assert_eq!(
+            abs(Some(&Value::from(-10.7_f64))),
+            Ok(Value::from(10.7_f64))
+        );
+    }
+
+    #[test]
+    fn abs_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            abs(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1089 Argument error (ABS)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            abs(None),
+            Err(RuntimeError {
+                message: "BASE 1089 Argument error (ABS)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn abs_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("ABS", &[Value::from(-10_i64)], &mut context),
+            Ok(Value::from(10_i64))
+        );
+
+        let mut mutable_arguments = [Value::from(-150.245_f64)];
+        assert_eq!(
+            call_builtin_mut("abs", &mut mutable_arguments, &mut context),
+            Ok(Value::from(150.245_f64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
     }
 
     #[test]

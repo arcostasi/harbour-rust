@@ -1,0 +1,5 @@
+Abs(0) => 0
+Abs(-10) => 10
+Abs(10.5) => 10.5
+Abs(-10.7) => 10.7
+Abs("A") => BASE 1089 Argument error (ABS)

@@ -167,6 +167,27 @@ fn emits_len_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_abs_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/abs_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_abs((harbour_runtime_Value[]) { harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"-10\") }, 1) }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_abs((harbour_runtime_Value[]) { harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"-10.7\") }, 1) }, 1) }, 1);")
+    );
+}
+
+#[test]
 fn emits_str_builtin_fixture_with_runtime_builtin_helper_calls() {
     let emitted = emit_fixture("tests/fixtures/parser/str_builtin.prg");
 
@@ -428,6 +449,11 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
         emitted
             .source
             .contains("extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_abs(const harbour_runtime_Value *arguments, size_t argument_count);")
     );
     assert!(
         emitted

@@ -1,5 +1,5 @@
 use harbour_rust_runtime::{
-    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, at, call_builtin,
+    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
     call_builtin_mut, left, lower, ltrim, qout, replicate, right, rtrim, space, str_value, substr,
     trim, upper, val, valtype,
 };
@@ -128,6 +128,55 @@ fn public_qout_builtin_writes_expected_output_and_returns_nil() {
         Ok(Value::Nil)
     );
     assert_eq!(output.into_string(), "sum 3 4.5\n");
+}
+
+#[test]
+fn public_abs_matches_the_current_numeric_runtime_baseline() {
+    assert_eq!(abs(Some(&Value::from(0_i64))), Ok(Value::from(0_i64)));
+    assert_eq!(abs(Some(&Value::from(10_i64))), Ok(Value::from(10_i64)));
+    assert_eq!(abs(Some(&Value::from(-10_i64))), Ok(Value::from(10_i64)));
+    assert_eq!(abs(Some(&Value::from(0.1_f64))), Ok(Value::from(0.1_f64)));
+    assert_eq!(
+        abs(Some(&Value::from(-10.7_f64))),
+        Ok(Value::from(10.7_f64))
+    );
+}
+
+#[test]
+fn public_abs_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        abs(Some(&Value::from("A"))),
+        Err(RuntimeError {
+            message: "BASE 1089 Argument error (ABS)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        abs(None),
+        Err(RuntimeError {
+            message: "BASE 1089 Argument error (ABS)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}
+
+#[test]
+fn public_abs_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("ABS", &[Value::from(-10_i64)], &mut context),
+        Ok(Value::from(10_i64))
+    );
+
+    let mut mutable_arguments = [Value::from(-150.245_f64)];
+    assert_eq!(
+        call_builtin_mut("abs", &mut mutable_arguments, &mut context),
+        Ok(Value::from(150.245_f64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
 }
 
 #[test]

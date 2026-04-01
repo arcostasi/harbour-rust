@@ -220,6 +220,14 @@ Na slice seguinte da Fase 7, entra `Val()` como builtin imutável de conversão 
 - argumentos inválidos agora emitem `BASE 1098 Argument error (VAL)`,
 - nesta fase o builtin continua parcial: exponentes, `Chr(0)`, pontos repetidos e corner cases mais profundos observados em `rt_str.prg` continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Abs()` como builtin imutável de valor absoluto:
+
+- `abs()` cobre o recorte inicial de `Abs( nValue )` para `Integer` e `Float`,
+- números inteiros permanecem inteiros quando o resultado cabe nesse formato,
+- números de ponto flutuante usam o valor absoluto padrão,
+- argumentos inválidos agora emitem `BASE 1089 Argument error (ABS)`,
+- nesta fase o builtin continua parcial: by-ref, handlers matemáticos do upstream e corner cases extremos fora do recorte atual continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introspecção leve:
 
 - `valtype()` cobre o recorte inicial dos tipos já materializados no runtime atual,
