@@ -1,0 +1,7 @@
+ValType() => U
+ValType(NIL) => U
+ValType(.T.) => L
+ValType(10) => N
+ValType(10.5) => N
+ValType("abc") => C
+ValType({1,2,3}) => A

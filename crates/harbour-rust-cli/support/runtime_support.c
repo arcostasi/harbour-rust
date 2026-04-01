@@ -1226,6 +1226,33 @@ static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value v
     return harbour_value_error_literal("BASE 1099 Argument error (STR)");
 }
 
+struct harbour_runtime_Value harbour_builtin_valtype(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_from_string_literal("U");
+    }
+
+    switch (arguments[0].kind) {
+        case HARBOUR_VALUE_NIL:
+            return harbour_value_from_string_literal("U");
+        case HARBOUR_VALUE_LOGICAL:
+            return harbour_value_from_string_literal("L");
+        case HARBOUR_VALUE_INTEGER:
+        case HARBOUR_VALUE_FLOAT:
+            return harbour_value_from_string_literal("N");
+        case HARBOUR_VALUE_STRING:
+            return harbour_value_from_string_literal("C");
+        case HARBOUR_VALUE_ARRAY:
+            return harbour_value_from_string_literal("A");
+        case HARBOUR_VALUE_ERROR:
+            return harbour_value_from_string_literal("U");
+    }
+
+    return harbour_value_from_string_literal("U");
+}
+
 static unsigned long long harbour_allocate_array_identity(void) {
     return harbour_array_identity_seed++;
 }

@@ -210,6 +210,16 @@ Na slice seguinte da Fase 7, entra `Str()` como builtin imutável de conversão 
 - argumentos inválidos agora emitem `BASE 1099 Argument error (STR)`,
 - nesta fase o builtin continua parcial: a precisão histórica derivada de escala original do número, larguras negativas e corner cases mais profundos do upstream continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introspecção leve:
+
+- `valtype()` cobre o recorte inicial dos tipos já materializados no runtime atual,
+- `Nil` e ausência de argumento retornam `"U"`,
+- `Logical` retorna `"L"`,
+- `Integer` e `Float` retornam `"N"`,
+- `String` retorna `"C"`,
+- `Array` retorna `"A"`,
+- nesta fase o builtin continua parcial: `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e outros tipos ainda não existem no runtime, então seus códigos permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

@@ -459,6 +459,7 @@ pub enum Builtin {
     QOut,
     Len,
     Str,
+    ValType,
     SubStr,
     Left,
     Right,
@@ -483,6 +484,8 @@ impl Builtin {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
             Some(Self::Str)
+        } else if name.eq_ignore_ascii_case("VALTYPE") {
+            Some(Self::ValType)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
             Some(Self::SubStr)
         } else if name.eq_ignore_ascii_case("LEFT") {
@@ -561,6 +564,18 @@ pub fn str_value(
     };
 
     Ok(Value::from(apply_str_width(formatted, width)))
+}
+
+pub fn valtype(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let type_code = match value.unwrap_or(&Value::Nil) {
+        Value::Nil => "U",
+        Value::Logical(_) => "L",
+        Value::Integer(_) | Value::Float(_) => "N",
+        Value::String(_) => "C",
+        Value::Array(_) => "A",
+    };
+
+    Ok(Value::from(type_code))
 }
 
 pub fn substr(
@@ -846,6 +861,7 @@ pub fn call_builtin(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
+        Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
@@ -874,6 +890,7 @@ pub fn call_builtin_mut(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
+        Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),

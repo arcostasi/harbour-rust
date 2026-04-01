@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, at, call_builtin,
     call_builtin_mut, left, lower, ltrim, qout, replicate, right, rtrim, space, str_value, substr,
-    trim, upper,
+    trim, upper, valtype,
 };
 
 #[test]
@@ -648,6 +648,44 @@ fn public_str_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from("   11"))
     );
     assert_eq!(mutable_arguments[0], Value::from(10.6_f64));
+}
+
+#[test]
+fn public_valtype_matches_the_current_runtime_baseline() {
+    assert_eq!(valtype(None), Ok(Value::from("U")));
+    assert_eq!(valtype(Some(&Value::Nil)), Ok(Value::from("U")));
+    assert_eq!(valtype(Some(&Value::from(true))), Ok(Value::from("L")));
+    assert_eq!(valtype(Some(&Value::from(10_i64))), Ok(Value::from("N")));
+    assert_eq!(valtype(Some(&Value::from(10.5_f64))), Ok(Value::from("N")));
+    assert_eq!(valtype(Some(&Value::from("abc"))), Ok(Value::from("C")));
+    assert_eq!(
+        valtype(Some(&Value::array(vec![
+            Value::from(1_i64),
+            Value::from(2_i64)
+        ]))),
+        Ok(Value::from("A"))
+    );
+}
+
+#[test]
+fn public_valtype_dispatches_through_builtin_surfaces() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("VALTYPE", &[], &mut context),
+        Ok(Value::from("U"))
+    );
+    assert_eq!(
+        call_builtin("valtype", &[Value::from("abc")], &mut context),
+        Ok(Value::from("C"))
+    );
+
+    let mut mutable_arguments = [Value::array(vec![Value::from(1_i64)])];
+    assert_eq!(
+        call_builtin_mut("VALTYPE", &mut mutable_arguments, &mut context),
+        Ok(Value::from("A"))
+    );
+    assert_eq!(mutable_arguments[0], Value::array(vec![Value::from(1_i64)]));
 }
 
 #[test]
