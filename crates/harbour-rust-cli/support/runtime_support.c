@@ -32,6 +32,7 @@ static harbour_runtime_Value harbour_str_apply_width(
     _Bool explicit_width
 );
 static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value);
+static harbour_runtime_Value harbour_val_parse_string(const char *text);
 static _Bool harbour_try_truncated_repeat_count(
     harbour_runtime_Value value,
     long long *count
@@ -631,6 +632,21 @@ struct harbour_runtime_Value harbour_builtin_str(
     return harbour_str_default_numeric(number);
 }
 
+struct harbour_runtime_Value harbour_builtin_val(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1098 Argument error (VAL)");
+    }
+
+    return harbour_val_parse_string(arguments[0].as.string);
+}
+
 struct harbour_runtime_Value harbour_builtin_substr(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -1224,6 +1240,81 @@ static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value v
     }
 
     return harbour_value_error_literal("BASE 1099 Argument error (STR)");
+}
+
+static harbour_runtime_Value harbour_val_parse_string(const char *text) {
+    const unsigned char *cursor = (const unsigned char *) text;
+    double sign = 1.0;
+    char integer_buffer[128];
+    char fraction_buffer[128];
+    size_t integer_length = 0;
+    size_t fraction_length = 0;
+    _Bool saw_fraction = 0;
+    char numeric_buffer[260];
+    double parsed;
+
+    while (*cursor != '\0' && isspace(*cursor)) {
+        cursor++;
+    }
+
+    if (*cursor == '-') {
+        sign = -1.0;
+        cursor++;
+    } else if (*cursor == '+') {
+        cursor++;
+    }
+
+    while (*cursor != '\0' && isdigit(*cursor)) {
+        if (integer_length + 1 < sizeof(integer_buffer)) {
+            integer_buffer[integer_length++] = (char) *cursor;
+        }
+        cursor++;
+    }
+    integer_buffer[integer_length] = '\0';
+
+    if (*cursor == '.') {
+        cursor++;
+        while (*cursor != '\0' && isdigit(*cursor)) {
+            saw_fraction = 1;
+            if (fraction_length + 1 < sizeof(fraction_buffer)) {
+                fraction_buffer[fraction_length++] = (char) *cursor;
+            }
+            cursor++;
+        }
+    }
+    fraction_buffer[fraction_length] = '\0';
+
+    if (integer_length == 0 && !saw_fraction) {
+        return harbour_value_from_integer(0);
+    }
+
+    if (saw_fraction) {
+        if (integer_length == 0) {
+            snprintf(
+                numeric_buffer,
+                sizeof(numeric_buffer),
+                "0.%s",
+                fraction_buffer
+            );
+        } else {
+            snprintf(
+                numeric_buffer,
+                sizeof(numeric_buffer),
+                "%s.%s",
+                integer_buffer,
+                fraction_buffer
+            );
+        }
+
+        parsed = strtod(numeric_buffer, NULL) * sign;
+        if (parsed == 0.0) {
+            return harbour_value_from_float(0.0);
+        }
+        return harbour_value_from_float(parsed);
+    }
+
+    parsed = strtod(integer_buffer, NULL);
+    return harbour_value_from_integer((long long) (parsed * sign));
 }
 
 struct harbour_runtime_Value harbour_builtin_valtype(

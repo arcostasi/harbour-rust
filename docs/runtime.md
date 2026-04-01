@@ -210,6 +210,16 @@ Na slice seguinte da Fase 7, entra `Str()` como builtin imutável de conversão 
 - argumentos inválidos agora emitem `BASE 1099 Argument error (STR)`,
 - nesta fase o builtin continua parcial: a precisão histórica derivada de escala original do número, larguras negativas e corner cases mais profundos do upstream continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Val()` como builtin imutável de conversão string para número:
+
+- `val()` cobre o recorte inicial de `Val( cText )` para `String`,
+- o baseline atual ignora whitespace ASCII à esquerda,
+- aceita sinal simples no início,
+- reconhece inteiro e decimal básico com lixo à direita ignorado,
+- retorna `0` quando a string não começa com número reconhecível,
+- argumentos inválidos agora emitem `BASE 1098 Argument error (VAL)`,
+- nesta fase o builtin continua parcial: exponentes, `Chr(0)`, pontos repetidos e corner cases mais profundos observados em `rt_str.prg` continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introspecção leve:
 
 - `valtype()` cobre o recorte inicial dos tipos já materializados no runtime atual,

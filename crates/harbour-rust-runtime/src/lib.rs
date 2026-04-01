@@ -459,6 +459,7 @@ pub enum Builtin {
     QOut,
     Len,
     Str,
+    Val,
     ValType,
     SubStr,
     Left,
@@ -484,6 +485,8 @@ impl Builtin {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
             Some(Self::Str)
+        } else if name.eq_ignore_ascii_case("VAL") {
+            Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
@@ -564,6 +567,17 @@ pub fn str_value(
     };
 
     Ok(Value::from(apply_str_width(formatted, width)))
+}
+
+pub fn val(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::val_argument_error(None));
+    };
+    let Value::String(text) = value else {
+        return Err(RuntimeError::val_argument_error(Some(value.kind())));
+    };
+
+    Ok(parse_val_string(text))
 }
 
 pub fn valtype(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -861,6 +875,7 @@ pub fn call_builtin(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
+        Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
@@ -890,6 +905,7 @@ pub fn call_builtin_mut(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
+        Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
@@ -1076,6 +1092,14 @@ impl RuntimeError {
     pub fn str_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1099 Argument error (STR)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn val_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1098 Argument error (VAL)".to_owned(),
             expected: None,
             actual,
         }
@@ -1387,6 +1411,66 @@ fn trim_default_float(mut text: String) -> String {
     text
 }
 
+fn parse_val_string(text: &str) -> Value {
+    let mut chars = text.chars().peekable();
+    while chars.next_if(|ch| ch.is_ascii_whitespace()).is_some() {}
+
+    let sign = match chars.peek().copied() {
+        Some('-') => {
+            chars.next();
+            -1.0_f64
+        }
+        Some('+') => {
+            chars.next();
+            1.0_f64
+        }
+        _ => 1.0_f64,
+    };
+
+    let mut integer_part = String::new();
+    while let Some(ch) = chars.next_if(|ch| ch.is_ascii_digit()) {
+        integer_part.push(ch);
+    }
+
+    let mut fractional_part = String::new();
+    let mut saw_fraction = false;
+    if matches!(chars.peek(), Some('.')) {
+        chars.next();
+        while let Some(ch) = chars.next_if(|ch| ch.is_ascii_digit()) {
+            saw_fraction = true;
+            fractional_part.push(ch);
+        }
+    }
+
+    if integer_part.is_empty() && !saw_fraction {
+        return Value::from(0_i64);
+    }
+
+    if saw_fraction {
+        let mut numeric = String::new();
+        if integer_part.is_empty() {
+            numeric.push('0');
+        } else {
+            numeric.push_str(&integer_part);
+        }
+        numeric.push('.');
+        numeric.push_str(&fractional_part);
+
+        let parsed = numeric.parse::<f64>().unwrap_or(0.0) * sign;
+        if parsed == 0.0 {
+            return Value::from(0.0_f64);
+        }
+        return Value::from(parsed);
+    }
+
+    let parsed = integer_part.parse::<i64>().unwrap_or(0);
+    if sign.is_sign_negative() {
+        Value::from(-parsed)
+    } else {
+        Value::from(parsed)
+    }
+}
+
 fn apply_str_width(formatted: String, width: Option<i64>) -> String {
     match width {
         None => {
@@ -1456,7 +1540,7 @@ fn numeric_string_count(
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize, at,
-        call_builtin, call_builtin_mut, len, qout, replicate, space, str_value,
+        call_builtin, call_builtin_mut, len, qout, replicate, space, str_value, val,
     };
 
     #[test]
@@ -2046,6 +2130,67 @@ mod tests {
             Ok(Value::from(" 2.00"))
         );
         assert_eq!(mutable_arguments[0], Value::from(2_i64));
+    }
+
+    #[test]
+    fn val_matches_the_current_string_to_numeric_runtime_baseline() {
+        assert_eq!(val(Some(&Value::from(""))), Ok(Value::from(0_i64)));
+        assert_eq!(val(Some(&Value::from("A"))), Ok(Value::from(0_i64)));
+        assert_eq!(val(Some(&Value::from("10"))), Ok(Value::from(10_i64)));
+        assert_eq!(val(Some(&Value::from("  -12"))), Ok(Value::from(-12_i64)));
+        assert_eq!(
+            val(Some(&Value::from("15.001 "))),
+            Ok(Value::from(15.001_f64))
+        );
+        assert_eq!(val(Some(&Value::from("1HELLO."))), Ok(Value::from(1_i64)));
+        assert_eq!(val(Some(&Value::from("0x10"))), Ok(Value::from(0_i64)));
+        assert_eq!(val(Some(&Value::from(".1"))), Ok(Value::from(0.1_f64)));
+        assert_eq!(val(Some(&Value::from("-.1"))), Ok(Value::from(-0.1_f64)));
+    }
+
+    #[test]
+    fn val_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            val(Some(&Value::Nil)),
+            Err(RuntimeError {
+                message: "BASE 1098 Argument error (VAL)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            val(Some(&Value::from(10_i64))),
+            Err(RuntimeError {
+                message: "BASE 1098 Argument error (VAL)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
+        assert_eq!(
+            val(None),
+            Err(RuntimeError {
+                message: "BASE 1098 Argument error (VAL)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn val_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("VAL", &[Value::from("15.001 ")], &mut context),
+            Ok(Value::from(15.001_f64))
+        );
+
+        let mut mutable_arguments = [Value::from("1HELLO.")];
+        assert_eq!(
+            call_builtin_mut("val", &mut mutable_arguments, &mut context),
+            Ok(Value::from(1_i64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from("1HELLO."));
     }
 
     #[test]

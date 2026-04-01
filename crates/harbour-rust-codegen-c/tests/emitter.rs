@@ -193,8 +193,8 @@ fn emits_str_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
-fn emits_valtype_builtin_fixture_with_runtime_builtin_helper_calls() {
-    let emitted = emit_fixture("tests/fixtures/parser/valtype_builtin.prg");
+fn emits_val_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/val_builtin.prg");
 
     assert!(
         emitted.errors.is_empty(),
@@ -204,8 +204,27 @@ fn emits_valtype_builtin_fixture_with_runtime_builtin_helper_calls() {
     assert!(
         emitted
             .source
-            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_valtype(NULL, 0) }, 1);")
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"10\") }, 1) }, 1);")
     );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"15.001 \") }, 1) }, 1);")
+    );
+}
+
+#[test]
+fn emits_valtype_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/valtype_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(emitted.source.contains(
+        "harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_valtype(NULL, 0) }, 1);"
+    ));
     assert!(
         emitted
             .source
@@ -414,6 +433,11 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
         emitted
             .source
             .contains("extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_val(const harbour_runtime_Value *arguments, size_t argument_count);")
     );
     assert!(
         emitted

@@ -1,0 +1,9 @@
+Val("") => 0
+Val("A") => 0
+Val("10") => 10
+Val("  -12") => -12
+Val("15.001 ") => 15.001
+Val("1HELLO.") => 1
+Val("0x10") => 0
+Val(NIL) => BASE 1098 Argument error (VAL)
+Val(10) => BASE 1098 Argument error (VAL)

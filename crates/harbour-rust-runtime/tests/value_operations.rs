@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, at, call_builtin,
     call_builtin_mut, left, lower, ltrim, qout, replicate, right, rtrim, space, str_value, substr,
-    trim, upper, valtype,
+    trim, upper, val, valtype,
 };
 
 #[test]
@@ -648,6 +648,59 @@ fn public_str_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from("   11"))
     );
     assert_eq!(mutable_arguments[0], Value::from(10.6_f64));
+}
+
+#[test]
+fn public_val_matches_the_current_string_to_numeric_runtime_baseline() {
+    assert_eq!(val(Some(&Value::from(""))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("A"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("10"))), Ok(Value::from(10_i64)));
+    assert_eq!(val(Some(&Value::from("  -12"))), Ok(Value::from(-12_i64)));
+    assert_eq!(
+        val(Some(&Value::from("15.001 "))),
+        Ok(Value::from(15.001_f64))
+    );
+    assert_eq!(val(Some(&Value::from("1HELLO."))), Ok(Value::from(1_i64)));
+    assert_eq!(val(Some(&Value::from("0x10"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from(".1"))), Ok(Value::from(0.1_f64)));
+    assert_eq!(val(Some(&Value::from("-.1"))), Ok(Value::from(-0.1_f64)));
+}
+
+#[test]
+fn public_val_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        val(Some(&Value::Nil)),
+        Err(RuntimeError {
+            message: "BASE 1098 Argument error (VAL)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        val(Some(&Value::from(10_i64))),
+        Err(RuntimeError {
+            message: "BASE 1098 Argument error (VAL)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
+
+#[test]
+fn public_val_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("VAL", &[Value::from("15.001 ")], &mut context),
+        Ok(Value::from(15.001_f64))
+    );
+
+    let mut mutable_arguments = [Value::from("1HELLO.")];
+    assert_eq!(
+        call_builtin_mut("val", &mut mutable_arguments, &mut context),
+        Ok(Value::from(1_i64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("1HELLO."));
 }
 
 #[test]

@@ -65,6 +65,7 @@ enum RuntimeBuiltin {
     QOut,
     Len,
     Str,
+    Val,
     ValType,
     SubStr,
     Left,
@@ -90,6 +91,8 @@ impl RuntimeBuiltin {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
             Some(Self::Str)
+        } else if name.eq_ignore_ascii_case("VAL") {
+            Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
@@ -130,6 +133,7 @@ impl RuntimeBuiltin {
             Self::QOut => "harbour_builtin_qout",
             Self::Len => "harbour_builtin_len",
             Self::Str => "harbour_builtin_str",
+            Self::Val => "harbour_builtin_val",
             Self::ValType => "harbour_builtin_valtype",
             Self::SubStr => "harbour_builtin_substr",
             Self::Left => "harbour_builtin_left",
@@ -153,6 +157,7 @@ impl RuntimeBuiltin {
             Self::QOut => "QOut",
             Self::Len => "Len",
             Self::Str => "Str",
+            Self::Val => "Val",
             Self::ValType => "ValType",
             Self::SubStr => "SubStr",
             Self::Left => "Left",
@@ -292,6 +297,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_val(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -1131,10 +1139,11 @@ mod tests {
                     "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
                     "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",
-                    "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_val(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_substr(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_left(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_right(const harbour_runtime_Value *arguments, size_t argument_count);\n",

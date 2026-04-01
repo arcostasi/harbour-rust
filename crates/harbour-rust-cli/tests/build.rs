@@ -188,6 +188,28 @@ fn build_command_writes_c_output_for_str_builtin_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_val_builtin_fixture() {
+    let temp_dir = unique_temp_dir("val-builtin");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("val_builtin.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/val_builtin.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_val("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_valtype_builtin_fixture() {
     let temp_dir = unique_temp_dir("valtype-builtin");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -599,6 +621,39 @@ fn run_command_executes_str_builtin_invalid_fixture_with_xbase_error_output() {
     assert_eq!(
         stdout,
         "BASE 1099 Argument error (STR)\nBASE 1099 Argument error (STR)\nBASE 1099 Argument error (STR)\n"
+    );
+}
+
+#[test]
+fn run_command_executes_val_builtin_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/val_builtin.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "0\n0\n10\n-12\n15.001\n1\n0\n");
+}
+
+#[test]
+fn run_command_executes_val_builtin_invalid_fixture_with_xbase_error_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/val_builtin_invalid.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(
+        stdout,
+        "BASE 1098 Argument error (VAL)\nBASE 1098 Argument error (VAL)\n"
     );
 }
 

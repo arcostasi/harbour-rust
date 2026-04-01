@@ -184,7 +184,7 @@ RETURN
 
 ### Slice 7.6 — Builtins essenciais de math e conversão
 
-**Status:** parcial (`Str()` ✓, `ValType()` ✓)
+**Status:** parcial (`Str()` ✓, `Val()` ✓, `ValType()` ✓)
 
 **Escopo (por prioridade):**
 
