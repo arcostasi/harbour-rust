@@ -1,0 +1,11 @@
+Str(10) =>         10
+Str(0) =>          0
+Str(10.5) =>       10.5
+Str(10, 5) =>    10
+Str(10.6, 5) =>    11
+Str(2, 5, 2) =>  2.00
+Str(3.125, 8, 2) =>     3.12
+Str(100000, 5) => *****
+Str(NIL) => BASE 1099 Argument error (STR)
+Str("A", 10, 2) => BASE 1099 Argument error (STR)
+Str(100, 10, "A") => BASE 1099 Argument error (STR)

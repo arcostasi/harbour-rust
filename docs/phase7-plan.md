@@ -184,6 +184,8 @@ RETURN
 
 ### Slice 7.6 — Builtins essenciais de math e conversão
 
+**Status:** parcial (`Str()` ✓)
+
 **Escopo (por prioridade):**
 
 | Builtin | Referência | Prioridade |

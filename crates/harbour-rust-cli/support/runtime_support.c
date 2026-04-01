@@ -21,6 +21,17 @@ static harbour_runtime_Value harbour_ascii_case_transform(
     const char *text,
     int (*transform)(int)
 );
+static harbour_runtime_Value harbour_string_value_from_owned_buffer(const char *text);
+static _Bool harbour_try_str_integer_arg(
+    harbour_runtime_Value value,
+    long long *result
+);
+static harbour_runtime_Value harbour_str_apply_width(
+    const char *formatted,
+    long long width,
+    _Bool explicit_width
+);
+static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value);
 static _Bool harbour_try_truncated_repeat_count(
     harbour_runtime_Value value,
     long long *count
@@ -561,6 +572,65 @@ struct harbour_runtime_Value harbour_builtin_len(
     return harbour_value_error_literal("BASE 1111 Argument error (LEN)");
 }
 
+struct harbour_runtime_Value harbour_builtin_str(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    harbour_runtime_Value number;
+    long long width = 10;
+    long long decimals = 0;
+    _Bool explicit_width = 0;
+    _Bool explicit_decimals = 0;
+    char buffer[128];
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        ( arguments[0].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[0].kind != HARBOUR_VALUE_FLOAT )
+    ) {
+        return harbour_value_error_literal("BASE 1099 Argument error (STR)");
+    }
+
+    number = arguments[0];
+
+    if (argument_count >= 2) {
+        if (!harbour_try_str_integer_arg(arguments[1], &width)) {
+            return harbour_value_error_literal("BASE 1099 Argument error (STR)");
+        }
+        explicit_width = 1;
+    }
+
+    if (argument_count >= 3) {
+        if (!harbour_try_str_integer_arg(arguments[2], &decimals)) {
+            return harbour_value_error_literal("BASE 1099 Argument error (STR)");
+        }
+        if (decimals < 0) {
+            decimals = 0;
+        }
+        explicit_decimals = 1;
+    }
+
+    if (explicit_decimals) {
+        double numeric = number.kind == HARBOUR_VALUE_INTEGER
+            ? (double) number.as.integer
+            : number.as.floating;
+        snprintf(buffer, sizeof(buffer), "%.*f", (int) decimals, numeric);
+        return harbour_str_apply_width(buffer, width, 1);
+    }
+
+    if (explicit_width) {
+        if (number.kind == HARBOUR_VALUE_INTEGER) {
+            snprintf(buffer, sizeof(buffer), "%lld", number.as.integer);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%.0f", number.as.floating);
+        }
+        return harbour_str_apply_width(buffer, width, 1);
+    }
+
+    return harbour_str_default_numeric(number);
+}
+
 struct harbour_runtime_Value harbour_builtin_substr(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -1043,6 +1113,117 @@ static harbour_runtime_Value harbour_substr_from_bounds(
     memcpy(slice, text + start, count);
     slice[count] = '\0';
     return harbour_value_from_string_literal(slice);
+}
+
+static harbour_runtime_Value harbour_string_value_from_owned_buffer(const char *text) {
+    size_t length;
+    char *owned;
+
+    if (text == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    length = strlen(text);
+    owned = (char *) malloc(length + 1);
+    if (owned == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    memcpy(owned, text, length + 1);
+    return harbour_value_from_string_literal(owned);
+}
+
+static _Bool harbour_try_str_integer_arg(
+    harbour_runtime_Value value,
+    long long *result
+) {
+    if (result == NULL) {
+        return 0;
+    }
+
+    if (value.kind == HARBOUR_VALUE_INTEGER) {
+        *result = value.as.integer;
+        return 1;
+    }
+
+    if (value.kind == HARBOUR_VALUE_FLOAT) {
+        *result = (long long) value.as.floating;
+        return 1;
+    }
+
+    return 0;
+}
+
+static harbour_runtime_Value harbour_str_apply_width(
+    const char *formatted,
+    long long width,
+    _Bool explicit_width
+) {
+    size_t length;
+    size_t target_width;
+    char *buffer;
+
+    if (formatted == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    length = strlen(formatted);
+    if (!explicit_width) {
+        target_width = 10;
+        if (length >= target_width) {
+            return harbour_string_value_from_owned_buffer(formatted);
+        }
+    } else if (width <= 0) {
+        return harbour_string_value_from_owned_buffer(formatted);
+    } else {
+        target_width = (size_t) width;
+        if (length > target_width) {
+            buffer = (char *) malloc(target_width + 1);
+            if (buffer == NULL) {
+                return harbour_value_from_string_literal("");
+            }
+
+            memset(buffer, '*', target_width);
+            buffer[target_width] = '\0';
+            return harbour_value_from_string_literal(buffer);
+        }
+    }
+
+    buffer = (char *) malloc(target_width + 1);
+    if (buffer == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    memset(buffer, ' ', target_width);
+    memcpy(buffer + (target_width - length), formatted, length);
+    buffer[target_width] = '\0';
+    return harbour_value_from_string_literal(buffer);
+}
+
+static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value) {
+    char buffer[128];
+
+    if (value.kind == HARBOUR_VALUE_INTEGER) {
+        snprintf(buffer, sizeof(buffer), "%lld", value.as.integer);
+        return harbour_str_apply_width(buffer, 10, 0);
+    }
+
+    if (value.kind == HARBOUR_VALUE_FLOAT) {
+        size_t length;
+
+        snprintf(buffer, sizeof(buffer), "%.15f", value.as.floating);
+        length = strlen(buffer);
+        while (length > 0 && buffer[length - 1] == '0') {
+            buffer[--length] = '\0';
+        }
+        if (length > 0 && buffer[length - 1] == '.') {
+            buffer[length++] = '0';
+            buffer[length] = '\0';
+        }
+        return harbour_str_apply_width(buffer, 10, 0);
+    }
+
+    return harbour_value_error_literal("BASE 1099 Argument error (STR)");
 }
 
 static unsigned long long harbour_allocate_array_identity(void) {

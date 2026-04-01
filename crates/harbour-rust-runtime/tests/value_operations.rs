@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, aclone, asize, at, call_builtin,
-    call_builtin_mut, left, lower, ltrim, qout, replicate, right, rtrim, space, substr, trim,
-    upper,
+    call_builtin_mut, left, lower, ltrim, qout, replicate, right, rtrim, space, str_value, substr,
+    trim, upper,
 };
 
 #[test]
@@ -543,6 +543,111 @@ fn public_replicate_and_space_dispatch_through_the_immutable_builtin_surface() {
         Ok(Value::from("A"))
     );
     assert_eq!(mutable_arguments[0], Value::from("A"));
+}
+
+#[test]
+fn public_str_matches_the_current_numeric_runtime_baseline() {
+    assert_eq!(
+        str_value(Some(&Value::from(10_i64)), None, None),
+        Ok(Value::from("        10"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::from(0_i64)), None, None),
+        Ok(Value::from("         0"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::from(10.5_f64)), None, None),
+        Ok(Value::from("      10.5"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64)), None),
+        Ok(Value::from("   10"))
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from(10.6_f64)),
+            Some(&Value::from(5_i64)),
+            None,
+        ),
+        Ok(Value::from("   11"))
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from(2_i64)),
+            Some(&Value::from(5_i64)),
+            Some(&Value::from(2_i64)),
+        ),
+        Ok(Value::from(" 2.00"))
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from(100000_i64)),
+            Some(&Value::from(5_i64)),
+            None,
+        ),
+        Ok(Value::from("*****"))
+    );
+}
+
+#[test]
+fn public_str_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        str_value(Some(&Value::Nil), None, None),
+        Err(RuntimeError {
+            message: "BASE 1099 Argument error (STR)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from("A")),
+            Some(&Value::from(10_i64)),
+            Some(&Value::from(2_i64)),
+        ),
+        Err(RuntimeError {
+            message: "BASE 1099 Argument error (STR)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from(100_i64)),
+            Some(&Value::from(10_i64)),
+            Some(&Value::from("A")),
+        ),
+        Err(RuntimeError {
+            message: "BASE 1099 Argument error (STR)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+}
+
+#[test]
+fn public_str_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("STR", &[Value::from(10_i64)], &mut context),
+        Ok(Value::from("        10"))
+    );
+    assert_eq!(
+        call_builtin(
+            "str",
+            &[Value::from(2_i64), Value::from(5_i64), Value::from(2_i64)],
+            &mut context,
+        ),
+        Ok(Value::from(" 2.00"))
+    );
+
+    let mut mutable_arguments = [Value::from(10.6_f64), Value::from(5_i64)];
+    assert_eq!(
+        call_builtin_mut("STR", &mut mutable_arguments, &mut context),
+        Ok(Value::from("   11"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(10.6_f64));
 }
 
 #[test]

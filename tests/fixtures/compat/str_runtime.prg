@@ -1,0 +1,13 @@
+PROCEDURE Main()
+   ? Str( 10 )
+   ? Str( 0 )
+   ? Str( 10.5 )
+   ? Str( 10, 5 )
+   ? Str( 10.6, 5 )
+   ? Str( 2, 5, 2 )
+   ? Str( 3.125, 8, 2 )
+   ? Str( 100000, 5 )
+   ? Str( NIL )
+   ? Str( "A", 10, 2 )
+   ? Str( 100, 10, "A" )
+RETURN

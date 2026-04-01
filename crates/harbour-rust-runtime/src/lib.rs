@@ -458,6 +458,7 @@ impl RuntimeContext {
 pub enum Builtin {
     QOut,
     Len,
+    Str,
     SubStr,
     Left,
     Right,
@@ -480,6 +481,8 @@ impl Builtin {
             Some(Self::QOut)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
+        } else if name.eq_ignore_ascii_case("STR") {
+            Some(Self::Str)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
             Some(Self::SubStr)
         } else if name.eq_ignore_ascii_case("LEFT") {
@@ -529,6 +532,35 @@ pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
         Value::Array(values) => Ok(Value::from(values.len() as i64)),
         other => Err(RuntimeError::len_argument_error(Some(other.kind()))),
     }
+}
+
+pub fn str_value(
+    number: Option<&Value>,
+    width: Option<&Value>,
+    decimals: Option<&Value>,
+) -> Result<Value, RuntimeError> {
+    let Some(number) = number else {
+        return Err(RuntimeError::str_argument_error(None));
+    };
+
+    let numeric = match number {
+        Value::Integer(value) => StrNumeric::Integer(*value),
+        Value::Float(value) => StrNumeric::Float(*value),
+        other => return Err(RuntimeError::str_argument_error(Some(other.kind()))),
+    };
+
+    let width = numeric_optional_i64(width, RuntimeError::str_argument_error)?;
+    let decimals = numeric_optional_i64(decimals, RuntimeError::str_argument_error)?;
+
+    let formatted = if let Some(decimals) = decimals {
+        format_str_fixed(numeric, decimals.max(0) as usize)
+    } else if width.is_some() {
+        format_str_rounded(numeric)
+    } else {
+        format_str_default(numeric)
+    };
+
+    Ok(Value::from(apply_str_width(formatted, width)))
 }
 
 pub fn substr(
@@ -813,6 +845,7 @@ pub fn call_builtin(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
+        Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
@@ -840,6 +873,7 @@ pub fn call_builtin_mut(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Len) => len(arguments.first()),
+        Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
@@ -1017,6 +1051,14 @@ impl RuntimeError {
     pub fn len_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1111 Argument error (LEN)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn str_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1099 Argument error (STR)".to_owned(),
             expected: None,
             actual,
         }
@@ -1291,6 +1333,80 @@ fn string_slice(characters: &[char], start: usize, count: usize) -> String {
     characters[start..start + count].iter().copied().collect()
 }
 
+#[derive(Clone, Copy)]
+enum StrNumeric {
+    Integer(i64),
+    Float(f64),
+}
+
+fn format_str_default(number: StrNumeric) -> String {
+    match number {
+        StrNumeric::Integer(value) => value.to_string(),
+        StrNumeric::Float(value) => trim_default_float(format!("{value:.15}")),
+    }
+}
+
+fn format_str_rounded(number: StrNumeric) -> String {
+    match number {
+        StrNumeric::Integer(value) => value.to_string(),
+        StrNumeric::Float(value) => format!("{:.0}", value),
+    }
+}
+
+fn format_str_fixed(number: StrNumeric, decimals: usize) -> String {
+    match number {
+        StrNumeric::Integer(value) => format!("{:.*}", decimals, value as f64),
+        StrNumeric::Float(value) => format!("{:.*}", decimals, value),
+    }
+}
+
+fn trim_default_float(mut text: String) -> String {
+    while text.ends_with('0') {
+        text.pop();
+    }
+    if text.ends_with('.') {
+        text.push('0');
+    }
+    text
+}
+
+fn apply_str_width(formatted: String, width: Option<i64>) -> String {
+    match width {
+        None => {
+            let width = 10usize;
+            if formatted.len() >= width {
+                formatted
+            } else {
+                format!("{formatted:>width$}")
+            }
+        }
+        Some(width) if width <= 0 => formatted,
+        Some(width) => {
+            let width = width as usize;
+            if formatted.len() > width {
+                "*".repeat(width)
+            } else {
+                format!("{formatted:>width$}")
+            }
+        }
+    }
+}
+
+fn numeric_optional_i64(
+    value: Option<&Value>,
+    argument_error: fn(Option<ValueKind>) -> RuntimeError,
+) -> Result<Option<i64>, RuntimeError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+
+    match value {
+        Value::Integer(value) => Ok(Some(*value)),
+        Value::Float(value) => Ok(Some(value.trunc() as i64)),
+        other => Err(argument_error(Some(other.kind()))),
+    }
+}
+
 fn numeric_string_count(
     value: Option<&Value>,
     argument_error: fn(Option<ValueKind>) -> RuntimeError,
@@ -1323,7 +1439,7 @@ fn numeric_string_count(
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, aclone, asize, at,
-        call_builtin, call_builtin_mut, len, qout, replicate, space,
+        call_builtin, call_builtin_mut, len, qout, replicate, space, str_value,
     };
 
     #[test]
@@ -1808,6 +1924,111 @@ mod tests {
                 actual: None,
             })
         );
+    }
+
+    #[test]
+    fn str_follows_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            str_value(Some(&Value::from(10_i64)), None, None),
+            Ok(Value::from("        10"))
+        );
+        assert_eq!(
+            str_value(Some(&Value::from(0_i64)), None, None),
+            Ok(Value::from("         0"))
+        );
+        assert_eq!(
+            str_value(Some(&Value::from(10.5_f64)), None, None),
+            Ok(Value::from("      10.5"))
+        );
+        assert_eq!(
+            str_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64)), None),
+            Ok(Value::from("   10"))
+        );
+        assert_eq!(
+            str_value(
+                Some(&Value::from(10.6_f64)),
+                Some(&Value::from(5_i64)),
+                None
+            ),
+            Ok(Value::from("   11"))
+        );
+        assert_eq!(
+            str_value(
+                Some(&Value::from(2_i64)),
+                Some(&Value::from(5_i64)),
+                Some(&Value::from(2_i64)),
+            ),
+            Ok(Value::from(" 2.00"))
+        );
+        assert_eq!(
+            str_value(
+                Some(&Value::from(3.125_f64)),
+                Some(&Value::from(8_i64)),
+                Some(&Value::from(2_i64)),
+            ),
+            Ok(Value::from("    3.12"))
+        );
+        assert_eq!(
+            str_value(
+                Some(&Value::from(100000_i64)),
+                Some(&Value::from(5_i64)),
+                None
+            ),
+            Ok(Value::from("*****"))
+        );
+    }
+
+    #[test]
+    fn str_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            str_value(Some(&Value::Nil), None, None),
+            Err(RuntimeError {
+                message: "BASE 1099 Argument error (STR)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            str_value(
+                Some(&Value::from("A")),
+                Some(&Value::from(10_i64)),
+                Some(&Value::from(2_i64)),
+            ),
+            Err(RuntimeError {
+                message: "BASE 1099 Argument error (STR)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            str_value(
+                Some(&Value::from(100_i64)),
+                Some(&Value::from(10_i64)),
+                Some(&Value::from("A")),
+            ),
+            Err(RuntimeError {
+                message: "BASE 1099 Argument error (STR)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+    }
+
+    #[test]
+    fn str_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("STR", &[Value::from(10_i64)], &mut context),
+            Ok(Value::from("        10"))
+        );
+
+        let mut mutable_arguments = [Value::from(2_i64), Value::from(5_i64), Value::from(2_i64)];
+        assert_eq!(
+            call_builtin_mut("str", &mut mutable_arguments, &mut context),
+            Ok(Value::from(" 2.00"))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(2_i64));
     }
 
     #[test]

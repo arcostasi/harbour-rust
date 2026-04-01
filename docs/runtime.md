@@ -201,6 +201,15 @@ Na slice seguinte da Fase 7, entram `Replicate()` e `Space()` como builtins imut
 - `Space()` agora emite `BASE 1105 Argument error (SPACE)` para argumentos inválidos,
 - nesta fase ambos continuam parciais: overflow completo do upstream, `Chr(0)` em `Replicate()` e codepage multibyte no host C continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Str()` como builtin imutável de conversão numérica para string:
+
+- `str_value()` cobre o recorte inicial de `Str( nValue, [nWidth], [nDecimals] )` para `Integer` e `Float`,
+- sem largura explícita o baseline atual usa largura mínima 10, mas deixa o texto crescer quando necessário,
+- com largura explícita e sem decimais o recorte atual arredonda para inteiro, alinhado aos casos básicos do upstream usados nesta slice,
+- com largura + decimais explícitos o builtin usa formatação fixa e retorna `*****` quando o resultado não cabe na largura pedida,
+- argumentos inválidos agora emitem `BASE 1099 Argument error (STR)`,
+- nesta fase o builtin continua parcial: a precisão histórica derivada de escala original do número, larguras negativas e corner cases mais profundos do upstream continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,
