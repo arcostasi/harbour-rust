@@ -244,6 +244,14 @@ Na slice seguinte da Fase 7, entra `Log()` como builtin imutável de logaritmo n
 - argumentos inválidos agora emitem `BASE 1095 Argument error (LOG)`,
 - nesta fase o builtin continua parcial: handlers matemáticos do upstream, substituição de erro histórica completa e corner cases mais profundos permanecem pendentes.
 
+Na slice seguinte da Fase 7, entra `Exp()` como builtin imutável de exponencial:
+
+- `exp_value()` cobre o recorte inicial de `Exp( nValue )` para `Integer` e `Float`,
+- o baseline atual usa `exp()` padrão sobre `f64`,
+- overflow numérico permanece como `+infinity` no runtime numérico e o caminho `Str( Exp(...) )` já reaproveita o placeholder de overflow com `*`,
+- argumentos inválidos agora emitem `BASE 1096 Argument error (EXP)`,
+- nesta fase o builtin continua parcial: `Str( Exp(...) )` ainda herda a largura/escala simplificada do `Str()` atual e por isso diverge do `harbour-core` em casos como `Str( Exp( 15 ) )`; handlers matemáticos do upstream, substituição de erro histórica completa e corner cases mais profundos permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento numérico:
 
 - `int()` cobre o recorte inicial de `Int( nValue )` para `Integer` e `Float`,

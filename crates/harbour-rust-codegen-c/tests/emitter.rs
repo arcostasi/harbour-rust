@@ -209,6 +209,32 @@ fn emits_sqrt_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_exp_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/exp_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_exp((harbour_runtime_Value[]) { harbour_value_from_integer(0LL) }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_str((harbour_runtime_Value[]) { harbour_builtin_exp((harbour_runtime_Value[]) { harbour_value_from_integer(15LL) }, 1) }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_round((harbour_runtime_Value[]) { harbour_builtin_exp((harbour_runtime_Value[]) { harbour_value_from_integer(1LL) }, 1), harbour_value_from_integer(2LL) }, 2) }, 1);")
+    );
+}
+
+#[test]
 fn emits_log_builtin_fixture_with_runtime_builtin_helper_calls() {
     let emitted = emit_fixture("tests/fixtures/parser/log_builtin.prg");
 
