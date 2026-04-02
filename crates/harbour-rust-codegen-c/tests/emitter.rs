@@ -188,6 +188,27 @@ fn emits_abs_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_sqrt_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/sqrt_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_sqrt((harbour_runtime_Value[]) { harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"-1\") }, 1) }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_str((harbour_runtime_Value[]) { harbour_builtin_sqrt((harbour_runtime_Value[]) { harbour_value_from_integer(10LL) }, 1), harbour_value_from_integer(10LL), harbour_value_from_integer(2LL) }, 3) }, 1);")
+    );
+}
+
+#[test]
 fn emits_int_builtin_fixture_with_runtime_builtin_helper_calls() {
     let emitted = emit_fixture("tests/fixtures/parser/int_builtin.prg");
 

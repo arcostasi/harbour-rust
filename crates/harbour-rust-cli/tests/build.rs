@@ -188,6 +188,28 @@ fn build_command_writes_c_output_for_abs_builtin_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_sqrt_builtin_fixture() {
+    let temp_dir = unique_temp_dir("sqrt-builtin");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("sqrt_builtin.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/sqrt_builtin.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_sqrt("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_int_builtin_fixture() {
     let temp_dir = unique_temp_dir("int-builtin");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -774,6 +796,39 @@ fn run_command_executes_abs_builtin_invalid_fixture_with_xbase_error_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "BASE 1089 Argument error (ABS)\n");
+}
+
+#[test]
+fn run_command_executes_sqrt_builtin_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/sqrt_builtin.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "0\n0\n2\n      3.16\n");
+}
+
+#[test]
+fn run_command_executes_sqrt_builtin_invalid_fixture_with_xbase_error_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/sqrt_builtin_invalid.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(
+        stdout,
+        "BASE 1097 Argument error (SQRT)\nBASE 1097 Argument error (SQRT)\n"
+    );
 }
 
 #[test]

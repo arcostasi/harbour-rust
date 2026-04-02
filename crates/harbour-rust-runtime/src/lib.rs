@@ -458,6 +458,7 @@ impl RuntimeContext {
 pub enum Builtin {
     QOut,
     Abs,
+    Sqrt,
     Int,
     Round,
     Mod,
@@ -491,6 +492,8 @@ impl Builtin {
             Some(Self::QOut)
         } else if name.eq_ignore_ascii_case("ABS") {
             Some(Self::Abs)
+        } else if name.eq_ignore_ascii_case("SQRT") {
+            Some(Self::Sqrt)
         } else if name.eq_ignore_ascii_case("INT") {
             Some(Self::Int)
         } else if name.eq_ignore_ascii_case("ROUND") {
@@ -568,6 +571,24 @@ pub fn abs(value: Option<&Value>) -> Result<Value, RuntimeError> {
         Value::Float(number) => Ok(Value::from(number.abs())),
         other => Err(RuntimeError::abs_argument_error(Some(other.kind()))),
     }
+}
+
+pub fn sqrt_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::sqrt_argument_error(None));
+    };
+
+    let number = match value {
+        Value::Integer(number) => *number as f64,
+        Value::Float(number) => *number,
+        other => return Err(RuntimeError::sqrt_argument_error(Some(other.kind()))),
+    };
+
+    if number <= 0.0 {
+        return Ok(Value::from(0.0_f64));
+    }
+
+    Ok(Value::from(number.sqrt()))
 }
 
 pub fn int(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1030,6 +1051,7 @@ pub fn call_builtin(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
+        Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
@@ -1068,6 +1090,7 @@ pub fn call_builtin_mut(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
+        Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
@@ -1264,6 +1287,14 @@ impl RuntimeError {
     pub fn abs_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1089 Argument error (ABS)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn sqrt_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1097 Argument error (SQRT)".to_owned(),
             expected: None,
             actual,
         }
@@ -1950,7 +1981,7 @@ mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
         call_builtin, call_builtin_mut, int, len, max_value, min_value, mod_value, qout, replicate,
-        round_value, space, str_value, type_value, val,
+        round_value, space, sqrt_value, str_value, type_value, val,
     };
 
     #[test]
@@ -2415,6 +2446,67 @@ mod tests {
             Ok(Value::from(150.245_f64))
         );
         assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
+    }
+
+    #[test]
+    fn sqrt_matches_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            sqrt_value(Some(&Value::from(-1_i64))),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            sqrt_value(Some(&Value::from(0_i64))),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            sqrt_value(Some(&Value::from(4_i64))),
+            Ok(Value::from(2.0_f64))
+        );
+        assert_eq!(
+            sqrt_value(Some(&Value::from(10_i64))),
+            Ok(Value::from(10_f64.sqrt()))
+        );
+        assert_eq!(
+            sqrt_value(Some(&Value::from(3.0_f64))),
+            Ok(Value::from(3.0_f64.sqrt()))
+        );
+    }
+
+    #[test]
+    fn sqrt_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            sqrt_value(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1097 Argument error (SQRT)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            sqrt_value(None),
+            Err(RuntimeError {
+                message: "BASE 1097 Argument error (SQRT)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn sqrt_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("SQRT", &[Value::from(4_i64)], &mut context),
+            Ok(Value::from(2.0_f64))
+        );
+
+        let mut mutable_arguments = [Value::from(10_i64)];
+        assert_eq!(
+            call_builtin_mut("sqrt", &mut mutable_arguments, &mut context),
+            Ok(Value::from(10_f64.sqrt()))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(10_i64));
     }
 
     #[test]

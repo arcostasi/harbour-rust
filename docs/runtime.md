@@ -228,6 +228,14 @@ Na slice seguinte da Fase 7, entra `Abs()` como builtin imutável de valor absol
 - argumentos inválidos agora emitem `BASE 1089 Argument error (ABS)`,
 - nesta fase o builtin continua parcial: by-ref, handlers matemáticos do upstream e corner cases extremos fora do recorte atual continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Sqrt()` como builtin imutável de raiz quadrada:
+
+- `sqrt_value()` cobre o recorte inicial de `Sqrt( nValue )` para `Integer` e `Float`,
+- valores `<= 0` retornam `0`, alinhado ao baseline observado em `rt_math.prg`,
+- valores positivos usam `sqrt()` padrão sobre `f64`,
+- argumentos inválidos agora emitem `BASE 1097 Argument error (SQRT)`,
+- nesta fase o builtin continua parcial: handlers matemáticos do upstream, escala histórica fina e corner cases mais profundos permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento numérico:
 
 - `int()` cobre o recorte inicial de `Int( nValue )` para `Integer` e `Float`,

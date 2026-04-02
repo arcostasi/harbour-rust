@@ -184,13 +184,14 @@ RETURN
 
 ### Slice 7.6 — Builtins essenciais de math e conversão
 
-**Status:** parcial (`Abs()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Max()` ✓, `Min()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
+**Status:** parcial (`Abs()` ✓, `Sqrt()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Max()` ✓, `Min()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
 
 **Escopo (por prioridade):**
 
 | Builtin | Referência | Prioridade |
 | --- | --- | --- |
 | `Abs()` | `src/rtl/abs.c` | alta |
+| `Sqrt()` | `src/rtl/math.c` | baixa |
 | `Int()` | `src/rtl/math.c` | alta |
 | `Round()` | `src/rtl/round.c` | alta |
 | `Mod()` | `src/rtl/mod.c` | alta |

@@ -97,6 +97,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/at_builtin.prg` -> `harbour-rust-cli build/run` com `At()` para string
 - `tests/fixtures/parser/replicate_space_builtin.prg` -> `harbour-rust-cli build/run` com `Replicate()` e `Space()` para string
 - `tests/fixtures/parser/abs_builtin.prg` -> `harbour-rust-cli build/run` com `Abs()` numérico
+- `tests/fixtures/parser/sqrt_builtin.prg` -> `harbour-rust-cli build/run` com `Sqrt()` numérico
 - `tests/fixtures/parser/int_builtin.prg` -> `harbour-rust-cli build/run` com `Int()` numérico
 - `tests/fixtures/parser/round_builtin.prg` -> `harbour-rust-cli build/run` com `Round()` numérico
 - `tests/fixtures/parser/mod_builtin.prg` -> `harbour-rust-cli build/run` com `Mod()` numérico
@@ -120,6 +121,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/compat/at_runtime.prg` -> baseline focado de `At()` contra `harbour-core/utils/hbtest/rt_str.prg`
 - `tests/fixtures/compat/replicate_space_runtime.prg` -> baseline focado de `Replicate()`/`Space()` contra `harbour-core/utils/hbtest/rt_str.prg`
 - `tests/fixtures/compat/abs_runtime.prg` -> baseline focado de `Abs()` contra `harbour-core/utils/hbtest/rt_math.prg`
+- `tests/fixtures/compat/sqrt_runtime.prg` -> baseline focado de `Sqrt()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/int_runtime.prg` -> baseline focado de `Int()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/round_runtime.prg` -> baseline focado de `Round()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/mod_runtime.prg` -> baseline focado de `Mod()` contra `harbour-core/utils/hbtest/rt_math.prg`

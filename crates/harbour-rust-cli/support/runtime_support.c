@@ -595,6 +595,32 @@ harbour_runtime_Value harbour_builtin_abs(
     return harbour_value_error_literal("BASE 1089 Argument error (ABS)");
 }
 
+struct harbour_runtime_Value harbour_builtin_sqrt(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    double value;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        ( arguments[0].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[0].kind != HARBOUR_VALUE_FLOAT )
+    ) {
+        return harbour_value_error_literal("BASE 1097 Argument error (SQRT)");
+    }
+
+    value = arguments[0].kind == HARBOUR_VALUE_INTEGER
+        ? (double) arguments[0].as.integer
+        : arguments[0].as.floating;
+
+    if (value <= 0.0) {
+        return harbour_value_from_float(0.0);
+    }
+
+    return harbour_value_from_float(sqrt(value));
+}
+
 struct harbour_runtime_Value harbour_builtin_int(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
