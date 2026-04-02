@@ -327,6 +327,30 @@ fn emits_valtype_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_empty_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/empty_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(emitted.source.contains(
+        "harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_empty(NULL, 0) }, 1);"
+    ));
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_empty((harbour_runtime_Value[]) { empty_items }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_empty((harbour_runtime_Value[]) { filled_items }, 1) }, 1);")
+    );
+}
+
+#[test]
 fn emits_substr_builtin_fixture_with_runtime_builtin_helper_calls() {
     let emitted = emit_fixture("tests/fixtures/parser/substr_builtin.prg");
 

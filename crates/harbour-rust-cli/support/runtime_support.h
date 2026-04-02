@@ -126,6 +126,10 @@ struct harbour_runtime_Value harbour_builtin_valtype(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_empty(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_builtin_substr(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

@@ -1,0 +1,13 @@
+Empty() => .T.
+Empty(NIL) => .T.
+Empty(.F.) => .T.
+Empty(.T.) => .F.
+Empty(0) => .T.
+Empty(10) => .F.
+Empty("") => .T.
+Empty("  ") => .T.
+Empty(" \\r\\t") => .T.
+Empty(" \\0") => .F.
+Empty("A") => .F.
+Empty({}) => .T.
+Empty({0}) => .F.

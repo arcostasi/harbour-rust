@@ -103,6 +103,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/str_builtin.prg` -> `harbour-rust-cli build/run` com `Str()` numérico
 - `tests/fixtures/parser/val_builtin.prg` -> `harbour-rust-cli build/run` com `Val()` string->número
 - `tests/fixtures/parser/valtype_builtin.prg` -> `harbour-rust-cli build/run` com `ValType()`
+- `tests/fixtures/parser/empty_builtin.prg` -> `harbour-rust-cli build/run` com `Empty()`
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
@@ -123,6 +124,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/compat/str_runtime.prg` -> baseline focado de `Str()` contra `harbour-core/utils/hbtest/rt_stra.prg`, `rt_hvma.prg` e `rt_math.prg`
 - `tests/fixtures/compat/val_runtime.prg` -> baseline focado de `Val()` contra `harbour-core/utils/hbtest/rt_str.prg` e `rt_math.prg`
 - `tests/fixtures/compat/valtype_runtime.prg` -> baseline focado de `ValType()` contra `harbour-core/utils/hbtest/rt_hvm.prg`
+- `tests/fixtures/compat/empty_runtime.prg` -> baseline focado de `Empty()` contra `harbour-core/utils/hbtest/rt_hvma.prg`
 - `tests/fixtures/parser/indexing.prg` -> lowering HIR explícito para `Index(target, indices)`
 - `tests/fixtures/parser/static.prg` -> lowering IR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-ir` -> lowering IR como `Read(path)` explícito

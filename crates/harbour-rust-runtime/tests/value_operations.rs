@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
-    call_builtin_mut, int, left, lower, ltrim, mod_value, qout, replicate, right, round_value,
-    rtrim, space, str_value, substr, trim, upper, val, valtype,
+    call_builtin_mut, empty, int, left, lower, ltrim, mod_value, qout, replicate, right,
+    round_value, rtrim, space, str_value, substr, trim, upper, val, valtype,
 };
 
 #[test]
@@ -972,6 +972,48 @@ fn public_valtype_dispatches_through_builtin_surfaces() {
         Ok(Value::from("A"))
     );
     assert_eq!(mutable_arguments[0], Value::array(vec![Value::from(1_i64)]));
+}
+
+#[test]
+fn public_empty_matches_the_current_runtime_baseline() {
+    assert_eq!(empty(None), Ok(Value::from(true)));
+    assert_eq!(empty(Some(&Value::Nil)), Ok(Value::from(true)));
+    assert_eq!(empty(Some(&Value::from(false))), Ok(Value::from(true)));
+    assert_eq!(empty(Some(&Value::from(true))), Ok(Value::from(false)));
+    assert_eq!(empty(Some(&Value::from(0_i64))), Ok(Value::from(true)));
+    assert_eq!(empty(Some(&Value::from(10_i64))), Ok(Value::from(false)));
+    assert_eq!(empty(Some(&Value::from(0.0_f64))), Ok(Value::from(true)));
+    assert_eq!(empty(Some(&Value::from("  \r\t"))), Ok(Value::from(true)));
+    assert_eq!(
+        empty(Some(&Value::from(String::from(" \u{0000}")))),
+        Ok(Value::from(false))
+    );
+    assert_eq!(empty(Some(&Value::empty_array())), Ok(Value::from(true)));
+    assert_eq!(
+        empty(Some(&Value::array(vec![Value::from(0_i64)]))),
+        Ok(Value::from(false))
+    );
+}
+
+#[test]
+fn public_empty_dispatches_through_builtin_surfaces() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("EMPTY", &[], &mut context),
+        Ok(Value::from(true))
+    );
+    assert_eq!(
+        call_builtin("empty", &[Value::from("A")], &mut context),
+        Ok(Value::from(false))
+    );
+
+    let mut mutable_arguments = [Value::from(false)];
+    assert_eq!(
+        call_builtin_mut("EMPTY", &mut mutable_arguments, &mut context),
+        Ok(Value::from(true))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(false));
 }
 
 #[test]

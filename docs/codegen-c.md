@@ -145,6 +145,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/str_builtin.prg` | `Str()` numérico executa |
 | `tests/fixtures/parser/val_builtin.prg` | `Val()` string->número executa |
 | `tests/fixtures/parser/valtype_builtin.prg` | `ValType()` executa |
+| `tests/fixtures/parser/empty_builtin.prg` | `Empty()` executa |
 | `tests/fixtures/parser/arrays.prg` | gera C com array_items |
 | `tests/fixtures/parser/indexing.prg` | gera C com array_get |
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
@@ -172,6 +173,7 @@ Fase 5 + Fase 7 parcial:
 - `Str()` numérico via dispatch de builtin — parcial
 - `Val()` string->número via dispatch de builtin — parcial
 - `ValType()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
+- `Empty()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
 - LOCAL com inicializador — completo
 - Literais de array — completo
 - Indexação (leitura) — completo
@@ -191,5 +193,6 @@ Fase 5 + Fase 7 parcial:
 - `Str()` para precisão herdada da escala original, larguras negativas e corner cases mais profundos do upstream — pendente
 - `Val()` para exponentes, `Chr(0)`, pontos repetidos e corner cases mais profundos do upstream — pendente
 - `ValType()` para `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e tipos ainda não materializados no runtime — pendente
+- `Empty()` para datas, codeblocks, pointers, hashes, objetos e `Chr(0)` embutido no runtime host C — pendente
 - STATIC com storage persistente no C gerado para leitura no mesmo routine — parcial
 - STATIC no pipeline completo (`sema -> cli run`) — parcial

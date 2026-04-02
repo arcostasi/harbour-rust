@@ -465,6 +465,7 @@ pub enum Builtin {
     Str,
     Val,
     ValType,
+    Empty,
     SubStr,
     Left,
     Right,
@@ -501,6 +502,8 @@ impl Builtin {
             Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
+        } else if name.eq_ignore_ascii_case("EMPTY") {
+            Some(Self::Empty)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
             Some(Self::SubStr)
         } else if name.eq_ignore_ascii_case("LEFT") {
@@ -702,6 +705,19 @@ pub fn valtype(value: Option<&Value>) -> Result<Value, RuntimeError> {
     };
 
     Ok(Value::from(type_code))
+}
+
+pub fn empty(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let is_empty = match value.unwrap_or(&Value::Nil) {
+        Value::Nil => true,
+        Value::Logical(value) => !value,
+        Value::Integer(value) => *value == 0,
+        Value::Float(value) => *value == 0.0,
+        Value::String(text) => harbour_string_is_empty(text),
+        Value::Array(values) => values.is_empty(),
+    };
+
+    Ok(Value::from(is_empty))
 }
 
 pub fn substr(
@@ -993,6 +1009,7 @@ pub fn call_builtin(
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
+        Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
@@ -1027,6 +1044,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
+        Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
         Some(Builtin::Right) => right(arguments.first(), arguments.get(1)),
@@ -1532,6 +1550,10 @@ impl Error for RuntimeError {}
 
 fn string_slice(characters: &[char], start: usize, count: usize) -> String {
     characters[start..start + count].iter().copied().collect()
+}
+
+fn harbour_string_is_empty(text: &str) -> bool {
+    text.as_bytes().iter().all(u8::is_ascii_whitespace)
 }
 
 #[derive(Clone, Copy)]

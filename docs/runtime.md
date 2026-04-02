@@ -264,6 +264,16 @@ Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introsp
 - `Array` retorna `"A"`,
 - nesta fase o builtin continua parcial: `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e outros tipos ainda não existem no runtime, então seus códigos permanecem pendentes.
 
+Na slice seguinte da Fase 7, entra `Empty()` como builtin imutável de emptiness em estilo xBase:
+
+- `empty()` segue o baseline leniente do upstream e não emite erro para os tipos hoje materializados no runtime,
+- `Nil` e ausência de argumento retornam `.T.`,
+- `Logical` retorna o inverso do valor (`.F.` é vazio, `.T.` não é),
+- `Integer` e `Float` retornam `.T.` apenas quando o valor observado é zero,
+- `String` retorna `.T.` apenas quando contém whitespace ASCII e nenhum outro byte observável,
+- `Array` retorna `.T.` apenas quando vazia,
+- nesta fase o builtin continua parcial: `Date`, `Object`, `Codeblock`, `Memo`, `Hash`, pointers e o caminho host C com `Chr(0)` embutido permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `AClone()` como builtin imutável de array:
 
 - `aclone()` usa `array_clone()` e retorna cópia estrutural do array,

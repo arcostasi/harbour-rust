@@ -71,6 +71,7 @@ enum RuntimeBuiltin {
     Str,
     Val,
     ValType,
+    Empty,
     SubStr,
     Left,
     Right,
@@ -107,6 +108,8 @@ impl RuntimeBuiltin {
             Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
+        } else if name.eq_ignore_ascii_case("EMPTY") {
+            Some(Self::Empty)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
             Some(Self::SubStr)
         } else if name.eq_ignore_ascii_case("LEFT") {
@@ -151,6 +154,7 @@ impl RuntimeBuiltin {
             Self::Str => "harbour_builtin_str",
             Self::Val => "harbour_builtin_val",
             Self::ValType => "harbour_builtin_valtype",
+            Self::Empty => "harbour_builtin_empty",
             Self::SubStr => "harbour_builtin_substr",
             Self::Left => "harbour_builtin_left",
             Self::Right => "harbour_builtin_right",
@@ -179,6 +183,7 @@ impl RuntimeBuiltin {
             Self::Str => "Str",
             Self::Val => "Val",
             Self::ValType => "ValType",
+            Self::Empty => "Empty",
             Self::SubStr => "SubStr",
             Self::Left => "Left",
             Self::Right => "Right",
@@ -335,6 +340,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_empty(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_substr(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -1180,6 +1188,7 @@ mod tests {
 "extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_val(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_empty(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_substr(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_left(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_right(const harbour_runtime_Value *arguments, size_t argument_count);\n",

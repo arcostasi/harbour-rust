@@ -38,6 +38,7 @@ static _Bool harbour_try_truncated_repeat_count(
     harbour_runtime_Value value,
     long long *count
 );
+static _Bool harbour_string_is_empty(const char *text);
 static _Bool harbour_try_numeric_pair(
     harbour_runtime_Value left,
     harbour_runtime_Value right,
@@ -1494,6 +1495,55 @@ struct harbour_runtime_Value harbour_builtin_valtype(
     }
 
     return harbour_value_from_string_literal("U");
+}
+
+struct harbour_runtime_Value harbour_builtin_empty(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    harbour_runtime_Value value;
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_from_logical(1);
+    }
+
+    value = arguments[0];
+    switch (value.kind) {
+        case HARBOUR_VALUE_NIL:
+            return harbour_value_from_logical(1);
+        case HARBOUR_VALUE_LOGICAL:
+            return harbour_value_from_logical(!value.as.logical);
+        case HARBOUR_VALUE_INTEGER:
+            return harbour_value_from_logical(value.as.integer == 0);
+        case HARBOUR_VALUE_FLOAT:
+            return harbour_value_from_logical(value.as.floating == 0.0);
+        case HARBOUR_VALUE_STRING:
+            return harbour_value_from_logical(harbour_string_is_empty(value.as.string));
+        case HARBOUR_VALUE_ARRAY:
+            return harbour_value_from_logical(value.as.array.length == 0);
+        case HARBOUR_VALUE_ERROR:
+            return harbour_value_from_logical(1);
+    }
+
+    return harbour_value_from_logical(1);
+}
+
+static _Bool harbour_string_is_empty(const char *text) {
+    const unsigned char *current;
+
+    if (text == NULL) {
+        return 1;
+    }
+
+    current = (const unsigned char *) text;
+    while (*current != '\0') {
+        if (!isspace(*current)) {
+            return 0;
+        }
+        ++current;
+    }
+
+    return 1;
 }
 
 static unsigned long long harbour_allocate_array_identity(void) {
