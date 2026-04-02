@@ -32,6 +32,10 @@ static harbour_runtime_Value harbour_str_apply_width(
     long long width,
     _Bool explicit_width
 );
+static harbour_runtime_Value harbour_str_non_finite_placeholder(
+    long long width,
+    _Bool explicit_width
+);
 static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value);
 static harbour_runtime_Value harbour_val_parse_string(const char *text);
 static _Bool harbour_try_truncated_repeat_count(
@@ -621,6 +625,32 @@ struct harbour_runtime_Value harbour_builtin_sqrt(
     return harbour_value_from_float(sqrt(value));
 }
 
+struct harbour_runtime_Value harbour_builtin_log(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    double value;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        ( arguments[0].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[0].kind != HARBOUR_VALUE_FLOAT )
+    ) {
+        return harbour_value_error_literal("BASE 1095 Argument error (LOG)");
+    }
+
+    value = arguments[0].kind == HARBOUR_VALUE_INTEGER
+        ? (double) arguments[0].as.integer
+        : arguments[0].as.floating;
+
+    if (value <= 0.0) {
+        return harbour_value_from_float(-HUGE_VAL);
+    }
+
+    return harbour_value_from_float(log(value));
+}
+
 struct harbour_runtime_Value harbour_builtin_int(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -837,6 +867,10 @@ struct harbour_runtime_Value harbour_builtin_str(
             decimals = 0;
         }
         explicit_decimals = 1;
+    }
+
+    if (number.kind == HARBOUR_VALUE_FLOAT && !isfinite(number.as.floating)) {
+        return harbour_str_non_finite_placeholder(width, explicit_width);
     }
 
     if (explicit_decimals) {
@@ -1439,6 +1473,31 @@ static harbour_runtime_Value harbour_str_apply_width(
 
     memset(buffer, ' ', target_width);
     memcpy(buffer + (target_width - length), formatted, length);
+    buffer[target_width] = '\0';
+    return harbour_value_from_string_literal(buffer);
+}
+
+static harbour_runtime_Value harbour_str_non_finite_placeholder(
+    long long width,
+    _Bool explicit_width
+) {
+    size_t target_width;
+    char *buffer;
+
+    if (!explicit_width) {
+        target_width = 23;
+    } else if (width <= 0) {
+        target_width = 10;
+    } else {
+        target_width = (size_t) width;
+    }
+
+    buffer = (char *) malloc(target_width + 1);
+    if (buffer == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    memset(buffer, '*', target_width);
     buffer[target_width] = '\0';
     return harbour_value_from_string_literal(buffer);
 }

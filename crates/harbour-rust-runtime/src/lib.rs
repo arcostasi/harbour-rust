@@ -459,6 +459,7 @@ pub enum Builtin {
     QOut,
     Abs,
     Sqrt,
+    Log,
     Int,
     Round,
     Mod,
@@ -494,6 +495,8 @@ impl Builtin {
             Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("SQRT") {
             Some(Self::Sqrt)
+        } else if name.eq_ignore_ascii_case("LOG") {
+            Some(Self::Log)
         } else if name.eq_ignore_ascii_case("INT") {
             Some(Self::Int)
         } else if name.eq_ignore_ascii_case("ROUND") {
@@ -589,6 +592,24 @@ pub fn sqrt_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
     }
 
     Ok(Value::from(number.sqrt()))
+}
+
+pub fn log_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::log_argument_error(None));
+    };
+
+    let number = match value {
+        Value::Integer(number) => *number as f64,
+        Value::Float(number) => *number,
+        other => return Err(RuntimeError::log_argument_error(Some(other.kind()))),
+    };
+
+    if number <= 0.0 {
+        return Ok(Value::from(f64::NEG_INFINITY));
+    }
+
+    Ok(Value::from(number.ln()))
 }
 
 pub fn int(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -710,6 +731,10 @@ pub fn str_value(
 
     let width = numeric_optional_i64(width, RuntimeError::str_argument_error)?;
     let decimals = numeric_optional_i64(decimals, RuntimeError::str_argument_error)?;
+
+    if matches!(numeric, StrNumeric::Float(value) if !value.is_finite()) {
+        return Ok(Value::from(format_non_finite_str(width)));
+    }
 
     let formatted = if let Some(decimals) = decimals {
         format_str_fixed(numeric, decimals.max(0) as usize)
@@ -1052,6 +1077,7 @@ pub fn call_builtin(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
+        Some(Builtin::Log) => log_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
@@ -1091,6 +1117,7 @@ pub fn call_builtin_mut(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
+        Some(Builtin::Log) => log_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
@@ -1295,6 +1322,14 @@ impl RuntimeError {
     pub fn sqrt_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1097 Argument error (SQRT)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn log_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1095 Argument error (LOG)".to_owned(),
             expected: None,
             actual,
         }
@@ -1816,6 +1851,14 @@ fn format_str_fixed(number: StrNumeric, decimals: usize) -> String {
     }
 }
 
+fn format_non_finite_str(width: Option<i64>) -> String {
+    match width {
+        None => "*".repeat(23),
+        Some(width) if width <= 0 => "*".repeat(10),
+        Some(width) => "*".repeat(width as usize),
+    }
+}
+
 fn trim_default_float(mut text: String) -> String {
     while text.ends_with('0') {
         text.pop();
@@ -1980,8 +2023,8 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, int, len, max_value, min_value, mod_value, qout, replicate,
-        round_value, space, sqrt_value, str_value, type_value, val,
+        call_builtin, call_builtin_mut, int, len, log_value, max_value, min_value, mod_value, qout,
+        replicate, round_value, space, sqrt_value, str_value, type_value, val,
     };
 
     #[test]
@@ -2505,6 +2548,71 @@ mod tests {
         assert_eq!(
             call_builtin_mut("sqrt", &mut mutable_arguments, &mut context),
             Ok(Value::from(10_f64.sqrt()))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(10_i64));
+    }
+
+    #[test]
+    fn log_matches_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            log_value(Some(&Value::from(-1_i64))),
+            Ok(Value::from(f64::NEG_INFINITY))
+        );
+        assert_eq!(
+            log_value(Some(&Value::from(1_i64))),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            log_value(Some(&Value::from(12_i64))),
+            Ok(Value::from(12_f64.ln()))
+        );
+        assert_eq!(
+            log_value(Some(&Value::from(10.0_f64))),
+            Ok(Value::from(10_f64.ln()))
+        );
+        assert_eq!(
+            str_value(
+                log_value(Some(&Value::from(-1_i64))).ok().as_ref(),
+                None,
+                None
+            ),
+            Ok(Value::from("***********************"))
+        );
+    }
+
+    #[test]
+    fn log_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            log_value(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1095 Argument error (LOG)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            log_value(None),
+            Err(RuntimeError {
+                message: "BASE 1095 Argument error (LOG)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn log_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("LOG", &[Value::from(1_i64)], &mut context),
+            Ok(Value::from(0.0_f64))
+        );
+
+        let mut mutable_arguments = [Value::from(10_i64)];
+        assert_eq!(
+            call_builtin_mut("log", &mut mutable_arguments, &mut context),
+            Ok(Value::from(10_f64.ln()))
         );
         assert_eq!(mutable_arguments[0], Value::from(10_i64));
     }

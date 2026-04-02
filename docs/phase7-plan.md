@@ -184,7 +184,7 @@ RETURN
 
 ### Slice 7.6 — Builtins essenciais de math e conversão
 
-**Status:** parcial (`Abs()` ✓, `Sqrt()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Max()` ✓, `Min()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
+**Status:** parcial (`Abs()` ✓, `Sqrt()` ✓, `Log()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Max()` ✓, `Min()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
 
 **Escopo (por prioridade):**
 

@@ -1,0 +1,5 @@
+Log("A") => BASE 1095 Argument error (LOG)
+Str(Log(-1)) => ***********************
+Str(Log(1), 10, 2) =>       0.00
+Str(Log(12), 10, 2) =>       2.48
+Str(Log(10), 10, 2) =>       2.30

@@ -236,6 +236,14 @@ Na slice seguinte da Fase 7, entra `Sqrt()` como builtin imutável de raiz quadr
 - argumentos inválidos agora emitem `BASE 1097 Argument error (SQRT)`,
 - nesta fase o builtin continua parcial: handlers matemáticos do upstream, escala histórica fina e corner cases mais profundos permanecem pendentes.
 
+Na slice seguinte da Fase 7, entra `Log()` como builtin imutável de logaritmo natural:
+
+- `log_value()` cobre o recorte inicial de `Log( nValue )` para `Integer` e `Float`,
+- valores `<= 0` retornam `-infinity` no runtime numérico e o caminho `Str( Log(...) )` agora materializa placeholder de overflow com `*`, alinhado ao baseline observado em `rt_math.prg`,
+- valores positivos usam `ln()` padrão sobre `f64`,
+- argumentos inválidos agora emitem `BASE 1095 Argument error (LOG)`,
+- nesta fase o builtin continua parcial: handlers matemáticos do upstream, substituição de erro histórica completa e corner cases mais profundos permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento numérico:
 
 - `int()` cobre o recorte inicial de `Int( nValue )` para `Integer` e `Float`,
