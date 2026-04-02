@@ -465,6 +465,7 @@ pub enum Builtin {
     Str,
     Val,
     ValType,
+    Type,
     Empty,
     SubStr,
     Left,
@@ -502,6 +503,8 @@ impl Builtin {
             Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
+        } else if name.eq_ignore_ascii_case("TYPE") {
+            Some(Self::Type)
         } else if name.eq_ignore_ascii_case("EMPTY") {
             Some(Self::Empty)
         } else if name.eq_ignore_ascii_case("SUBSTR") {
@@ -705,6 +708,17 @@ pub fn valtype(value: Option<&Value>) -> Result<Value, RuntimeError> {
     };
 
     Ok(Value::from(type_code))
+}
+
+pub fn type_value(source: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(source) = source else {
+        return Err(RuntimeError::type_argument_error(None));
+    };
+    let Value::String(source) = source else {
+        return Err(RuntimeError::type_argument_error(Some(source.kind())));
+    };
+
+    Ok(Value::from(type_from_source_text(source)))
 }
 
 pub fn empty(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1009,6 +1023,7 @@ pub fn call_builtin(
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
+        Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
@@ -1044,6 +1059,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
+        Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Left) => left(arguments.first(), arguments.get(1)),
@@ -1278,6 +1294,14 @@ impl RuntimeError {
     pub fn val_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1098 Argument error (VAL)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn type_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1121 Argument error (TYPE)".to_owned(),
             expected: None,
             actual,
         }
@@ -1556,6 +1580,75 @@ fn harbour_string_is_empty(text: &str) -> bool {
     text.as_bytes().iter().all(u8::is_ascii_whitespace)
 }
 
+fn type_from_source_text(text: &str) -> &'static str {
+    let text = text.trim_matches(|ch: char| ch.is_ascii_whitespace());
+    if text.is_empty() {
+        return "U";
+    }
+
+    if text.eq_ignore_ascii_case("NIL") {
+        return "U";
+    }
+
+    if text.eq_ignore_ascii_case(".T.") || text.eq_ignore_ascii_case(".F.") {
+        return "L";
+    }
+
+    if is_type_numeric_text(text) {
+        return "N";
+    }
+
+    if is_type_quoted_text(text) {
+        return "C";
+    }
+
+    if is_type_array_literal_text(text) {
+        return "A";
+    }
+
+    "U"
+}
+
+fn is_type_numeric_text(text: &str) -> bool {
+    let text = text
+        .strip_prefix('+')
+        .or_else(|| text.strip_prefix('-'))
+        .unwrap_or(text);
+    if text.is_empty() {
+        return false;
+    }
+
+    if let Some(fraction) = text.strip_prefix('.') {
+        return !fraction.is_empty() && fraction.chars().all(|ch| ch.is_ascii_digit());
+    }
+
+    let mut parts = text.split('.');
+    let integer = parts.next().unwrap_or_default();
+    if integer.is_empty() || !integer.chars().all(|ch| ch.is_ascii_digit()) {
+        return false;
+    }
+
+    match (parts.next(), parts.next()) {
+        (None, None) => true,
+        (Some(fraction), None) => {
+            !fraction.is_empty() && fraction.chars().all(|ch| ch.is_ascii_digit())
+        }
+        _ => false,
+    }
+}
+
+fn is_type_quoted_text(text: &str) -> bool {
+    let mut chars = text.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    matches!(first, '"' | '\'') && text.len() >= 2 && text.ends_with(first)
+}
+
+fn is_type_array_literal_text(text: &str) -> bool {
+    text.starts_with('{') && text.ends_with('}')
+}
+
 #[derive(Clone, Copy)]
 enum StrNumeric {
     Integer(i64),
@@ -1748,7 +1841,7 @@ mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
         call_builtin, call_builtin_mut, int, len, mod_value, qout, replicate, round_value, space,
-        str_value, val,
+        str_value, type_value, val,
     };
 
     #[test]
@@ -2628,6 +2721,62 @@ mod tests {
             Ok(Value::from(1_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from("1HELLO."));
+    }
+
+    #[test]
+    fn type_follows_the_current_textual_runtime_baseline() {
+        assert_eq!(type_value(Some(&Value::from("NIL"))), Ok(Value::from("U")));
+        assert_eq!(type_value(Some(&Value::from(".T."))), Ok(Value::from("L")));
+        assert_eq!(type_value(Some(&Value::from("10.5"))), Ok(Value::from("N")));
+        assert_eq!(
+            type_value(Some(&Value::from("{ 1, 2 }"))),
+            Ok(Value::from("A"))
+        );
+        assert_eq!(
+            type_value(Some(&Value::from("'abc'"))),
+            Ok(Value::from("C"))
+        );
+        assert_eq!(
+            type_value(Some(&Value::from("mxNotHere"))),
+            Ok(Value::from("U"))
+        );
+    }
+
+    #[test]
+    fn type_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            type_value(None),
+            Err(RuntimeError {
+                message: "BASE 1121 Argument error (TYPE)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            type_value(Some(&Value::from(100_i64))),
+            Err(RuntimeError {
+                message: "BASE 1121 Argument error (TYPE)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
+    }
+
+    #[test]
+    fn type_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("TYPE", &[Value::from(".F.")], &mut context),
+            Ok(Value::from("L"))
+        );
+
+        let mut mutable_arguments = [Value::from("{ 1 }")];
+        assert_eq!(
+            call_builtin_mut("type", &mut mutable_arguments, &mut context),
+            Ok(Value::from("A"))
+        );
+        assert_eq!(mutable_arguments[0], Value::from("{ 1 }"));
     }
 
     #[test]

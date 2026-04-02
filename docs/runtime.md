@@ -264,6 +264,18 @@ Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introsp
 - `Array` retorna `"A"`,
 - nesta fase o builtin continua parcial: `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e outros tipos ainda não existem no runtime, então seus códigos permanecem pendentes.
 
+Na slice seguinte da Fase 7, entra `Type()` como builtin imutável de introspecção textual:
+
+- `type_value()` exige argumento `String` e agora emite `BASE 1121 Argument error (TYPE)` para ausência de argumento ou tipo inválido,
+- o recorte atual interpreta o texto da string como origem de expressão apenas em um subconjunto pequeno e explícito,
+- `NIL` retorna `"U"`,
+- `.T.` e `.F.` retornam `"L"`,
+- números ASCII simples retornam `"N"`,
+- literais quoted (`'abc'`, `"abc"`) retornam `"C"`,
+- literais `{ ... }` retornam `"A"`,
+- nomes textuais não resolvidos retornam `"U"`,
+- nesta fase o builtin continua parcial: macro evaluation completa, resolução de nomes, `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e os demais tipos do upstream continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `Empty()` como builtin imutável de emptiness em estilo xBase:
 
 - `empty()` segue o baseline leniente do upstream e não emite erro para os tipos hoje materializados no runtime,

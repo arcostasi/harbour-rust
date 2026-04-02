@@ -1,0 +1,8 @@
+Type("NIL") => U
+Type(".T.") => L
+Type("10.5") => N
+Type("{1,2}") => A
+Type("'abc'") => C
+Type("mxNotHere") => U
+Type() => BASE 1121 Argument error (TYPE)
+Type(100) => BASE 1121 Argument error (TYPE)

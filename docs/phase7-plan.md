@@ -184,7 +184,7 @@ RETURN
 
 ### Slice 7.6 — Builtins essenciais de math e conversão
 
-**Status:** parcial (`Abs()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Empty()` ✓)
+**Status:** parcial (`Abs()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
 
 **Escopo (por prioridade):**
 
@@ -205,6 +205,7 @@ RETURN
 **Aceite:**
 - [x] Pelo menos `Abs`, `Int`, `Round`, `Val`, `Str`, `ValType` implementados
 - [ ] Cada um com teste unitário e de compatibilidade
+- [ ] `Type()` ainda está parcial e restrito a avaliação textual mínima
 - [ ] `COMPATIBILITY.md` atualizada
 
 ---

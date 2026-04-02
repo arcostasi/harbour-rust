@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
     call_builtin_mut, empty, int, left, lower, ltrim, mod_value, qout, replicate, right,
-    round_value, rtrim, space, str_value, substr, trim, upper, val, valtype,
+    round_value, rtrim, space, str_value, substr, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -972,6 +972,62 @@ fn public_valtype_dispatches_through_builtin_surfaces() {
         Ok(Value::from("A"))
     );
     assert_eq!(mutable_arguments[0], Value::array(vec![Value::from(1_i64)]));
+}
+
+#[test]
+fn public_type_matches_the_current_textual_runtime_baseline() {
+    assert_eq!(type_value(Some(&Value::from("NIL"))), Ok(Value::from("U")));
+    assert_eq!(type_value(Some(&Value::from(".T."))), Ok(Value::from("L")));
+    assert_eq!(type_value(Some(&Value::from("10.5"))), Ok(Value::from("N")));
+    assert_eq!(
+        type_value(Some(&Value::from("{ 1, 2 }"))),
+        Ok(Value::from("A"))
+    );
+    assert_eq!(
+        type_value(Some(&Value::from("'abc'"))),
+        Ok(Value::from("C"))
+    );
+    assert_eq!(
+        type_value(Some(&Value::from("missingVar"))),
+        Ok(Value::from("U"))
+    );
+}
+
+#[test]
+fn public_type_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        type_value(None),
+        Err(RuntimeError {
+            message: "BASE 1121 Argument error (TYPE)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        type_value(Some(&Value::from(10_i64))),
+        Err(RuntimeError {
+            message: "BASE 1121 Argument error (TYPE)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
+
+#[test]
+fn public_type_dispatches_through_builtin_surfaces() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("TYPE", &[Value::from(".F.")], &mut context),
+        Ok(Value::from("L"))
+    );
+
+    let mut mutable_arguments = [Value::from("{ 1 }")];
+    assert_eq!(
+        call_builtin_mut("type", &mut mutable_arguments, &mut context),
+        Ok(Value::from("A"))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("{ 1 }"));
 }
 
 #[test]

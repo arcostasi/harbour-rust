@@ -39,6 +39,15 @@ static _Bool harbour_try_truncated_repeat_count(
     long long *count
 );
 static _Bool harbour_string_is_empty(const char *text);
+static const char *harbour_type_trim_ascii(const char *text, size_t *length);
+static _Bool harbour_type_matches_ascii_case_insensitive(
+    const char *text,
+    size_t length,
+    const char *expected
+);
+static _Bool harbour_type_string_is_numeric(const char *text, size_t length);
+static _Bool harbour_type_string_is_quoted(const char *text, size_t length);
+static _Bool harbour_type_string_is_array_literal(const char *text, size_t length);
 static _Bool harbour_try_numeric_pair(
     harbour_runtime_Value left,
     harbour_runtime_Value right,
@@ -1497,6 +1506,53 @@ struct harbour_runtime_Value harbour_builtin_valtype(
     return harbour_value_from_string_literal("U");
 }
 
+struct harbour_runtime_Value harbour_builtin_type(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const char *source;
+    size_t source_length;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 1121 Argument error (TYPE)");
+    }
+
+    source = harbour_type_trim_ascii(arguments[0].as.string, &source_length);
+    if (source_length == 0) {
+        return harbour_value_from_string_literal("U");
+    }
+
+    if (
+        harbour_type_matches_ascii_case_insensitive(source, source_length, "NIL") ||
+        harbour_type_matches_ascii_case_insensitive(source, source_length, ".T.") ||
+        harbour_type_matches_ascii_case_insensitive(source, source_length, ".F.")
+    ) {
+        return harbour_value_from_string_literal(
+            harbour_type_matches_ascii_case_insensitive(source, source_length, "NIL")
+                ? "U"
+                : "L"
+        );
+    }
+
+    if (harbour_type_string_is_numeric(source, source_length)) {
+        return harbour_value_from_string_literal("N");
+    }
+
+    if (harbour_type_string_is_quoted(source, source_length)) {
+        return harbour_value_from_string_literal("C");
+    }
+
+    if (harbour_type_string_is_array_literal(source, source_length)) {
+        return harbour_value_from_string_literal("A");
+    }
+
+    return harbour_value_from_string_literal("U");
+}
+
 struct harbour_runtime_Value harbour_builtin_empty(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -1544,6 +1600,116 @@ static _Bool harbour_string_is_empty(const char *text) {
     }
 
     return 1;
+}
+
+static const char *harbour_type_trim_ascii(const char *text, size_t *length) {
+    const char *start = text;
+    const char *end;
+
+    if (text == NULL) {
+        if (length != NULL) {
+            *length = 0;
+        }
+        return "";
+    }
+
+    while (*start != '\0' && isspace((unsigned char) *start)) {
+        ++start;
+    }
+
+    end = start + strlen(start);
+    while (end > start && isspace((unsigned char) end[-1])) {
+        --end;
+    }
+
+    if (length != NULL) {
+        *length = (size_t) (end - start);
+    }
+
+    return start;
+}
+
+static _Bool harbour_type_matches_ascii_case_insensitive(
+    const char *text,
+    size_t length,
+    const char *expected
+) {
+    size_t index;
+
+    if (strlen(expected) != length) {
+        return 0;
+    }
+
+    for (index = 0; index < length; ++index) {
+        if (
+            toupper((unsigned char) text[index]) !=
+            toupper((unsigned char) expected[index])
+        ) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static _Bool harbour_type_string_is_numeric(const char *text, size_t length) {
+    size_t index = 0;
+    _Bool saw_dot = 0;
+    _Bool saw_digit = 0;
+
+    if (length == 0) {
+        return 0;
+    }
+
+    if (text[index] == '+' || text[index] == '-') {
+        ++index;
+    }
+
+    if (index >= length) {
+        return 0;
+    }
+
+    if (text[index] == '.') {
+        saw_dot = 1;
+        ++index;
+        if (index >= length) {
+            return 0;
+        }
+    }
+
+    for (; index < length; ++index) {
+        if (isdigit((unsigned char) text[index])) {
+            saw_digit = 1;
+            continue;
+        }
+
+        if (!saw_dot && text[index] == '.') {
+            saw_dot = 1;
+            if (index + 1 >= length) {
+                return 0;
+            }
+            continue;
+        }
+
+        return 0;
+    }
+
+    return saw_digit;
+}
+
+static _Bool harbour_type_string_is_quoted(const char *text, size_t length) {
+    if (length < 2) {
+        return 0;
+    }
+
+    return (
+        (text[0] == '"' && text[length - 1] == '"') ||
+        (text[0] == '\'' && text[length - 1] == '\'')
+    );
+}
+
+static _Bool harbour_type_string_is_array_literal(const char *text, size_t length) {
+    return length >= 2 && text[0] == '{' && text[length - 1] == '}';
 }
 
 static unsigned long long harbour_allocate_array_identity(void) {
