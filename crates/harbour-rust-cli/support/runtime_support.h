@@ -110,6 +110,14 @@ struct harbour_runtime_Value harbour_builtin_mod(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_max(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
+struct harbour_runtime_Value harbour_builtin_min(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_builtin_len(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

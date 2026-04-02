@@ -184,7 +184,7 @@ RETURN
 
 ### Slice 7.6 — Builtins essenciais de math e conversão
 
-**Status:** parcial (`Abs()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
+**Status:** parcial (`Abs()` ✓, `Int()` ✓, `Round()` ✓, `Mod()` ✓, `Max()` ✓, `Min()` ✓, `Str()` ✓, `Val()` ✓, `ValType()` ✓, `Type()` ✓ parcial, `Empty()` ✓)
 
 **Escopo (por prioridade):**
 
@@ -200,7 +200,7 @@ RETURN
 | `Empty()` | `src/rtl/empty.c` | média |
 | `Type()` | `src/rtl/type.c` | média |
 | `Sqrt()`, `Log()`, `Exp()` | `src/rtl/math.c` | baixa |
-| `Max()`, `Min()` | `src/rtl/math.c` | baixa |
+| `Max()`, `Min()` | `src/rtl/minmax.c` | baixa |
 
 **Aceite:**
 - [x] Pelo menos `Abs`, `Int`, `Round`, `Val`, `Str`, `ValType` implementados

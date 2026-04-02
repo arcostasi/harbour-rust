@@ -1,0 +1,12 @@
+PROCEDURE Main()
+   ? Max( NIL, NIL )
+   ? Max( 10, NIL )
+   ? Max( 10, 5 )
+   ? Max( 10, 10.5 )
+   ? Max( .F., .T. )
+   ? Min( NIL, NIL )
+   ? Min( 10, NIL )
+   ? Min( 10, 5 )
+   ? Min( 10, 10.5 )
+   ? Min( .F., .T. )
+RETURN

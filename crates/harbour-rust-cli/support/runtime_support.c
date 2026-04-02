@@ -54,6 +54,11 @@ static _Bool harbour_try_numeric_pair(
     double *left_number,
     double *right_number
 );
+static _Bool harbour_try_max_min_compare(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right,
+    int *comparison
+);
 static harbour_runtime_Value harbour_unsupported_comparison(void);
 static harbour_runtime_Value harbour_array_comparison_error(const char *message);
 
@@ -714,6 +719,40 @@ struct harbour_runtime_Value harbour_builtin_mod(
     }
 
     return harbour_value_from_float(result);
+}
+
+struct harbour_runtime_Value harbour_builtin_max(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    int comparison;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        !harbour_try_max_min_compare(arguments[0], arguments[1], &comparison)
+    ) {
+        return harbour_value_error_literal("BASE 1093 Argument error (MAX)");
+    }
+
+    return comparison < 0 ? arguments[1] : arguments[0];
+}
+
+struct harbour_runtime_Value harbour_builtin_min(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    int comparison;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        !harbour_try_max_min_compare(arguments[0], arguments[1], &comparison)
+    ) {
+        return harbour_value_error_literal("BASE 1092 Argument error (MIN)");
+    }
+
+    return comparison > 0 ? arguments[1] : arguments[0];
 }
 
 struct harbour_runtime_Value harbour_builtin_len(
@@ -1732,6 +1771,43 @@ static _Bool harbour_try_numeric_pair(
         *right_number = right.kind == HARBOUR_VALUE_INTEGER
             ? (double) right.as.integer
             : right.as.floating;
+        return 1;
+    }
+
+    return 0;
+}
+
+static _Bool harbour_try_max_min_compare(
+    harbour_runtime_Value left,
+    harbour_runtime_Value right,
+    int *comparison
+) {
+    double left_number;
+    double right_number;
+
+    if (comparison == NULL) {
+        return 0;
+    }
+
+    if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
+        if (left_number < right_number) {
+            *comparison = -1;
+        } else if (left_number > right_number) {
+            *comparison = 1;
+        } else {
+            *comparison = 0;
+        }
+        return 1;
+    }
+
+    if (left.kind == HARBOUR_VALUE_LOGICAL && right.kind == HARBOUR_VALUE_LOGICAL) {
+        if (left.as.logical == right.as.logical) {
+            *comparison = 0;
+        } else if (!left.as.logical && right.as.logical) {
+            *comparison = -1;
+        } else {
+            *comparison = 1;
+        }
         return 1;
     }
 

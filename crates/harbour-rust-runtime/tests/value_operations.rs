@@ -1,7 +1,8 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
-    call_builtin_mut, empty, int, left, lower, ltrim, mod_value, qout, replicate, right,
-    round_value, rtrim, space, str_value, substr, trim, type_value, upper, val, valtype,
+    call_builtin_mut, empty, int, left, lower, ltrim, max_value, min_value, mod_value, qout,
+    replicate, right, round_value, rtrim, space, str_value, substr, trim, type_value, upper, val,
+    valtype,
 };
 
 #[test]
@@ -361,6 +362,112 @@ fn public_mod_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from(-2.0_f64))
     );
     assert_eq!(mutable_arguments[0], Value::from(-2_i64));
+}
+
+#[test]
+fn public_max_and_min_match_the_current_runtime_baseline() {
+    assert_eq!(
+        max_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64))),
+        Ok(Value::from(10_i64))
+    );
+    assert_eq!(
+        max_value(Some(&Value::from(10_i64)), Some(&Value::from(10.5_f64))),
+        Ok(Value::from(10.5_f64))
+    );
+    assert_eq!(
+        max_value(Some(&Value::from(false)), Some(&Value::from(true))),
+        Ok(Value::from(true))
+    );
+    assert_eq!(
+        max_value(Some(&Value::from(10_i64)), Some(&Value::from(10.0_f64))),
+        Ok(Value::from(10_i64))
+    );
+    assert_eq!(
+        min_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64))),
+        Ok(Value::from(5_i64))
+    );
+    assert_eq!(
+        min_value(Some(&Value::from(10_i64)), Some(&Value::from(10.5_f64))),
+        Ok(Value::from(10_i64))
+    );
+    assert_eq!(
+        min_value(Some(&Value::from(false)), Some(&Value::from(true))),
+        Ok(Value::from(false))
+    );
+    assert_eq!(
+        min_value(Some(&Value::from(10.0_f64)), Some(&Value::from(10_i64))),
+        Ok(Value::from(10.0_f64))
+    );
+}
+
+#[test]
+fn public_max_and_min_report_xbase_style_argument_errors() {
+    assert_eq!(
+        max_value(Some(&Value::Nil), Some(&Value::Nil)),
+        Err(RuntimeError {
+            message: "BASE 1093 Argument error (MAX)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        min_value(Some(&Value::from(10_i64)), Some(&Value::Nil)),
+        Err(RuntimeError {
+            message: "BASE 1092 Argument error (MIN)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        max_value(None, Some(&Value::from(10_i64))),
+        Err(RuntimeError {
+            message: "BASE 1093 Argument error (MAX)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        min_value(Some(&Value::from("A")), Some(&Value::from(1_i64))),
+        Err(RuntimeError {
+            message: "BASE 1092 Argument error (MIN)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+}
+
+#[test]
+fn public_max_and_min_dispatch_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "MAX",
+            &[Value::from(10_i64), Value::from(100_i64)],
+            &mut context
+        ),
+        Ok(Value::from(100_i64))
+    );
+    assert_eq!(
+        call_builtin(
+            "MIN",
+            &[Value::from(true), Value::from(false)],
+            &mut context
+        ),
+        Ok(Value::from(false))
+    );
+
+    let mut mutable_arguments = [Value::from(2.5_f64), Value::from(2_i64)];
+    assert_eq!(
+        call_builtin_mut("max", &mut mutable_arguments, &mut context),
+        Ok(Value::from(2.5_f64))
+    );
+    assert_eq!(
+        call_builtin_mut("min", &mut mutable_arguments, &mut context),
+        Ok(Value::from(2_i64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(2.5_f64));
+    assert_eq!(mutable_arguments[1], Value::from(2_i64));
 }
 
 #[test]

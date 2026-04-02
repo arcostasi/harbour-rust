@@ -276,6 +276,16 @@ Na slice seguinte da Fase 7, entra `Type()` como builtin imutável de introspec�
 - nomes textuais não resolvidos retornam `"U"`,
 - nesta fase o builtin continua parcial: macro evaluation completa, resolução de nomes, `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e os demais tipos do upstream continuam pendentes.
 
+Na slice seguinte da Fase 7, entram `Max()` e `Min()` como builtins imutáveis de comparação leve:
+
+- `max_value()` cobre o recorte inicial de `Max( xLeft, xRight )` para `Integer`, `Float` e `Logical`,
+- `min_value()` cobre o mesmo recorte para `Min( xLeft, xRight )`,
+- comparações numéricas mistas usam promoção para `Float`, mas o valor retornado preserva o item original vencedor,
+- em empate o baseline atual preserva o primeiro argumento, alinhado ao comportamento documentado no upstream,
+- `Max()` agora emite `BASE 1093 Argument error (MAX)` para argumentos inválidos,
+- `Min()` agora emite `BASE 1092 Argument error (MIN)` para argumentos inválidos,
+- nesta fase ambos continuam parciais: `Date`, `DateTime`, by-ref e demais tipos suportados pelo upstream permanecem pendentes.
+
 Na slice seguinte da Fase 7, entra `Empty()` como builtin imutável de emptiness em estilo xBase:
 
 - `empty()` segue o baseline leniente do upstream e não emite erro para os tipos hoje materializados no runtime,

@@ -348,6 +348,27 @@ fn emits_type_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_max_min_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/max_min_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_max((harbour_runtime_Value[]) { harbour_value_from_integer(10LL), harbour_value_from_integer(5LL) }, 2) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_min((harbour_runtime_Value[]) { harbour_value_from_logical(false), harbour_value_from_logical(true) }, 2) }, 1);")
+    );
+}
+
+#[test]
 fn emits_empty_builtin_fixture_with_runtime_builtin_helper_calls() {
     let emitted = emit_fixture("tests/fixtures/parser/empty_builtin.prg");
 

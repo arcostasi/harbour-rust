@@ -1,0 +1,10 @@
+Max(NIL, NIL) => BASE 1093 Argument error (MAX)
+Max(10, NIL) => BASE 1093 Argument error (MAX)
+Max(10, 5) => 10
+Max(10, 10.5) => 10.5
+Max(.F., .T.) => .T.
+Min(NIL, NIL) => BASE 1092 Argument error (MIN)
+Min(10, NIL) => BASE 1092 Argument error (MIN)
+Min(10, 5) => 5
+Min(10, 10.5) => 10
+Min(.F., .T.) => .F.

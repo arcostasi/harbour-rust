@@ -461,6 +461,8 @@ pub enum Builtin {
     Int,
     Round,
     Mod,
+    Max,
+    Min,
     Len,
     Str,
     Val,
@@ -495,6 +497,10 @@ impl Builtin {
             Some(Self::Round)
         } else if name.eq_ignore_ascii_case("MOD") {
             Some(Self::Mod)
+        } else if name.eq_ignore_ascii_case("MAX") {
+            Some(Self::Max)
+        } else if name.eq_ignore_ascii_case("MIN") {
+            Some(Self::Min)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
@@ -644,6 +650,14 @@ pub fn mod_value(number: Option<&Value>, divisor: Option<&Value>) -> Result<Valu
     }
 
     Ok(Value::from(result))
+}
+
+pub fn max_value(left: Option<&Value>, right: Option<&Value>) -> Result<Value, RuntimeError> {
+    extremum_value(left, right, ExtremumKind::Max)
+}
+
+pub fn min_value(left: Option<&Value>, right: Option<&Value>) -> Result<Value, RuntimeError> {
+    extremum_value(left, right, ExtremumKind::Min)
 }
 
 pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1019,6 +1033,8 @@ pub fn call_builtin(
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
+        Some(Builtin::Max) => max_value(arguments.first(), arguments.get(1)),
+        Some(Builtin::Min) => min_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -1055,6 +1071,8 @@ pub fn call_builtin_mut(
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
+        Some(Builtin::Max) => max_value(arguments.first(), arguments.get(1)),
+        Some(Builtin::Min) => min_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -1283,6 +1301,22 @@ impl RuntimeError {
         }
     }
 
+    pub fn max_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1093 Argument error (MAX)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn min_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1092 Argument error (MIN)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
     pub fn str_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1099 Argument error (STR)".to_owned(),
@@ -1490,6 +1524,12 @@ enum NumericPair {
 }
 
 #[derive(Debug, Clone, Copy)]
+enum ExtremumKind {
+    Max,
+    Min,
+}
+
+#[derive(Debug, Clone, Copy)]
 enum ArrayOperation {
     Access,
     Assign,
@@ -1574,6 +1614,75 @@ impl Error for RuntimeError {}
 
 fn string_slice(characters: &[char], start: usize, count: usize) -> String {
     characters[start..start + count].iter().copied().collect()
+}
+
+fn extremum_value(
+    left: Option<&Value>,
+    right: Option<&Value>,
+    kind: ExtremumKind,
+) -> Result<Value, RuntimeError> {
+    let Some(left) = left else {
+        return Err(extremum_argument_error(kind, None));
+    };
+    let Some(right) = right else {
+        return Err(extremum_argument_error(kind, None));
+    };
+
+    let ordering = compare_extremum_values(left, right).ok_or_else(|| {
+        extremum_argument_error(kind, Some(unsupported_extremum_kind(left, right)))
+    })?;
+
+    let selected = match kind {
+        ExtremumKind::Max => {
+            if ordering == Ordering::Less {
+                right
+            } else {
+                left
+            }
+        }
+        ExtremumKind::Min => {
+            if ordering == Ordering::Greater {
+                right
+            } else {
+                left
+            }
+        }
+    };
+
+    Ok(selected.clone())
+}
+
+fn compare_extremum_values(left: &Value, right: &Value) -> Option<Ordering> {
+    match (left, right) {
+        (Value::Integer(left), Value::Integer(right)) => Some(left.cmp(right)),
+        (Value::Integer(left), Value::Float(right)) => (*left as f64).partial_cmp(right),
+        (Value::Float(left), Value::Integer(right)) => left.partial_cmp(&(*right as f64)),
+        (Value::Float(left), Value::Float(right)) => left.partial_cmp(right),
+        (Value::Logical(left), Value::Logical(right)) => Some(left.cmp(right)),
+        _ => None,
+    }
+}
+
+fn extremum_argument_error(kind: ExtremumKind, actual: Option<ValueKind>) -> RuntimeError {
+    match kind {
+        ExtremumKind::Max => RuntimeError::max_argument_error(actual),
+        ExtremumKind::Min => RuntimeError::min_argument_error(actual),
+    }
+}
+
+fn unsupported_extremum_kind(left: &Value, right: &Value) -> ValueKind {
+    if is_extremum_supported_kind(left.kind()) {
+        right.kind()
+    } else {
+        left.kind()
+    }
+}
+
+fn is_extremum_supported_kind(kind: ValueKind) -> bool {
+    matches!(
+        kind,
+        ValueKind::Integer | ValueKind::Float | ValueKind::Logical
+    )
 }
 
 fn harbour_string_is_empty(text: &str) -> bool {
@@ -1840,8 +1949,8 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, int, len, mod_value, qout, replicate, round_value, space,
-        str_value, type_value, val,
+        call_builtin, call_builtin_mut, int, len, max_value, min_value, mod_value, qout, replicate,
+        round_value, space, str_value, type_value, val,
     };
 
     #[test]
@@ -2486,6 +2595,112 @@ mod tests {
             Ok(Value::from(-2.0_f64))
         );
         assert_eq!(mutable_arguments[0], Value::from(-2_i64));
+    }
+
+    #[test]
+    fn max_and_min_match_the_current_runtime_baseline() {
+        assert_eq!(
+            max_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64))),
+            Ok(Value::from(10_i64))
+        );
+        assert_eq!(
+            max_value(Some(&Value::from(10_i64)), Some(&Value::from(10.5_f64))),
+            Ok(Value::from(10.5_f64))
+        );
+        assert_eq!(
+            max_value(Some(&Value::from(false)), Some(&Value::from(true))),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            max_value(Some(&Value::from(10_i64)), Some(&Value::from(10.0_f64))),
+            Ok(Value::from(10_i64))
+        );
+        assert_eq!(
+            min_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64))),
+            Ok(Value::from(5_i64))
+        );
+        assert_eq!(
+            min_value(Some(&Value::from(10_i64)), Some(&Value::from(10.5_f64))),
+            Ok(Value::from(10_i64))
+        );
+        assert_eq!(
+            min_value(Some(&Value::from(false)), Some(&Value::from(true))),
+            Ok(Value::from(false))
+        );
+        assert_eq!(
+            min_value(Some(&Value::from(10.0_f64)), Some(&Value::from(10_i64))),
+            Ok(Value::from(10.0_f64))
+        );
+    }
+
+    #[test]
+    fn max_and_min_report_xbase_style_argument_errors() {
+        assert_eq!(
+            max_value(Some(&Value::Nil), Some(&Value::Nil)),
+            Err(RuntimeError {
+                message: "BASE 1093 Argument error (MAX)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            min_value(Some(&Value::from(10_i64)), Some(&Value::Nil)),
+            Err(RuntimeError {
+                message: "BASE 1092 Argument error (MIN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            max_value(None, Some(&Value::from(10_i64))),
+            Err(RuntimeError {
+                message: "BASE 1093 Argument error (MAX)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            min_value(Some(&Value::from("A")), Some(&Value::from(1_i64))),
+            Err(RuntimeError {
+                message: "BASE 1092 Argument error (MIN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+    }
+
+    #[test]
+    fn max_and_min_dispatch_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin(
+                "MAX",
+                &[Value::from(10_i64), Value::from(100_i64)],
+                &mut context
+            ),
+            Ok(Value::from(100_i64))
+        );
+        assert_eq!(
+            call_builtin(
+                "MIN",
+                &[Value::from(true), Value::from(false)],
+                &mut context
+            ),
+            Ok(Value::from(false))
+        );
+
+        let mut mutable_arguments = [Value::from(2.5_f64), Value::from(2_i64)];
+        assert_eq!(
+            call_builtin_mut("max", &mut mutable_arguments, &mut context),
+            Ok(Value::from(2.5_f64))
+        );
+        assert_eq!(
+            call_builtin_mut("min", &mut mutable_arguments, &mut context),
+            Ok(Value::from(2_i64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(2.5_f64));
+        assert_eq!(mutable_arguments[1], Value::from(2_i64));
     }
 
     #[test]
