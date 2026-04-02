@@ -141,6 +141,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/abs_builtin.prg` | `Abs()` numérico executa |
 | `tests/fixtures/parser/int_builtin.prg` | `Int()` numérico executa |
 | `tests/fixtures/parser/round_builtin.prg` | `Round()` numérico executa |
+| `tests/fixtures/parser/mod_builtin.prg` | `Mod()` numérico executa |
 | `tests/fixtures/parser/str_builtin.prg` | `Str()` numérico executa |
 | `tests/fixtures/parser/val_builtin.prg` | `Val()` string->número executa |
 | `tests/fixtures/parser/valtype_builtin.prg` | `ValType()` executa |
@@ -167,6 +168,7 @@ Fase 5 + Fase 7 parcial:
 - `Abs()` numérico via dispatch de builtin — parcial
 - `Int()` numérico via dispatch de builtin — parcial
 - `Round()` numérico via dispatch de builtin — parcial
+- `Mod()` numérico via dispatch de builtin — parcial
 - `Str()` numérico via dispatch de builtin — parcial
 - `Val()` string->número via dispatch de builtin — parcial
 - `ValType()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
@@ -185,6 +187,7 @@ Fase 5 + Fase 7 parcial:
 - `Abs()` para by-ref, handlers matemáticos do upstream e corner cases extremos — pendente
 - `Int()` para by-ref, overflow extremo e corner cases mais profundos do upstream — pendente
 - `Round()` para escala histórica exata, zeros à direita do upstream, by-ref e corner cases mais profundos — pendente
+- `Mod()` para preservação histórica exata da representação numérica, substituição de erro no estilo original e corner cases mais profundos — pendente
 - `Str()` para precisão herdada da escala original, larguras negativas e corner cases mais profundos do upstream — pendente
 - `Val()` para exponentes, `Chr(0)`, pontos repetidos e corner cases mais profundos do upstream — pendente
 - `ValType()` para `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e tipos ainda não materializados no runtime — pendente

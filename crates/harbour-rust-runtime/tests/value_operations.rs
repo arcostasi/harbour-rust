@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
-    call_builtin_mut, int, left, lower, ltrim, qout, replicate, right, round_value, rtrim, space,
-    str_value, substr, trim, upper, val, valtype,
+    call_builtin_mut, int, left, lower, ltrim, mod_value, qout, replicate, right, round_value,
+    rtrim, space, str_value, substr, trim, upper, val, valtype,
 };
 
 #[test]
@@ -296,6 +296,71 @@ fn public_round_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from(-0.6_f64))
     );
     assert_eq!(mutable_arguments[0], Value::from(-0.55_f64));
+}
+
+#[test]
+fn public_mod_matches_the_current_numeric_runtime_baseline() {
+    assert_eq!(
+        mod_value(Some(&Value::from(100_i64)), Some(&Value::from(60_i64))),
+        Ok(Value::from(40.0_f64))
+    );
+    assert_eq!(
+        mod_value(Some(&Value::from(2_i64)), Some(&Value::from(4_i64))),
+        Ok(Value::from(2.0_f64))
+    );
+    assert_eq!(
+        mod_value(Some(&Value::from(-1_i64)), Some(&Value::from(3_i64))),
+        Ok(Value::from(2.0_f64))
+    );
+    assert_eq!(
+        mod_value(Some(&Value::from(1_i64)), Some(&Value::from(-3_i64))),
+        Ok(Value::from(-2.0_f64))
+    );
+}
+
+#[test]
+fn public_mod_reports_xbase_style_argument_and_zero_divisor_errors() {
+    assert_eq!(
+        mod_value(Some(&Value::Nil), Some(&Value::Nil)),
+        Err(RuntimeError {
+            message: "BASE 1085 Argument error (%)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        mod_value(Some(&Value::from(1_i64)), Some(&Value::from(0_i64))),
+        Err(RuntimeError {
+            message: "BASE 1341 Zero divisor (%)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}
+
+#[test]
+fn public_mod_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "MOD",
+            &[
+                Value::from(100_i64),
+                Value::from(60_i64),
+                Value::from("ignored"),
+            ],
+            &mut context
+        ),
+        Ok(Value::from(40.0_f64))
+    );
+
+    let mut mutable_arguments = [Value::from(-2_i64), Value::from(-3_i64)];
+    assert_eq!(
+        call_builtin_mut("mod", &mut mutable_arguments, &mut context),
+        Ok(Value::from(-2.0_f64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(-2_i64));
 }
 
 #[test]

@@ -245,6 +245,15 @@ Na slice seguinte da Fase 7, entra `Round()` como builtin imutável de arredonda
 - argumentos inválidos agora emitem `BASE 1094 Argument error (ROUND)`,
 - nesta fase o builtin continua parcial: escala histórica do item numérico, zeros à direita observáveis no upstream, by-ref e corner cases mais profundos continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Mod()` como builtin imutável de resto numérico:
+
+- `mod_value()` cobre o recorte inicial de `Mod( nValue, nBase )` para `Integer` e `Float`,
+- o baseline atual ajusta o resto ao sinal do divisor, alinhado ao comportamento observado em `src/rtl/mod.c` e `rt_math.prg`,
+- argumentos extras continuam ignorados na surface do builtin, como no upstream,
+- argumentos inválidos agora emitem `BASE 1085 Argument error (%)`,
+- divisor zero agora emite `BASE 1341 Zero divisor (%)`,
+- nesta fase o builtin continua parcial: preservação histórica exata da representação numérica e do item original quando a substituição de erro ocorre no upstream continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introspecção leve:
 
 - `valtype()` cobre o recorte inicial dos tipos já materializados no runtime atual,

@@ -460,6 +460,7 @@ pub enum Builtin {
     Abs,
     Int,
     Round,
+    Mod,
     Len,
     Str,
     Val,
@@ -490,6 +491,8 @@ impl Builtin {
             Some(Self::Int)
         } else if name.eq_ignore_ascii_case("ROUND") {
             Some(Self::Round)
+        } else if name.eq_ignore_ascii_case("MOD") {
+            Some(Self::Mod)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
@@ -600,6 +603,41 @@ pub fn round_value(
     }
 
     Ok(Value::from(rounded))
+}
+
+pub fn mod_value(number: Option<&Value>, divisor: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(number) = number else {
+        return Err(RuntimeError::mod_argument_error(None));
+    };
+    let Some(divisor) = divisor else {
+        return Err(RuntimeError::mod_argument_error(None));
+    };
+
+    let number = match number {
+        Value::Integer(value) => *value as f64,
+        Value::Float(value) => *value,
+        other => return Err(RuntimeError::mod_argument_error(Some(other.kind()))),
+    };
+    let divisor = match divisor {
+        Value::Integer(value) => *value as f64,
+        Value::Float(value) => *value,
+        other => return Err(RuntimeError::mod_argument_error(Some(other.kind()))),
+    };
+
+    if divisor == 0.0 {
+        return Err(RuntimeError::mod_zero_divisor());
+    }
+
+    let mut result = number % divisor;
+    if result != 0.0 && ((number > 0.0 && divisor < 0.0) || (number < 0.0 && divisor > 0.0)) {
+        result += divisor;
+    }
+
+    if result == 0.0 {
+        result = 0.0;
+    }
+
+    Ok(Value::from(result))
 }
 
 pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -950,6 +988,7 @@ pub fn call_builtin(
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
+        Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -983,6 +1022,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
+        Some(Builtin::Mod) => mod_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -1190,6 +1230,22 @@ impl RuntimeError {
             message: "BASE 1094 Argument error (ROUND)".to_owned(),
             expected: None,
             actual,
+        }
+    }
+
+    pub fn mod_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1085 Argument error (%)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn mod_zero_divisor() -> Self {
+        Self {
+            message: "BASE 1341 Zero divisor (%)".to_owned(),
+            expected: None,
+            actual: None,
         }
     }
 
@@ -1669,8 +1725,8 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, int, len, qout, replicate, round_value, space, str_value,
-        val,
+        call_builtin, call_builtin_mut, int, len, mod_value, qout, replicate, round_value, space,
+        str_value, val,
     };
 
     #[test]
@@ -2246,6 +2302,75 @@ mod tests {
             Ok(Value::from(-0.6_f64))
         );
         assert_eq!(mutable_arguments[0], Value::from(-0.55_f64));
+    }
+
+    #[test]
+    fn mod_matches_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            mod_value(Some(&Value::from(100_i64)), Some(&Value::from(60_i64))),
+            Ok(Value::from(40.0_f64))
+        );
+        assert_eq!(
+            mod_value(Some(&Value::from(2_i64)), Some(&Value::from(4_i64))),
+            Ok(Value::from(2.0_f64))
+        );
+        assert_eq!(
+            mod_value(Some(&Value::from(4_i64)), Some(&Value::from(2.0_f64))),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            mod_value(Some(&Value::from(-1_i64)), Some(&Value::from(3_i64))),
+            Ok(Value::from(2.0_f64))
+        );
+        assert_eq!(
+            mod_value(Some(&Value::from(1_i64)), Some(&Value::from(-3_i64))),
+            Ok(Value::from(-2.0_f64))
+        );
+    }
+
+    #[test]
+    fn mod_reports_xbase_style_argument_and_zero_divisor_errors() {
+        assert_eq!(
+            mod_value(Some(&Value::Nil), Some(&Value::Nil)),
+            Err(RuntimeError {
+                message: "BASE 1085 Argument error (%)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            mod_value(Some(&Value::from(1_i64)), Some(&Value::from(0_i64))),
+            Err(RuntimeError {
+                message: "BASE 1341 Zero divisor (%)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn mod_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin(
+                "MOD",
+                &[
+                    Value::from(100_i64),
+                    Value::from(60_i64),
+                    Value::from("ignored"),
+                ],
+                &mut context
+            ),
+            Ok(Value::from(40.0_f64))
+        );
+
+        let mut mutable_arguments = [Value::from(-2_i64), Value::from(-3_i64)];
+        assert_eq!(
+            call_builtin_mut("mod", &mut mutable_arguments, &mut context),
+            Ok(Value::from(-2.0_f64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(-2_i64));
     }
 
     #[test]

@@ -661,6 +661,51 @@ struct harbour_runtime_Value harbour_builtin_round(
     return harbour_value_from_float(rounded);
 }
 
+struct harbour_runtime_Value harbour_builtin_mod(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    double number;
+    double divisor;
+    double result;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        ( arguments[0].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[0].kind != HARBOUR_VALUE_FLOAT ) ||
+        ( arguments[1].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[1].kind != HARBOUR_VALUE_FLOAT )
+    ) {
+        return harbour_value_error_literal("BASE 1085 Argument error (%)");
+    }
+
+    number = arguments[0].kind == HARBOUR_VALUE_INTEGER
+        ? (double) arguments[0].as.integer
+        : arguments[0].as.floating;
+    divisor = arguments[1].kind == HARBOUR_VALUE_INTEGER
+        ? (double) arguments[1].as.integer
+        : arguments[1].as.floating;
+
+    if (divisor == 0.0) {
+        return harbour_value_error_literal("BASE 1341 Zero divisor (%)");
+    }
+
+    result = fmod(number, divisor);
+    if (
+        result != 0.0 &&
+        ((number > 0.0 && divisor < 0.0) || (number < 0.0 && divisor > 0.0))
+    ) {
+        result += divisor;
+    }
+
+    if (result == 0.0) {
+        result = 0.0;
+    }
+
+    return harbour_value_from_float(result);
+}
+
 struct harbour_runtime_Value harbour_builtin_len(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

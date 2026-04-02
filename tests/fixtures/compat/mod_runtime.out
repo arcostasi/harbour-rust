@@ -1,0 +1,6 @@
+Mod(NIL, NIL) => BASE 1085 Argument error (%)
+Mod(100, 60, "A") => 40
+Mod(1, 0) => BASE 1341 Zero divisor (%)
+Mod(2, 4) => 2
+Mod(-1, 3) => 2
+Mod(1, -3) => -2
