@@ -1,0 +1,11 @@
+Int(NIL) => BASE 1090 Argument error (INT)
+Int("A") => BASE 1090 Argument error (INT)
+Int({}) => BASE 1090 Argument error (INT)
+Int(0) => 0
+Int(0.0) => 0
+Int(10) => 10
+Int(-10) => -10
+Int(10.5) => 10
+Int(-10.5) => -10
+Int(5000000000.9) => 5000000000
+Int(-5000000000.9) => -5000000000

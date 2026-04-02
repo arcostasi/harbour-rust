@@ -458,6 +458,7 @@ impl RuntimeContext {
 pub enum Builtin {
     QOut,
     Abs,
+    Int,
     Len,
     Str,
     Val,
@@ -484,6 +485,8 @@ impl Builtin {
             Some(Self::QOut)
         } else if name.eq_ignore_ascii_case("ABS") {
             Some(Self::Abs)
+        } else if name.eq_ignore_ascii_case("INT") {
+            Some(Self::Int)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
@@ -546,6 +549,25 @@ pub fn abs(value: Option<&Value>) -> Result<Value, RuntimeError> {
         }
         Value::Float(number) => Ok(Value::from(number.abs())),
         other => Err(RuntimeError::abs_argument_error(Some(other.kind()))),
+    }
+}
+
+pub fn int(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::int_argument_error(None));
+    };
+
+    match value {
+        Value::Integer(number) => Ok(Value::from(*number)),
+        Value::Float(number) => {
+            let truncated = number.trunc();
+            if truncated >= i64::MIN as f64 && truncated <= i64::MAX as f64 {
+                Ok(Value::from(truncated as i64))
+            } else {
+                Ok(Value::from(truncated))
+            }
+        }
+        other => Err(RuntimeError::int_argument_error(Some(other.kind()))),
     }
 }
 
@@ -895,6 +917,7 @@ pub fn call_builtin(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
+        Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -926,6 +949,7 @@ pub fn call_builtin_mut(
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
+        Some(Builtin::Int) => int(arguments.first()),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -1115,6 +1139,14 @@ impl RuntimeError {
     pub fn abs_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1089 Argument error (ABS)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn int_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1090 Argument error (INT)".to_owned(),
             expected: None,
             actual,
         }
@@ -1571,7 +1603,7 @@ fn numeric_string_count(
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, len, qout, replicate, space, str_value, val,
+        call_builtin, call_builtin_mut, int, len, qout, replicate, space, str_value, val,
     };
 
     #[test]
@@ -2034,6 +2066,52 @@ mod tests {
         assert_eq!(
             call_builtin_mut("abs", &mut mutable_arguments, &mut context),
             Ok(Value::from(150.245_f64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
+    }
+
+    #[test]
+    fn int_matches_the_current_numeric_runtime_baseline() {
+        assert_eq!(int(Some(&Value::from(0_i64))), Ok(Value::from(0_i64)));
+        assert_eq!(int(Some(&Value::from(10_i64))), Ok(Value::from(10_i64)));
+        assert_eq!(int(Some(&Value::from(-10_i64))), Ok(Value::from(-10_i64)));
+        assert_eq!(int(Some(&Value::from(10.5_f64))), Ok(Value::from(10_i64)));
+        assert_eq!(int(Some(&Value::from(-10.5_f64))), Ok(Value::from(-10_i64)));
+    }
+
+    #[test]
+    fn int_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            int(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1090 Argument error (INT)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            int(None),
+            Err(RuntimeError {
+                message: "BASE 1090 Argument error (INT)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn int_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("INT", &[Value::from(10.7_f64)], &mut context),
+            Ok(Value::from(10_i64))
+        );
+
+        let mut mutable_arguments = [Value::from(-150.245_f64)];
+        assert_eq!(
+            call_builtin_mut("int", &mut mutable_arguments, &mut context),
+            Ok(Value::from(-150_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
     }

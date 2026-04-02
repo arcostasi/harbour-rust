@@ -580,6 +580,34 @@ harbour_runtime_Value harbour_builtin_abs(
     return harbour_value_error_literal("BASE 1089 Argument error (ABS)");
 }
 
+struct harbour_runtime_Value harbour_builtin_int(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    double truncated;
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_error_literal("BASE 1090 Argument error (INT)");
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_integer(arguments[0].as.integer);
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_FLOAT) {
+        truncated = trunc(arguments[0].as.floating);
+        if (
+            truncated >= (double) (-9223372036854775807LL - 1LL) &&
+            truncated <= (double) 9223372036854775807LL
+        ) {
+            return harbour_value_from_integer((long long) truncated);
+        }
+        return harbour_value_from_float(truncated);
+    }
+
+    return harbour_value_error_literal("BASE 1090 Argument error (INT)");
+}
+
 struct harbour_runtime_Value harbour_builtin_len(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

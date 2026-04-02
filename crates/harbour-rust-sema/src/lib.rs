@@ -396,6 +396,7 @@ fn normalize_name(name: &str) -> String {
 fn is_runtime_builtin(name: &str) -> bool {
     name.eq_ignore_ascii_case("QOUT")
         || name.eq_ignore_ascii_case("ABS")
+        || name.eq_ignore_ascii_case("INT")
         || name.eq_ignore_ascii_case("LEN")
         || name.eq_ignore_ascii_case("STR")
         || name.eq_ignore_ascii_case("VAL")

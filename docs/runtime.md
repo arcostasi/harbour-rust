@@ -228,6 +228,14 @@ Na slice seguinte da Fase 7, entra `Abs()` como builtin imutável de valor absol
 - argumentos inválidos agora emitem `BASE 1089 Argument error (ABS)`,
 - nesta fase o builtin continua parcial: by-ref, handlers matemáticos do upstream e corner cases extremos fora do recorte atual continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento numérico:
+
+- `int()` cobre o recorte inicial de `Int( nValue )` para `Integer` e `Float`,
+- `Integer` permanece inteiro sem alteração,
+- `Float` usa truncamento toward-zero, alinhado ao baseline observado em `rt_math.prg`,
+- argumentos inválidos agora emitem `BASE 1090 Argument error (INT)`,
+- nesta fase o builtin continua parcial: by-ref, overflow extremo e corner cases mais profundos do upstream continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introspecção leve:
 
 - `valtype()` cobre o recorte inicial dos tipos já materializados no runtime atual,

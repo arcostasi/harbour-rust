@@ -1,0 +1,13 @@
+PROCEDURE Main()
+   ? Int( NIL )
+   ? Int( "A" )
+   ? Int( {} )
+   ? Int( 0 )
+   ? Int( 0.0 )
+   ? Int( 10 )
+   ? Int( -10 )
+   ? Int( 10.5 )
+   ? Int( -10.5 )
+   ? Int( 5000000000.9 )
+   ? Int( -5000000000.9 )
+RETURN
