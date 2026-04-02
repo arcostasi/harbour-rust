@@ -236,6 +236,15 @@ Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento
 - argumentos inválidos agora emitem `BASE 1090 Argument error (INT)`,
 - nesta fase o builtin continua parcial: by-ref, overflow extremo e corner cases mais profundos do upstream continuam pendentes.
 
+Na slice seguinte da Fase 7, entra `Round()` como builtin imutável de arredondamento numérico:
+
+- `round_value()` cobre o recorte inicial de `Round( nValue, nDecimals )` para `Integer` e `Float`,
+- `nDecimals` é obrigatório e aceita `Integer` ou `Float` truncado para inteiro,
+- o baseline atual usa arredondamento half-away-from-zero e aceita decimais negativos,
+- com `nDecimals <= 0` o runtime retorna `Integer` quando o resultado cabe nesse formato,
+- argumentos inválidos agora emitem `BASE 1094 Argument error (ROUND)`,
+- nesta fase o builtin continua parcial: escala histórica do item numérico, zeros à direita observáveis no upstream, by-ref e corner cases mais profundos continuam pendentes.
+
 Na slice seguinte da Fase 7, entra `ValType()` como builtin imutável de introspecção leve:
 
 - `valtype()` cobre o recorte inicial dos tipos já materializados no runtime atual,

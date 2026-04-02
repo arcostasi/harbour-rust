@@ -608,6 +608,59 @@ struct harbour_runtime_Value harbour_builtin_int(
     return harbour_value_error_literal("BASE 1090 Argument error (INT)");
 }
 
+struct harbour_runtime_Value harbour_builtin_round(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    harbour_runtime_Value number;
+    long long decimals;
+    double value;
+    double factor;
+    double rounded;
+
+    if (
+        arguments == NULL ||
+        argument_count < 2 ||
+        ( arguments[0].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[0].kind != HARBOUR_VALUE_FLOAT ) ||
+        ( arguments[1].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[1].kind != HARBOUR_VALUE_FLOAT )
+    ) {
+        return harbour_value_error_literal("BASE 1094 Argument error (ROUND)");
+    }
+
+    number = arguments[0];
+    decimals = arguments[1].kind == HARBOUR_VALUE_INTEGER
+        ? arguments[1].as.integer
+        : (long long) trunc(arguments[1].as.floating);
+
+    if (decimals == 0 && number.kind == HARBOUR_VALUE_INTEGER) {
+        return harbour_value_from_integer(number.as.integer);
+    }
+
+    value = number.kind == HARBOUR_VALUE_INTEGER
+        ? (double) number.as.integer
+        : number.as.floating;
+
+    if (decimals >= 0) {
+        factor = pow(10.0, (double) decimals);
+        rounded = round(value * factor) / factor;
+    } else {
+        factor = pow(10.0, (double) (-decimals));
+        rounded = round(value / factor) * factor;
+    }
+
+    if (
+        decimals <= 0 &&
+        rounded >= (double) (-9223372036854775807LL - 1LL) &&
+        rounded <= (double) 9223372036854775807LL
+    ) {
+        return harbour_value_from_integer((long long) rounded);
+    }
+
+    return harbour_value_from_float(rounded);
+}
+
 struct harbour_runtime_Value harbour_builtin_len(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

@@ -209,6 +209,32 @@ fn emits_int_builtin_fixture_with_runtime_builtin_helper_calls() {
 }
 
 #[test]
+fn emits_round_builtin_fixture_with_runtime_builtin_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/round_builtin.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_round((harbour_runtime_Value[]) { harbour_value_from_float(0.5), harbour_value_from_integer(0LL) }, 2) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_round((harbour_runtime_Value[]) { harbour_value_from_integer(50LL), harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"-2\") }, 1) }, 2) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_round((harbour_runtime_Value[]) { harbour_builtin_val((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"-0.55\") }, 1), harbour_value_from_integer(1LL) }, 2) }, 1);")
+    );
+}
+
+#[test]
 fn emits_str_builtin_fixture_with_runtime_builtin_helper_calls() {
     let emitted = emit_fixture("tests/fixtures/parser/str_builtin.prg");
 
@@ -480,6 +506,11 @@ fn emits_array_runtime_helper_declarations_in_c_prelude() {
         emitted
             .source
             .contains("extern harbour_runtime_Value harbour_builtin_int(const harbour_runtime_Value *arguments, size_t argument_count);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("extern harbour_runtime_Value harbour_builtin_round(const harbour_runtime_Value *arguments, size_t argument_count);")
     );
     assert!(
         emitted

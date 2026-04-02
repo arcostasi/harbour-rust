@@ -459,6 +459,7 @@ pub enum Builtin {
     QOut,
     Abs,
     Int,
+    Round,
     Len,
     Str,
     Val,
@@ -487,6 +488,8 @@ impl Builtin {
             Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("INT") {
             Some(Self::Int)
+        } else if name.eq_ignore_ascii_case("ROUND") {
+            Some(Self::Round)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
@@ -569,6 +572,34 @@ pub fn int(value: Option<&Value>) -> Result<Value, RuntimeError> {
         }
         other => Err(RuntimeError::int_argument_error(Some(other.kind()))),
     }
+}
+
+pub fn round_value(
+    number: Option<&Value>,
+    decimals: Option<&Value>,
+) -> Result<Value, RuntimeError> {
+    let Some(number) = number else {
+        return Err(RuntimeError::round_argument_error(None));
+    };
+
+    let value = match number {
+        Value::Integer(value) => *value as f64,
+        Value::Float(value) => *value,
+        other => return Err(RuntimeError::round_argument_error(Some(other.kind()))),
+    };
+
+    let decimals = numeric_required_i64(decimals, RuntimeError::round_argument_error)?;
+
+    if decimals == 0 && matches!(number, Value::Integer(_)) {
+        return Ok(number.clone());
+    }
+
+    let rounded = round_with_decimals(value, decimals);
+    if decimals <= 0 && rounded >= i64::MIN as f64 && rounded <= i64::MAX as f64 {
+        return Ok(Value::from(rounded as i64));
+    }
+
+    Ok(Value::from(rounded))
 }
 
 pub fn len(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -918,6 +949,7 @@ pub fn call_builtin(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
+        Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -950,6 +982,7 @@ pub fn call_builtin_mut(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
+        Some(Builtin::Round) => round_value(arguments.first(), arguments.get(1)),
         Some(Builtin::Len) => len(arguments.first()),
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
@@ -1147,6 +1180,14 @@ impl RuntimeError {
     pub fn int_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1090 Argument error (INT)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn round_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1094 Argument error (ROUND)".to_owned(),
             expected: None,
             actual,
         }
@@ -1571,6 +1612,21 @@ fn numeric_optional_i64(
     }
 }
 
+fn numeric_required_i64(
+    value: Option<&Value>,
+    argument_error: fn(Option<ValueKind>) -> RuntimeError,
+) -> Result<i64, RuntimeError> {
+    let Some(value) = value else {
+        return Err(argument_error(None));
+    };
+
+    match value {
+        Value::Integer(value) => Ok(*value),
+        Value::Float(value) => Ok(value.trunc() as i64),
+        other => Err(argument_error(Some(other.kind()))),
+    }
+}
+
 fn numeric_string_count(
     value: Option<&Value>,
     argument_error: fn(Option<ValueKind>) -> RuntimeError,
@@ -1599,11 +1655,22 @@ fn numeric_string_count(
     Ok(count)
 }
 
+fn round_with_decimals(value: f64, decimals: i64) -> f64 {
+    if decimals >= 0 {
+        let factor = 10_f64.powi(decimals as i32);
+        (value * factor).round() / factor
+    } else {
+        let factor = 10_f64.powi((-decimals) as i32);
+        (value / factor).round() * factor
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, int, len, qout, replicate, space, str_value, val,
+        call_builtin, call_builtin_mut, int, len, qout, replicate, round_value, space, str_value,
+        val,
     };
 
     #[test]
@@ -2114,6 +2181,71 @@ mod tests {
             Ok(Value::from(-150_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
+    }
+
+    #[test]
+    fn round_matches_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            round_value(Some(&Value::from(0.5_f64)), Some(&Value::from(0_i64))),
+            Ok(Value::from(1_i64))
+        );
+        assert_eq!(
+            round_value(Some(&Value::from(0.55_f64)), Some(&Value::from(1_i64))),
+            Ok(Value::from(0.6_f64))
+        );
+        assert_eq!(
+            round_value(Some(&Value::from(0.557_f64)), Some(&Value::from(2_i64))),
+            Ok(Value::from(0.56_f64))
+        );
+        assert_eq!(
+            round_value(Some(&Value::from(50_i64)), Some(&Value::from(-2_i64))),
+            Ok(Value::from(100_i64))
+        );
+        assert_eq!(
+            round_value(Some(&Value::from(-0.55_f64)), Some(&Value::from(1_i64))),
+            Ok(Value::from(-0.6_f64))
+        );
+    }
+
+    #[test]
+    fn round_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            round_value(Some(&Value::Nil), Some(&Value::from(0_i64))),
+            Err(RuntimeError {
+                message: "BASE 1094 Argument error (ROUND)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+        assert_eq!(
+            round_value(Some(&Value::from(0_i64)), Some(&Value::Nil)),
+            Err(RuntimeError {
+                message: "BASE 1094 Argument error (ROUND)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Nil),
+            })
+        );
+    }
+
+    #[test]
+    fn round_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin(
+                "ROUND",
+                &[Value::from(0.557_f64), Value::from(2_i64)],
+                &mut context
+            ),
+            Ok(Value::from(0.56_f64))
+        );
+
+        let mut mutable_arguments = [Value::from(-0.55_f64), Value::from(1_i64)];
+        assert_eq!(
+            call_builtin_mut("round", &mut mutable_arguments, &mut context),
+            Ok(Value::from(-0.6_f64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(-0.55_f64));
     }
 
     #[test]

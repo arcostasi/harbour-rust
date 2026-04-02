@@ -65,6 +65,7 @@ enum RuntimeBuiltin {
     QOut,
     Abs,
     Int,
+    Round,
     Len,
     Str,
     Val,
@@ -93,6 +94,8 @@ impl RuntimeBuiltin {
             Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("INT") {
             Some(Self::Int)
+        } else if name.eq_ignore_ascii_case("ROUND") {
+            Some(Self::Round)
         } else if name.eq_ignore_ascii_case("LEN") {
             Some(Self::Len)
         } else if name.eq_ignore_ascii_case("STR") {
@@ -139,6 +142,7 @@ impl RuntimeBuiltin {
             Self::QOut => "harbour_builtin_qout",
             Self::Abs => "harbour_builtin_abs",
             Self::Int => "harbour_builtin_int",
+            Self::Round => "harbour_builtin_round",
             Self::Len => "harbour_builtin_len",
             Self::Str => "harbour_builtin_str",
             Self::Val => "harbour_builtin_val",
@@ -165,6 +169,7 @@ impl RuntimeBuiltin {
             Self::QOut => "QOut",
             Self::Abs => "Abs",
             Self::Int => "Int",
+            Self::Round => "Round",
             Self::Len => "Len",
             Self::Str => "Str",
             Self::Val => "Val",
@@ -307,6 +312,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_int(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_round(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -1158,6 +1166,7 @@ mod tests {
 "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_abs(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_int(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_round(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_val(const harbour_runtime_Value *arguments, size_t argument_count);\n",

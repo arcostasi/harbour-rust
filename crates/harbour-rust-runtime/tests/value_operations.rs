@@ -1,7 +1,7 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
-    call_builtin_mut, int, left, lower, ltrim, qout, replicate, right, rtrim, space, str_value,
-    substr, trim, upper, val, valtype,
+    call_builtin_mut, int, left, lower, ltrim, qout, replicate, right, round_value, rtrim, space,
+    str_value, substr, trim, upper, val, valtype,
 };
 
 #[test]
@@ -231,6 +231,71 @@ fn public_int_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from(-150_i64))
     );
     assert_eq!(mutable_arguments[0], Value::from(-150.245_f64));
+}
+
+#[test]
+fn public_round_matches_the_current_numeric_runtime_baseline() {
+    assert_eq!(
+        round_value(Some(&Value::from(0.5_f64)), Some(&Value::from(0_i64))),
+        Ok(Value::from(1_i64))
+    );
+    assert_eq!(
+        round_value(Some(&Value::from(0.55_f64)), Some(&Value::from(1_i64))),
+        Ok(Value::from(0.6_f64))
+    );
+    assert_eq!(
+        round_value(Some(&Value::from(0.557_f64)), Some(&Value::from(2_i64))),
+        Ok(Value::from(0.56_f64))
+    );
+    assert_eq!(
+        round_value(Some(&Value::from(50_i64)), Some(&Value::from(-2_i64))),
+        Ok(Value::from(100_i64))
+    );
+    assert_eq!(
+        round_value(Some(&Value::from(-0.55_f64)), Some(&Value::from(1_i64))),
+        Ok(Value::from(-0.6_f64))
+    );
+}
+
+#[test]
+fn public_round_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        round_value(Some(&Value::Nil), Some(&Value::from(0_i64))),
+        Err(RuntimeError {
+            message: "BASE 1094 Argument error (ROUND)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+    assert_eq!(
+        round_value(Some(&Value::from(0_i64)), Some(&Value::Nil)),
+        Err(RuntimeError {
+            message: "BASE 1094 Argument error (ROUND)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Nil),
+        })
+    );
+}
+
+#[test]
+fn public_round_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin(
+            "ROUND",
+            &[Value::from(0.557_f64), Value::from(2_i64)],
+            &mut context
+        ),
+        Ok(Value::from(0.56_f64))
+    );
+
+    let mut mutable_arguments = [Value::from(-0.55_f64), Value::from(1_i64)];
+    assert_eq!(
+        call_builtin_mut("round", &mut mutable_arguments, &mut context),
+        Ok(Value::from(-0.6_f64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(-0.55_f64));
 }
 
 #[test]

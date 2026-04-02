@@ -1,0 +1,9 @@
+PROCEDURE Main()
+   ? Round( NIL, 0 )
+   ? Round( 0, NIL )
+   ? Round( 0.5, 0 )
+   ? Round( 0.55, 1 )
+   ? Round( 0.557, 2 )
+   ? Round( 50, -2 )
+   ? Round( -0.55, 1 )
+RETURN
