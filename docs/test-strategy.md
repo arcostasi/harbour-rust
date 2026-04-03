@@ -157,6 +157,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `harbour-rust-runtime` -> `exact_equals()` para identidade observável de arrays e helpers `array_resize()`/`array_push()`/`array_clone()`
 - `harbour-rust-runtime` -> `AAdd()`/`ASize()` via `call_builtin_mut()` e erro explícito na surface imutável
 - `harbour-rust-runtime` -> `AClone()` via `call_builtin()` e baseline leniente para `NIL`/não-array
+- `harbour-rust-runtime` -> `ADel()`/`AIns()` via `call_builtin_mut()` com semântica leniente de posição e comprimento preservado
+- `harbour-rust-runtime` -> `AScan()` via `call_builtin()` com busca 1-based e match prefixo para strings no baseline atual
 - `harbour-rust-runtime` -> códigos/mensagens de `array access` e `array assign` mais próximos do baseline (`1068/1069/1132/1133`)
 - `harbour-rust-runtime` -> `==` por identidade observável e `=`/`<>`/ordenação de arrays com erros `1071` a `1076`
 - `tests/fixtures/compat/array_comparison_runtime.prg` -> baseline focado de arrays contra `harbour-core/utils/hbtest/rt_hvm.prg` na surface pública do runtime
@@ -167,12 +169,14 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/compare_ops_lt.prg` -> `harbour-rust-cli run` com mensagens observáveis `BASE 1073/1074`
 - `tests/fixtures/parser/aclone.prg` -> codegen C com `harbour_builtin_aclone(...)`
 - `tests/fixtures/parser/mutable_builtins.prg` -> codegen C com `harbour_builtin_aadd(&value, ...)` e `harbour_builtin_asize(&value, ...)`
+- `tests/fixtures/compat/array_builtins_runtime.prg` -> baseline focado de `ADel()`/`AIns()`/`AScan()` contra `harbour-core/utils/hbtest/rt_array.prg`
 - `examples/hello.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/while.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/for_sum.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/indexed_assign.prg` -> `harbour-rust-cli run`
 - `tests/fixtures/parser/aclone.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/mutable_builtins.prg` -> `harbour-rust-cli build/run`
+- `tests/fixtures/parser/array_builtins.prg` -> `harbour-rust-cli build/run` com `ADel()`, `AIns()` e `AScan()`
 - `tests/fixtures/parser/array_args.prg` -> `harbour-rust-cli build/run` com array passado como argumento
 - `tests/fixtures/parser/array_matrix.prg` -> `harbour-rust-cli build/run` com leitura/escrita multidimensional
 - `tests/fixtures/pp/include_root.prg` -> preprocessamento com `#define` e `#include` simples

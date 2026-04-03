@@ -187,6 +187,36 @@ impl Value {
         Ok(())
     }
 
+    pub fn array_insert(&mut self, index: usize) -> Result<(), RuntimeError> {
+        let values = array_for_assign_mut(self)?;
+        if index >= values.len() {
+            return Ok(());
+        }
+
+        for position in (index + 1..values.len()).rev() {
+            values[position] = values[position - 1].clone();
+        }
+        values[index] = Self::Nil;
+        Ok(())
+    }
+
+    pub fn array_delete(&mut self, index: usize) -> Result<(), RuntimeError> {
+        let values = array_for_assign_mut(self)?;
+        if index >= values.len() {
+            return Ok(());
+        }
+
+        for position in index..values.len().saturating_sub(1) {
+            values[position] = values[position + 1].clone();
+        }
+
+        if let Some(last) = values.last_mut() {
+            *last = Self::Nil;
+        }
+
+        Ok(())
+    }
+
     pub fn array_push(&mut self, value: Self) -> Result<Self, RuntimeError> {
         let values = array_for_assign_mut(self)?;
         values.push(value.clone());
@@ -489,6 +519,9 @@ pub enum Builtin {
     AAdd,
     ASize,
     AClone,
+    ADel,
+    AIns,
+    AScan,
 }
 
 impl Builtin {
@@ -559,6 +592,12 @@ impl Builtin {
             Some(Self::ASize)
         } else if name.eq_ignore_ascii_case("ACLONE") {
             Some(Self::AClone)
+        } else if name.eq_ignore_ascii_case("ADEL") {
+            Some(Self::ADel)
+        } else if name.eq_ignore_ascii_case("AINS") {
+            Some(Self::AIns)
+        } else if name.eq_ignore_ascii_case("ASCAN") {
+            Some(Self::AScan)
         } else {
             None
         }
@@ -1136,6 +1175,85 @@ pub fn aclone(value: Option<&Value>) -> Result<Value, RuntimeError> {
     }
 }
 
+pub fn adel(array: &mut Value, position: Option<&Value>) -> Result<Value, RuntimeError> {
+    if !matches!(array, Value::Array(_)) {
+        return Ok(Value::Nil);
+    }
+
+    let Some(position) = position else {
+        return array.array_clone();
+    };
+
+    let position = match position {
+        Value::Integer(value) if *value == 0 => 1,
+        Value::Integer(value) if *value > 0 => *value as usize,
+        _ => return array.array_clone(),
+    };
+
+    array.array_delete(position.saturating_sub(1))?;
+    array.array_clone()
+}
+
+pub fn ains(array: &mut Value, position: Option<&Value>) -> Result<Value, RuntimeError> {
+    if !matches!(array, Value::Array(_)) {
+        return Ok(Value::Nil);
+    }
+
+    let Some(position) = position else {
+        return array.array_clone();
+    };
+
+    let position = match position {
+        Value::Integer(value) if *value == 0 => 1,
+        Value::Integer(value) if *value > 0 => *value as usize,
+        _ => return array.array_clone(),
+    };
+
+    array.array_insert(position.saturating_sub(1))?;
+    array.array_clone()
+}
+
+pub fn ascan(
+    array: Option<&Value>,
+    search: Option<&Value>,
+    start: Option<&Value>,
+    count: Option<&Value>,
+) -> Result<Value, RuntimeError> {
+    let (Some(array), Some(search)) = (array, search) else {
+        return Ok(Value::from(0_i64));
+    };
+    let Value::Array(values) = array else {
+        return Ok(Value::from(0_i64));
+    };
+    if values.is_empty() {
+        return Ok(Value::from(0_i64));
+    }
+
+    let start_index = match start {
+        Some(Value::Integer(value)) if *value > 0 => (*value as usize).saturating_sub(1),
+        Some(Value::Integer(_)) => 0,
+        _ => 0,
+    };
+    if start_index >= values.len() {
+        return Ok(Value::from(0_i64));
+    }
+
+    let remaining = values.len() - start_index;
+    let max_count = match count {
+        Some(Value::Integer(value)) if *value > 0 => remaining.min(*value as usize),
+        Some(Value::Integer(_)) => 0,
+        _ => remaining,
+    };
+
+    for (offset, candidate) in values.iter().skip(start_index).take(max_count).enumerate() {
+        if array_scan_matches(candidate, search) {
+            return Ok(Value::from((start_index + offset + 1) as i64));
+        }
+    }
+
+    Ok(Value::from(0_i64))
+}
+
 pub fn call_builtin(
     name: &str,
     arguments: &[Value],
@@ -1173,7 +1291,13 @@ pub fn call_builtin(
         Some(Builtin::Replicate) => replicate(arguments.first(), arguments.get(1)),
         Some(Builtin::Space) => space(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
-        Some(Builtin::AAdd | Builtin::ASize) => {
+        Some(Builtin::AScan) => ascan(
+            arguments.first(),
+            arguments.get(1),
+            arguments.get(2),
+            arguments.get(3),
+        ),
+        Some(Builtin::AAdd | Builtin::ASize | Builtin::ADel | Builtin::AIns) => {
             Err(RuntimeError::builtin_requires_mutable_dispatch(name))
         }
         None => Err(RuntimeError::unknown_builtin(name)),
@@ -1217,6 +1341,12 @@ pub fn call_builtin_mut(
         Some(Builtin::Replicate) => replicate(arguments.first(), arguments.get(1)),
         Some(Builtin::Space) => space(arguments.first()),
         Some(Builtin::AClone) => aclone(arguments.first()),
+        Some(Builtin::AScan) => ascan(
+            arguments.first(),
+            arguments.get(1),
+            arguments.get(2),
+            arguments.get(3),
+        ),
         Some(Builtin::AAdd) => {
             let Some((array, rest)) = arguments.split_first_mut() else {
                 return Ok(Value::Nil);
@@ -1232,7 +1362,32 @@ pub fn call_builtin_mut(
             };
             asize(array, rest.first())
         }
+        Some(Builtin::ADel) => {
+            let Some((array, rest)) = arguments.split_first_mut() else {
+                return Ok(Value::Nil);
+            };
+            adel(array, rest.first())
+        }
+        Some(Builtin::AIns) => {
+            let Some((array, rest)) = arguments.split_first_mut() else {
+                return Ok(Value::Nil);
+            };
+            ains(array, rest.first())
+        }
         None => Err(RuntimeError::unknown_builtin(name)),
+    }
+}
+
+fn array_scan_matches(candidate: &Value, search: &Value) -> bool {
+    match (candidate, search) {
+        (Value::Nil, Value::Nil) => true,
+        (Value::Logical(left), Value::Logical(right)) => left == right,
+        (Value::Integer(left), Value::Integer(right)) => left == right,
+        (Value::Integer(left), Value::Float(right)) => (*left as f64) == *right,
+        (Value::Float(left), Value::Integer(right)) => *left == (*right as f64),
+        (Value::Float(left), Value::Float(right)) => left == right,
+        (Value::String(left), Value::String(right)) => left.starts_with(right),
+        _ => false,
     }
 }
 

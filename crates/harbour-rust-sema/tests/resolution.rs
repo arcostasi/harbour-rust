@@ -128,6 +128,16 @@ fn analyzes_aclones_fixture_without_semantic_errors() {
 }
 
 #[test]
+fn analyzes_array_builtins_fixture_without_semantic_errors() {
+    let analysis = analyze_fixture("tests/fixtures/parser/array_builtins.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+}
+
+#[test]
 fn analyzes_module_static_fixture_with_shared_module_bindings() {
     let analysis = analyze_fixture("tests/fixtures/parser/static_module.prg");
     assert!(

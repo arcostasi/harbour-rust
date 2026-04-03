@@ -474,6 +474,9 @@ fn is_runtime_builtin(name: &str) -> bool {
         || name.eq_ignore_ascii_case("ACLONE")
         || name.eq_ignore_ascii_case("AADD")
         || name.eq_ignore_ascii_case("ASIZE")
+        || name.eq_ignore_ascii_case("ADEL")
+        || name.eq_ignore_ascii_case("AINS")
+        || name.eq_ignore_ascii_case("ASCAN")
 }
 
 #[cfg(test)]

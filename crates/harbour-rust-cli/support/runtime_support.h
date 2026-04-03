@@ -224,6 +224,20 @@ struct harbour_runtime_Value harbour_builtin_asize(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_adel(
+    struct harbour_runtime_Value *array,
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
+struct harbour_runtime_Value harbour_builtin_ains(
+    struct harbour_runtime_Value *array,
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
+struct harbour_runtime_Value harbour_builtin_ascan(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_value_nil(void);
 struct harbour_runtime_Value harbour_value_from_logical(_Bool logical);
 struct harbour_runtime_Value harbour_value_from_integer(long long integer);

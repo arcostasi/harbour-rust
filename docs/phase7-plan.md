@@ -102,7 +102,7 @@ RETURN
 
 ### Slice 7.3 — Builtins de array completos
 
-**Status:** parcial (AAdd, ASize, AClone ✓ no runtime)
+**Status:** parcial (AAdd, ASize, AClone, ADel, AIns, AScan ✓ no baseline atual)
 
 **Escopo:**
 - `ADel()`, `AIns()` — remoção e inserção de elementos
@@ -117,9 +117,9 @@ RETURN
 - `harbour-core/utils/hbtest/rt_array.prg`
 
 **Aceite:**
-- [ ] Cada builtin com teste unitário de caso feliz e erro
-- [ ] `COMPATIBILITY.md` atualizada por builtin
-- [ ] Pelo menos `ADel`, `AIns`, `AScan` funcionais
+- [x] Cada builtin com teste unitário de caso feliz e erro
+- [x] `COMPATIBILITY.md` atualizada por builtin
+- [x] Pelo menos `ADel`, `AIns`, `AScan` funcionais
 
 ---
 
@@ -241,7 +241,7 @@ RETURN
 ### Slice 7.8 — Comparações mais fiéis
 
 **Escopo:**
-- Comparação de strings case-insensitive (SET EXACT OFF como padrão Clipper)
+- Comparação de strings com semântica prefixo de `SET EXACT OFF` como baseline padrão
 - `==` exato para strings
 - Comparação de tipos mistos (comportamento Clipper documentado)
 

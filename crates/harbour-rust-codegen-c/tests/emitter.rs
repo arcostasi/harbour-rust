@@ -973,6 +973,37 @@ fn emits_mutable_builtins_fixture_with_addressable_runtime_helper_calls() {
 }
 
 #[test]
+fn emits_array_builtins_fixture_with_runtime_array_helper_calls() {
+    let emitted = emit_fixture("tests/fixtures/parser/array_builtins.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_ascan((harbour_runtime_Value[]) { values, harbour_value_from_integer(20LL) }, 2)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_ascan((harbour_runtime_Value[]) { words, harbour_value_from_string_literal(\"HELL\") }, 2)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_ains(&values, (harbour_runtime_Value[]) { harbour_value_from_integer(2LL) }, 1)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_adel(&values, (harbour_runtime_Value[]) { harbour_value_from_integer(1LL) }, 1)")
+    );
+}
+
+#[test]
 fn emits_array_args_fixture_with_array_argument_and_index_helpers() {
     let emitted = emit_fixture("tests/fixtures/parser/array_args.prg");
 

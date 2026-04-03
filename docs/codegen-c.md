@@ -173,6 +173,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
 | `tests/fixtures/parser/array_args.prg` | passa array como argumento e executa |
 | `tests/fixtures/parser/array_matrix.prg` | leitura/escrita multidimensional executa |
+| `tests/fixtures/parser/array_builtins.prg` | `ADel()`, `AIns()` e `AScan()` executam via helpers dedicados |
 | `tests/fixtures/parser/static.prg` | gera C com storage estático persistente por rotina |
 | `tests/fixtures/parser/static_module.prg` | gera C com storage estático compartilhado entre rotinas |
 
@@ -206,6 +207,7 @@ Fase 5 + Fase 7 parcial:
 - `ValType()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
 - `Type()` no recorte textual atual (`NIL`, `.T./.F.`, número simples, string quoted, literal `{...}`, nome não resolvido) via dispatch de builtin — parcial
 - `Empty()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
+- `ADel()`, `AIns()` e `AScan()` via dispatch de builtin — parcial
 - LOCAL com inicializador — completo
 - Literais de array — completo
 - Indexação (leitura) — completo

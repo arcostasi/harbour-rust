@@ -63,6 +63,10 @@ static _Bool harbour_try_max_min_compare(
     harbour_runtime_Value right,
     int *comparison
 );
+static _Bool harbour_array_scan_matches(
+    harbour_runtime_Value candidate,
+    harbour_runtime_Value search
+);
 static harbour_runtime_Value harbour_unsupported_comparison(void);
 static harbour_runtime_Value harbour_array_comparison_error(const char *message);
 
@@ -1393,6 +1397,139 @@ struct harbour_runtime_Value harbour_builtin_asize(
     return harbour_value_clone(*array);
 }
 
+struct harbour_runtime_Value harbour_builtin_adel(
+    struct harbour_runtime_Value *array,
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    long long requested_position;
+    size_t index;
+
+    if (array == NULL || array->kind != HARBOUR_VALUE_ARRAY) {
+        return harbour_value_nil();
+    }
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_clone(*array);
+    }
+
+    if (arguments[0].kind != HARBOUR_VALUE_INTEGER) {
+        return harbour_value_clone(*array);
+    }
+
+    requested_position = arguments[0].as.integer;
+    if (requested_position == 0) {
+        requested_position = 1;
+    }
+    if (
+        requested_position <= 0 ||
+        (size_t) requested_position > array->as.array.length
+    ) {
+        return harbour_value_clone(*array);
+    }
+
+    index = (size_t) requested_position - 1;
+    for (; index + 1 < array->as.array.length; ++index) {
+        array->as.array.items[index] = array->as.array.items[index + 1];
+    }
+    if (array->as.array.length > 0) {
+        array->as.array.items[array->as.array.length - 1] = harbour_value_nil();
+    }
+
+    return harbour_value_clone(*array);
+}
+
+struct harbour_runtime_Value harbour_builtin_ains(
+    struct harbour_runtime_Value *array,
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    long long requested_position;
+    size_t index;
+
+    if (array == NULL || array->kind != HARBOUR_VALUE_ARRAY) {
+        return harbour_value_nil();
+    }
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_clone(*array);
+    }
+
+    if (arguments[0].kind != HARBOUR_VALUE_INTEGER) {
+        return harbour_value_clone(*array);
+    }
+
+    requested_position = arguments[0].as.integer;
+    if (requested_position == 0) {
+        requested_position = 1;
+    }
+    if (
+        requested_position <= 0 ||
+        (size_t) requested_position > array->as.array.length
+    ) {
+        return harbour_value_clone(*array);
+    }
+
+    index = (size_t) requested_position - 1;
+    for (index = array->as.array.length; index > (size_t) requested_position; --index) {
+        array->as.array.items[index - 1] = array->as.array.items[index - 2];
+    }
+    array->as.array.items[requested_position - 1] = harbour_value_nil();
+
+    return harbour_value_clone(*array);
+}
+
+struct harbour_runtime_Value harbour_builtin_ascan(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    const harbour_runtime_Value *array;
+    const harbour_runtime_Value *search;
+    size_t start_index = 0;
+    size_t remaining;
+    size_t max_count;
+    size_t offset;
+
+    if (arguments == NULL || argument_count < 2) {
+        return harbour_value_from_integer(0);
+    }
+
+    array = &arguments[0];
+    search = &arguments[1];
+    if (array->kind != HARBOUR_VALUE_ARRAY) {
+        return harbour_value_from_integer(0);
+    }
+
+    if (
+        argument_count >= 3 &&
+        arguments[2].kind == HARBOUR_VALUE_INTEGER &&
+        arguments[2].as.integer > 0
+    ) {
+        start_index = (size_t) arguments[2].as.integer - 1;
+    }
+    if (start_index >= array->as.array.length) {
+        return harbour_value_from_integer(0);
+    }
+
+    remaining = array->as.array.length - start_index;
+    max_count = remaining;
+    if (argument_count >= 4 && arguments[3].kind == HARBOUR_VALUE_INTEGER) {
+        if (arguments[3].as.integer <= 0) {
+            max_count = 0;
+        } else if ((size_t) arguments[3].as.integer < max_count) {
+            max_count = (size_t) arguments[3].as.integer;
+        }
+    }
+
+    for (offset = 0; offset < max_count; ++offset) {
+        if (harbour_array_scan_matches(array->as.array.items[start_index + offset], *search)) {
+            return harbour_value_from_integer((long long) (start_index + offset + 1));
+        }
+    }
+
+    return harbour_value_from_integer(0);
+}
+
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value) {
     size_t index;
     harbour_runtime_Value cloned;
@@ -1982,6 +2119,36 @@ static _Bool harbour_try_max_min_compare(
             *comparison = 1;
         }
         return 1;
+    }
+
+    return 0;
+}
+
+static _Bool harbour_array_scan_matches(
+    harbour_runtime_Value candidate,
+    harbour_runtime_Value search
+) {
+    double left_number;
+    double right_number;
+
+    if (candidate.kind == HARBOUR_VALUE_NIL && search.kind == HARBOUR_VALUE_NIL) {
+        return 1;
+    }
+    if (
+        candidate.kind == HARBOUR_VALUE_LOGICAL &&
+        search.kind == HARBOUR_VALUE_LOGICAL
+    ) {
+        return candidate.as.logical == search.as.logical;
+    }
+    if (
+        candidate.kind == HARBOUR_VALUE_STRING &&
+        search.kind == HARBOUR_VALUE_STRING
+    ) {
+        size_t search_length = strlen(search.as.string);
+        return strncmp(candidate.as.string, search.as.string, search_length) == 0;
+    }
+    if (harbour_try_numeric_pair(candidate, search, &left_number, &right_number)) {
+        return left_number == right_number;
     }
 
     return 0;

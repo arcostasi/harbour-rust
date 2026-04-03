@@ -96,6 +96,9 @@ enum RuntimeBuiltin {
     AClone,
     AAdd,
     ASize,
+    ADel,
+    AIns,
+    AScan,
 }
 
 impl RuntimeBuiltin {
@@ -166,6 +169,12 @@ impl RuntimeBuiltin {
             Some(Self::AAdd)
         } else if name.eq_ignore_ascii_case("ASIZE") {
             Some(Self::ASize)
+        } else if name.eq_ignore_ascii_case("ADEL") {
+            Some(Self::ADel)
+        } else if name.eq_ignore_ascii_case("AINS") {
+            Some(Self::AIns)
+        } else if name.eq_ignore_ascii_case("ASCAN") {
+            Some(Self::AScan)
         } else {
             None
         }
@@ -206,6 +215,9 @@ impl RuntimeBuiltin {
             Self::AClone => "harbour_builtin_aclone",
             Self::AAdd => "harbour_builtin_aadd",
             Self::ASize => "harbour_builtin_asize",
+            Self::ADel => "harbour_builtin_adel",
+            Self::AIns => "harbour_builtin_ains",
+            Self::AScan => "harbour_builtin_ascan",
         }
     }
 
@@ -244,11 +256,14 @@ impl RuntimeBuiltin {
             Self::AClone => "AClone",
             Self::AAdd => "AAdd",
             Self::ASize => "ASize",
+            Self::ADel => "ADel",
+            Self::AIns => "AIns",
+            Self::AScan => "AScan",
         }
     }
 
     fn requires_mutable_dispatch(self) -> bool {
-        matches!(self, Self::AAdd | Self::ASize)
+        matches!(self, Self::AAdd | Self::ASize | Self::ADel | Self::AIns)
     }
 }
 
@@ -468,6 +483,15 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_asize(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_adel(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_ains(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_ascan(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line("");
     }
@@ -1354,6 +1378,9 @@ mod tests {
                     "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_aadd(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "extern harbour_runtime_Value harbour_builtin_asize(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_adel(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_ains(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
+                    "extern harbour_runtime_Value harbour_builtin_ascan(const harbour_runtime_Value *arguments, size_t argument_count);\n",
                     "\n",
                     "static harbour_runtime_Value harbour_routine_main(void);\n",
                     "\n",

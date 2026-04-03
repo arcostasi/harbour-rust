@@ -737,6 +737,30 @@ fn build_command_writes_c_output_for_array_matrix_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_array_builtins_fixture() {
+    let temp_dir = unique_temp_dir("array-builtins");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("array_builtins.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/array_builtins.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_ascan("));
+    assert!(generated.contains("harbour_builtin_ains("));
+    assert!(generated.contains("harbour_builtin_adel("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_compare_ops_fixture() {
     let temp_dir = unique_temp_dir("compare-ops");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -1731,6 +1755,23 @@ fn run_command_executes_array_matrix_fixture_with_expected_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "2\n99\n2\n");
+}
+
+#[test]
+fn run_command_executes_array_builtins_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/array_builtins.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(
+        stdout,
+        "2\n0\n1\n{ Array(3) }\n10\nU\n20\n{ Array(3) }\nU\n20\nU\n"
+    );
 }
 
 #[test]

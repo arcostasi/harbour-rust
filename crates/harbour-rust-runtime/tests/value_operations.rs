@@ -1,8 +1,8 @@
 use harbour_rust_runtime::{
-    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
-    call_builtin_mut, cos_value, empty, exp_value, int, left, log_value, lower, ltrim, max_value,
-    min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value,
-    str_value, substr, tan_value, trim, type_value, upper, val, valtype,
+    OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
+    at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, int, left, log_value, lower,
+    ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value,
+    space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -1642,6 +1642,111 @@ fn public_aadd_and_asize_follow_the_current_lenient_runtime_baseline() {
 }
 
 #[test]
+fn public_adel_and_ains_follow_the_current_lenient_runtime_baseline() {
+    let mut values = Value::array(vec![
+        Value::from(10_i64),
+        Value::from(20_i64),
+        Value::from(30_i64),
+    ]);
+
+    assert_eq!(
+        ains(&mut values, Some(&Value::from(2_i64))),
+        Ok(Value::array(vec![
+            Value::from(10_i64),
+            Value::Nil,
+            Value::from(20_i64),
+        ]))
+    );
+    assert_eq!(
+        values,
+        Value::array(vec![Value::from(10_i64), Value::Nil, Value::from(20_i64),])
+    );
+
+    assert_eq!(
+        adel(&mut values, Some(&Value::from(1_i64))),
+        Ok(Value::array(vec![
+            Value::Nil,
+            Value::from(20_i64),
+            Value::Nil,
+        ]))
+    );
+    assert_eq!(
+        values,
+        Value::array(vec![Value::Nil, Value::from(20_i64), Value::Nil,])
+    );
+
+    let mut untouched = Value::array(vec![Value::from(1_i64)]);
+    assert_eq!(
+        adel(&mut untouched, None),
+        Ok(Value::array(vec![Value::from(1_i64)]))
+    );
+    assert_eq!(
+        ains(&mut untouched, Some(&Value::from(100_i64))),
+        Ok(Value::array(vec![Value::from(1_i64)]))
+    );
+
+    let mut not_array = Value::from("nope");
+    assert_eq!(
+        adel(&mut not_array, Some(&Value::from(1_i64))),
+        Ok(Value::Nil)
+    );
+    assert_eq!(
+        ains(&mut not_array, Some(&Value::from(1_i64))),
+        Ok(Value::Nil)
+    );
+}
+
+#[test]
+fn public_ascan_follows_the_current_lenient_runtime_baseline() {
+    let values = Value::array(vec![
+        Value::from("HELLO"),
+        Value::from(""),
+        Value::from(10_i64),
+        Value::from(true),
+    ]);
+
+    assert_eq!(
+        ascan(Some(&values), Some(&Value::from("HELL")), None, None),
+        Ok(Value::from(1_i64))
+    );
+    assert_eq!(
+        ascan(
+            Some(&values),
+            Some(&Value::from("")),
+            Some(&Value::from(2_i64)),
+            None
+        ),
+        Ok(Value::from(2_i64))
+    );
+    assert_eq!(
+        ascan(
+            Some(&values),
+            Some(&Value::from(10.0_f64)),
+            Some(&Value::from(2_i64)),
+            Some(&Value::from(2_i64))
+        ),
+        Ok(Value::from(3_i64))
+    );
+    assert_eq!(
+        ascan(Some(&values), Some(&Value::from(false)), None, None),
+        Ok(Value::from(0_i64))
+    );
+    assert_eq!(
+        ascan(None, Some(&Value::from(1_i64)), None, None),
+        Ok(Value::from(0_i64))
+    );
+    assert_eq!(
+        ascan(
+            Some(&Value::from("nope")),
+            Some(&Value::from(1_i64)),
+            None,
+            None
+        ),
+        Ok(Value::from(0_i64))
+    );
+}
+
+#[test]
 fn public_mutating_array_builtins_report_when_called_through_immutable_dispatch() {
     let mut context = RuntimeContext::new();
 
@@ -1669,6 +1774,30 @@ fn public_mutating_array_builtins_report_when_called_through_immutable_dispatch(
             actual: None,
         })
     );
+    assert_eq!(
+        call_builtin(
+            "ADEL",
+            &[Value::empty_array(), Value::from(1_i64)],
+            &mut context
+        ),
+        Err(RuntimeError {
+            message: "builtin ADEL requires mutable dispatch".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        call_builtin(
+            "AINS",
+            &[Value::empty_array(), Value::from(1_i64)],
+            &mut context
+        ),
+        Err(RuntimeError {
+            message: "builtin AINS requires mutable dispatch".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
 }
 
 #[test]
@@ -1691,6 +1820,44 @@ fn public_aclone_dispatches_through_the_immutable_builtin_surface() {
         Ok(values.clone())
     );
     assert_eq!(mutable_arguments[0], values);
+}
+
+#[test]
+fn public_array_builtin_dispatch_covers_ascan_adel_and_ains() {
+    let mut context = RuntimeContext::new();
+    let mut arguments = [
+        Value::array(vec![
+            Value::from(10_i64),
+            Value::from(20_i64),
+            Value::from(30_i64),
+        ]),
+        Value::from(2_i64),
+    ];
+
+    assert_eq!(
+        call_builtin(
+            "ASCAN",
+            &[arguments[0].clone(), Value::from(20_i64)],
+            &mut context
+        ),
+        Ok(Value::from(2_i64))
+    );
+    assert_eq!(
+        call_builtin_mut("AINS", &mut arguments, &mut context),
+        Ok(Value::array(vec![
+            Value::from(10_i64),
+            Value::Nil,
+            Value::from(20_i64),
+        ]))
+    );
+    assert_eq!(
+        call_builtin_mut("ADEL", &mut arguments, &mut context),
+        Ok(Value::array(vec![
+            Value::from(10_i64),
+            Value::from(20_i64),
+            Value::Nil,
+        ]))
+    );
 }
 
 #[test]

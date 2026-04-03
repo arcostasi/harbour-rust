@@ -1,0 +1,11 @@
+AScan({10,20,30}, 20) => 2
+AScan({10,20,30}, 0) => 0
+AScan({"HELLO","","WORLD"}, "HELL") => 1
+AIns(values, 2) => { Array(3) }
+values[1] => 10
+ValType(values[2]) => U
+values[3] => 20
+ADel(values, 1) => { Array(3) }
+ValType(values[1]) => U
+values[2] => 20
+ValType(values[3]) => U

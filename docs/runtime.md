@@ -141,6 +141,15 @@ Na slice seguinte da Fase 7, entram os primeiros builtins de array sobre essa in
 - `call_builtin_mut()` passa a existir como surface separada para builtins mutantes,
 - `call_builtin()` continua atendendo builtins imutáveis e reporta erro explícito se `AAdd` ou `ASize` forem chamados pela surface errada.
 
+Na slice seguinte da Fase 7, entram `ADel()`, `AIns()` e `AScan()` como builtins essenciais de array:
+
+- `adel()` remove o elemento na posição 1-based, desloca à esquerda e preenche a última posição com `NIL`,
+- `ains()` insere um slot `NIL` na posição 1-based, desloca à direita e preserva o comprimento do array,
+- `ascan()` percorre arrays com `start` e `count` opcionais, retornando a posição 1-based do primeiro match ou `0`,
+- `AScan()` segue o baseline leniente atual do upstream para strings com `SET EXACT OFF`: o item do array casa quando começa com a string buscada,
+- `ADel()` e `AIns()` seguem a mesma surface mutável de `AAdd()`/`ASize()` e exigem `call_builtin_mut()`; na surface imutável geram erro explícito de dispatch,
+- o recorte atual continua parcial: `ASort()`, `AEval()`, `AFill()` e `ACopy()` seguem pendentes, e `AScan()` ainda não cobre codeblocks nem comparadores customizados.
+
 Na slice seguinte da Fase 7, entra `Len()` como builtin imutável compartilhado entre strings e arrays:
 
 - `len()` retorna `Integer` para `String` e `Array`,
