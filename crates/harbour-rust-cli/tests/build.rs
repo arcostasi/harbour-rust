@@ -117,6 +117,29 @@ fn build_command_writes_c_output_for_if_else_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_string_concat_fixture() {
+    let temp_dir = unique_temp_dir("string-concat");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("string_concat.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/string_concat.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_value_add("));
+    assert!(generated.contains("harbour_builtin_upper("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_compound_assign_run_fixture() {
     let temp_dir = unique_temp_dir("compound-assign-run");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -806,6 +829,34 @@ fn build_command_writes_c_output_for_string_compare_fixture() {
     assert!(generated.contains("harbour_value_equals("));
     assert!(generated.contains("harbour_value_exact_equals("));
     assert!(generated.contains("harbour_value_not_equals("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn build_command_writes_c_output_for_phase7_acceptance_fixture() {
+    let temp_dir = unique_temp_dir("phase7-acceptance");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("phase7_acceptance.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/phase7_acceptance.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_module_init_statics();"));
+    assert!(generated.contains("harbour_builtin_upper("));
+    assert!(generated.contains("harbour_builtin_ltrim("));
+    assert!(generated.contains("harbour_builtin_str("));
+    assert!(generated.contains("harbour_builtin_valtype("));
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
@@ -1843,6 +1894,39 @@ fn run_command_executes_string_compare_fixture_with_exact_off_baseline() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, ".T.\n.F.\n.T.\n.F.\n.T.\n.F.\n.F.\n.T.\n");
+}
+
+#[test]
+fn run_command_executes_string_concat_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/string_concat.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "AB\nABC!\n");
+}
+
+#[test]
+fn run_command_executes_phase7_acceptance_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/phase7_acceptance.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(
+        stdout,
+        "ALICE tem nome longo\nBob tem nome curto\nCHARLIE tem nome longo\nTotal de nomes longos: 2\nTipo do array: A\n"
+    );
 }
 
 #[test]

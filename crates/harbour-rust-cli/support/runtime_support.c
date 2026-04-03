@@ -219,6 +219,10 @@ harbour_runtime_Value harbour_value_add(
     harbour_runtime_Value left,
     harbour_runtime_Value right
 ) {
+    char *buffer;
+    size_t left_length;
+    size_t right_length;
+
     if (left.kind == HARBOUR_VALUE_INTEGER && right.kind == HARBOUR_VALUE_INTEGER) {
         return harbour_value_from_integer(left.as.integer + right.as.integer);
     }
@@ -237,7 +241,16 @@ harbour_runtime_Value harbour_value_add(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_string_literal("");
+        left_length = strlen(left.as.string);
+        right_length = strlen(right.as.string);
+        buffer = (char *) malloc(left_length + right_length + 1);
+        if (buffer == NULL) {
+            return harbour_value_from_string_literal("");
+        }
+
+        memcpy(buffer, left.as.string, left_length);
+        memcpy(buffer + left_length, right.as.string, right_length + 1);
+        return harbour_value_from_string_literal(buffer);
     }
 
     return harbour_value_nil();
