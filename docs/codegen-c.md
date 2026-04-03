@@ -171,6 +171,8 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/arrays.prg` | gera C com array_items |
 | `tests/fixtures/parser/indexing.prg` | gera C com array_get |
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
+| `tests/fixtures/parser/array_args.prg` | passa array como argumento e executa |
+| `tests/fixtures/parser/array_matrix.prg` | leitura/escrita multidimensional executa |
 | `tests/fixtures/parser/static.prg` | gera C com storage estático persistente por rotina |
 | `tests/fixtures/parser/static_module.prg` | gera C com storage estático compartilhado entre rotinas |
 
@@ -208,6 +210,8 @@ Fase 5 + Fase 7 parcial:
 - Literais de array — completo
 - Indexação (leitura) — completo
 - Atribuição indexada — completo
+- Passagem de arrays como argumento — completo
+- Multidimensional com leitura/escrita aninhada — completo
 - `%= ^=` — pendente no caminho executável
 - `Len()` para hashes/objetos/codepages multibyte — pendente
 - `SubStr()` para codepage multibyte, `Chr(0)` e argumentos numéricos não-inteiros — pendente

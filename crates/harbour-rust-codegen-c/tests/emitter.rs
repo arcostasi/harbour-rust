@@ -973,6 +973,48 @@ fn emits_mutable_builtins_fixture_with_addressable_runtime_helper_calls() {
 }
 
 #[test]
+fn emits_array_args_fixture_with_array_argument_and_index_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/array_args.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(emitted.source.contains("harbour_routine_showarray(items);"));
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_len((harbour_runtime_Value[]) { items }, 1)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_array_get(items, harbour_value_from_integer(2LL))")
+    );
+}
+
+#[test]
+fn emits_array_matrix_fixture_with_nested_array_helpers() {
+    let emitted = emit_fixture("tests/fixtures/parser/array_matrix.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(emitted.source.contains(
+        "harbour_value_from_array_items((harbour_runtime_Value[]) { harbour_value_from_integer(1LL), harbour_value_from_integer(2LL) }, 2)"
+    ));
+    assert!(emitted.source.contains(
+        "harbour_value_array_get(harbour_value_array_get(matrix, harbour_value_from_integer(1LL)), harbour_value_from_integer(2LL))"
+    ));
+    assert!(emitted.source.contains(
+        "harbour_value_array_set_path(&matrix, (harbour_runtime_Value[]) { harbour_value_from_integer(2LL), harbour_value_from_integer(1LL) }, 2, harbour_value_from_integer(99LL));"
+    ));
+}
+
+#[test]
 fn emits_compare_ops_fixture_with_runtime_comparison_helpers() {
     let emitted = emit_fixture("tests/fixtures/parser/compare_ops.prg");
 

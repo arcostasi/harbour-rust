@@ -598,11 +598,11 @@ impl Emitter {
                 self.emit_line("}");
             }
             ir::Statement::Evaluate(statement) => {
-                self.push_error(
-                    "C emission for standalone expression statements is not implemented yet",
-                    statement.span,
-                );
-                self.emit_line("/* TODO: emit expression statement */");
+                if let Some(expression) = self.emit_expression(&statement.expression) {
+                    self.emit_line(&format!("(void) {};", expression));
+                } else {
+                    self.emit_line("/* TODO: emit expression statement */");
+                }
             }
         }
     }

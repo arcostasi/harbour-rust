@@ -173,6 +173,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/indexed_assign.prg` -> `harbour-rust-cli run`
 - `tests/fixtures/parser/aclone.prg` -> `harbour-rust-cli build/run`
 - `tests/fixtures/parser/mutable_builtins.prg` -> `harbour-rust-cli build/run`
+- `tests/fixtures/parser/array_args.prg` -> `harbour-rust-cli build/run` com array passado como argumento
+- `tests/fixtures/parser/array_matrix.prg` -> `harbour-rust-cli build/run` com leitura/escrita multidimensional
 - `tests/fixtures/pp/include_root.prg` -> preprocessamento com `#define` e `#include` simples
 - `tests/fixtures/pp/define_root.prg` -> expansão simples de `#define` objeto
 - `tests/fixtures/pp/recursive_define_root.prg` -> expansão recursiva de `#define` objeto
