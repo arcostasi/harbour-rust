@@ -461,6 +461,7 @@ pub enum Builtin {
     Sqrt,
     Sin,
     Cos,
+    Tan,
     Exp,
     Log,
     Int,
@@ -502,6 +503,8 @@ impl Builtin {
             Some(Self::Sin)
         } else if name.eq_ignore_ascii_case("COS") {
             Some(Self::Cos)
+        } else if name.eq_ignore_ascii_case("TAN") {
+            Some(Self::Tan)
         } else if name.eq_ignore_ascii_case("EXP") {
             Some(Self::Exp)
         } else if name.eq_ignore_ascii_case("LOG") {
@@ -629,6 +632,20 @@ pub fn cos_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
     };
 
     Ok(Value::from(number.cos()))
+}
+
+pub fn tan_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::tan_argument_error(None));
+    };
+
+    let number = match value {
+        Value::Integer(number) => *number as f64,
+        Value::Float(number) => *number,
+        other => return Err(RuntimeError::tan_argument_error(Some(other.kind()))),
+    };
+
+    Ok(Value::from(number.tan()))
 }
 
 pub fn exp_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1130,6 +1147,7 @@ pub fn call_builtin(
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
         Some(Builtin::Sin) => sin_value(arguments.first()),
         Some(Builtin::Cos) => cos_value(arguments.first()),
+        Some(Builtin::Tan) => tan_value(arguments.first()),
         Some(Builtin::Exp) => exp_value(arguments.first()),
         Some(Builtin::Log) => log_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
@@ -1173,6 +1191,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
         Some(Builtin::Sin) => sin_value(arguments.first()),
         Some(Builtin::Cos) => cos_value(arguments.first()),
+        Some(Builtin::Tan) => tan_value(arguments.first()),
         Some(Builtin::Exp) => exp_value(arguments.first()),
         Some(Builtin::Log) => log_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
@@ -1395,6 +1414,14 @@ impl RuntimeError {
     pub fn cos_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1091 Argument error (COS)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn tan_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1091 Argument error (TAN)".to_owned(),
             expected: None,
             actual,
         }
@@ -2106,7 +2133,7 @@ mod tests {
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
         call_builtin, call_builtin_mut, cos_value, exp_value, int, len, log_value, max_value,
         min_value, mod_value, qout, replicate, round_value, sin_value, space, sqrt_value,
-        str_value, type_value, val,
+        str_value, tan_value, type_value, val,
     };
 
     #[test]
@@ -2697,6 +2724,58 @@ mod tests {
         assert_eq!(
             call_builtin_mut("sin", &mut mutable_arguments, &mut context),
             Ok(Value::from(1_f64.sin()))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(1_i64));
+    }
+
+    #[test]
+    fn tan_matches_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            tan_value(Some(&Value::from(0_i64))),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            round_value(
+                tan_value(Some(&Value::from(1_i64))).ok().as_ref(),
+                Some(&Value::from(4_i64))
+            ),
+            Ok(Value::from(1.5574_f64))
+        );
+    }
+
+    #[test]
+    fn tan_reports_xbase_style_argument_errors() {
+        assert_eq!(
+            tan_value(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1091 Argument error (TAN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            tan_value(None),
+            Err(RuntimeError {
+                message: "BASE 1091 Argument error (TAN)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn tan_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("TAN", &[Value::from(0_i64)], &mut context),
+            Ok(Value::from(0.0_f64))
+        );
+
+        let mut mutable_arguments = [Value::from(1_i64)];
+        assert_eq!(
+            call_builtin_mut("tan", &mut mutable_arguments, &mut context),
+            Ok(Value::from(1_f64.tan()))
         );
         assert_eq!(mutable_arguments[0], Value::from(1_i64));
     }

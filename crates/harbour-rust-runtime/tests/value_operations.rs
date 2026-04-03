@@ -2,7 +2,7 @@ use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
     call_builtin_mut, cos_value, empty, exp_value, int, left, log_value, lower, ltrim, max_value,
     min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value,
-    str_value, substr, trim, type_value, upper, val, valtype,
+    str_value, substr, tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -304,6 +304,58 @@ fn public_sin_and_cos_dispatch_through_the_immutable_builtin_surface() {
     assert_eq!(
         call_builtin_mut("cos", &mut mutable_arguments, &mut context),
         Ok(Value::from(1_f64.cos()))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(1_i64));
+}
+
+#[test]
+fn public_tan_matches_the_current_numeric_runtime_baseline() {
+    assert_eq!(
+        tan_value(Some(&Value::from(0_i64))),
+        Ok(Value::from(0.0_f64))
+    );
+    assert_eq!(
+        round_value(
+            tan_value(Some(&Value::from(1_i64))).ok().as_ref(),
+            Some(&Value::from(4_i64))
+        ),
+        Ok(Value::from(1.5574_f64))
+    );
+}
+
+#[test]
+fn public_tan_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        tan_value(Some(&Value::from("A"))),
+        Err(RuntimeError {
+            message: "BASE 1091 Argument error (TAN)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        tan_value(None),
+        Err(RuntimeError {
+            message: "BASE 1091 Argument error (TAN)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}
+
+#[test]
+fn public_tan_dispatches_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("TAN", &[Value::from(0_i64)], &mut context),
+        Ok(Value::from(0.0_f64))
+    );
+
+    let mut mutable_arguments = [Value::from(1_i64)];
+    assert_eq!(
+        call_builtin_mut("tan", &mut mutable_arguments, &mut context),
+        Ok(Value::from(1_f64.tan()))
     );
     assert_eq!(mutable_arguments[0], Value::from(1_i64));
 }

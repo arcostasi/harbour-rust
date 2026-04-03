@@ -260,6 +260,14 @@ Na slice seguinte da Fase 7, entram `Sin()` e `Cos()` como builtins imutáveis t
 - argumentos inválidos agora emitem `BASE 1091 Argument error (SIN)` e `BASE 1091 Argument error (COS)`,
 - nesta fase os dois continuam parciais: o checkout local do upstream não traz fixture direta em `utils/hbtest` para `Sin()`/`Cos()`, então o baseline atual é provisório e documentado por fixture local de compatibilidade até que um oracle melhor seja curado.
 
+Na slice seguinte da Fase 7, entra `Tan()` como builtin imutável trigonométrico:
+
+- `tan_value()` cobre o recorte inicial de `Tan( nValue )` para `Integer` e `Float`,
+- o baseline atual usa `f64::tan()` e fixa `Tan(0) = 0` e `Round( Tan(1), 4 ) = 1.5574`,
+- o oracle local vem de `harbour-core/contrib/hbct/trig.c`, `contrib/hbct/tests/test.prg` e `contrib/hbct/doc/en/trig.txt`,
+- argumentos inválidos agora emitem `BASE 1091 Argument error (TAN)` na surface atual do runtime,
+- nesta fase o builtin continua parcial: o upstream hbct usa uma política própria via `ct_error_subst()`, então a superfície de erro atual ainda é uma compatibilidade pragmática e documentada, não um espelhamento completo da biblioteca CT3.
+
 Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento numérico:
 
 - `int()` cobre o recorte inicial de `Int( nValue )` para `Integer` e `Float`,

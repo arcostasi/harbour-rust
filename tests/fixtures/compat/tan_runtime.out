@@ -1,0 +1,4 @@
+Tan("A") => BASE 1091 Argument error (TAN)
+Tan() => BASE 1091 Argument error (TAN)
+Tan(0) => 0
+Round(Tan(1), 4) => 1.5574

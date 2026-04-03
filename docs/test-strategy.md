@@ -100,6 +100,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/sqrt_builtin.prg` -> `harbour-rust-cli build/run` com `Sqrt()` numérico
 - `tests/fixtures/parser/exp_builtin.prg` -> `harbour-rust-cli build/run` com `Exp()` numérico
 - `tests/fixtures/parser/sin_cos_builtin.prg` -> `harbour-rust-cli build/run` com `Sin()` e `Cos()` numéricos
+- `tests/fixtures/parser/tan_builtin.prg` -> `harbour-rust-cli build/run` com `Tan()` numérico
 - `tests/fixtures/parser/log_builtin.prg` -> `harbour-rust-cli build/run` com `Log()` numérico
 - `tests/fixtures/parser/int_builtin.prg` -> `harbour-rust-cli build/run` com `Int()` numérico
 - `tests/fixtures/parser/round_builtin.prg` -> `harbour-rust-cli build/run` com `Round()` numérico
@@ -127,6 +128,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/compat/sqrt_runtime.prg` -> baseline focado de `Sqrt()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/exp_runtime.prg` -> baseline focado de `Exp()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/sin_cos_runtime.prg` -> baseline focado local de `Sin()`/`Cos()` ancorado em `harbour-core/src/rtl/math.c` e `harbour-core/doc/c_std.txt` por falta de fixture direta em `utils/hbtest`
+- `tests/fixtures/compat/tan_runtime.prg` -> baseline focado de `Tan()` ancorado em `harbour-core/contrib/hbct/trig.c`, `contrib/hbct/tests/test.prg` e `contrib/hbct/doc/en/trig.txt`
 - `tests/fixtures/compat/log_runtime.prg` -> baseline focado de `Log()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/int_runtime.prg` -> baseline focado de `Int()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/round_runtime.prg` -> baseline focado de `Round()` contra `harbour-core/utils/hbtest/rt_math.prg`

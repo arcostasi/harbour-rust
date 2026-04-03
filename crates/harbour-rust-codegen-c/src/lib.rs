@@ -67,6 +67,7 @@ enum RuntimeBuiltin {
     Sqrt,
     Sin,
     Cos,
+    Tan,
     Exp,
     Log,
     Int,
@@ -108,6 +109,8 @@ impl RuntimeBuiltin {
             Some(Self::Sin)
         } else if name.eq_ignore_ascii_case("COS") {
             Some(Self::Cos)
+        } else if name.eq_ignore_ascii_case("TAN") {
+            Some(Self::Tan)
         } else if name.eq_ignore_ascii_case("EXP") {
             Some(Self::Exp)
         } else if name.eq_ignore_ascii_case("LOG") {
@@ -174,6 +177,7 @@ impl RuntimeBuiltin {
             Self::Sqrt => "harbour_builtin_sqrt",
             Self::Sin => "harbour_builtin_sin",
             Self::Cos => "harbour_builtin_cos",
+            Self::Tan => "harbour_builtin_tan",
             Self::Exp => "harbour_builtin_exp",
             Self::Log => "harbour_builtin_log",
             Self::Int => "harbour_builtin_int",
@@ -211,6 +215,7 @@ impl RuntimeBuiltin {
             Self::Sqrt => "Sqrt",
             Self::Sin => "Sin",
             Self::Cos => "Cos",
+            Self::Tan => "Tan",
             Self::Exp => "Exp",
             Self::Log => "Log",
             Self::Int => "Int",
@@ -368,6 +373,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_cos(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_tan(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_exp(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -1248,6 +1256,7 @@ mod tests {
 "extern harbour_runtime_Value harbour_builtin_sqrt(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_sin(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_cos(const harbour_runtime_Value *arguments, size_t argument_count);\n",
+"extern harbour_runtime_Value harbour_builtin_tan(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_exp(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_log(const harbour_runtime_Value *arguments, size_t argument_count);\n",
 "extern harbour_runtime_Value harbour_builtin_int(const harbour_runtime_Value *arguments, size_t argument_count);\n",

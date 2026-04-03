@@ -110,6 +110,10 @@ struct harbour_runtime_Value harbour_builtin_cos(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_tan(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_builtin_exp(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

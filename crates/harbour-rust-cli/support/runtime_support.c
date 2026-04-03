@@ -669,6 +669,28 @@ struct harbour_runtime_Value harbour_builtin_cos(
     return harbour_value_from_float(cos(value));
 }
 
+struct harbour_runtime_Value harbour_builtin_tan(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    double value;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        ( arguments[0].kind != HARBOUR_VALUE_INTEGER &&
+          arguments[0].kind != HARBOUR_VALUE_FLOAT )
+    ) {
+        return harbour_value_error_literal("BASE 1091 Argument error (TAN)");
+    }
+
+    value = arguments[0].kind == HARBOUR_VALUE_INTEGER
+        ? (double) arguments[0].as.integer
+        : arguments[0].as.floating;
+
+    return harbour_value_from_float(tan(value));
+}
+
 struct harbour_runtime_Value harbour_builtin_exp(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
