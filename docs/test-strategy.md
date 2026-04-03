@@ -97,6 +97,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/at_builtin.prg` -> `harbour-rust-cli build/run` com `At()` para string
 - `tests/fixtures/parser/replicate_space_builtin.prg` -> `harbour-rust-cli build/run` com `Replicate()` e `Space()` para string
 - `tests/fixtures/parser/string_compare.prg` -> `harbour-rust-cli build/run` com `=`, `==` e `!=` de string no baseline EXACT OFF
+- `tests/fixtures/parser/string_concat.prg` -> `harbour-rust-cli build/run` com concatenação `String + String` no host C
 - `tests/fixtures/parser/abs_builtin.prg` -> `harbour-rust-cli build/run` com `Abs()` numérico
 - `tests/fixtures/parser/sqrt_builtin.prg` -> `harbour-rust-cli build/run` com `Sqrt()` numérico
 - `tests/fixtures/parser/exp_builtin.prg` -> `harbour-rust-cli build/run` com `Exp()` numérico
@@ -148,6 +149,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/sema/control_flow_missing_callables.prg` -> `control_flow_missing_callables.errors`
 - `tests/fixtures/parser/static.prg` -> sema sem erro com bindings `STATIC`
 - `tests/fixtures/parser/static_counter.prg` -> `harbour-rust-cli build/run` com persistência same-routine de `STATIC`
+- `tests/fixtures/parser/phase7_acceptance.prg` -> `harbour-rust-cli build/run` com IF, FOR, STATIC, arrays e builtins essenciais no baseline de aceite da Fase 7
 - `tests/fixtures/parser/arrays.prg` -> lowering IR explícito para `Array(elements)` sem erro de lowering
 - `tests/fixtures/parser/indexing.prg` -> lowering IR explícito para `Index(target, indices)` sem erro de lowering
 - `tests/fixtures/parser/arrays.prg` -> codegen C com `harbour_value_from_array_items(...)`

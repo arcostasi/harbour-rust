@@ -50,7 +50,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4, 5 e 6 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5, 6 e 7 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -74,9 +74,14 @@ As Fases 0, 1, 2, 3, 4, 5 e 6 estão concluídas:
 - pré-processador inicial com `#define` e `#include`,
 - expansão recursiva case-insensitive de macros objeto com diagnóstico de ciclo,
 - resolução de includes com quoted include, angle-bracket include e search paths configuráveis,
-- handoff explícito `pp -> parser` no CLI com `-I/--include-dir`.
+- handoff explícito `pp -> parser` no CLI com `-I/--include-dir`,
+- `STATIC` same-routine e de módulo executáveis no caminho `cli run`,
+- arrays com leitura/escrita indexada, builtins essenciais e comparação observável básica,
+- operadores compostos `+= -= *= /=` executáveis,
+- builtins essenciais de string, math e conversão executáveis no caminho `cli run`,
+- fixture de aceite da Fase 7 curado em `tests/fixtures/parser/phase7_acceptance.prg`.
 
-O próximo passo técnico é iniciar a Fase 7 com compatibilidade procedural ampliada (`STATIC`, arrays, operadores compostos e builtins essenciais).
+O próximo passo técnico é iniciar a Fase 8 com compatibilidade dinâmica xBase (`PRIVATE`, `PUBLIC`, memvars, codeblocks e avaliação dinâmica).
 
 O baseline fim a fim atual oferece geração de C:
 

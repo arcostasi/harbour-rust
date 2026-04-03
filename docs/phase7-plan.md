@@ -176,9 +176,9 @@ RETURN
 | `Pad*()` | `src/rtl/pad.c` | baixa |
 
 **Aceite:**
-- [ ] Pelo menos `Len`, `SubStr`, `Left`, `Right`, `Upper`, `Lower`, `Trim` implementados
-- [ ] Cada um com teste unitário e de compatibilidade
-- [ ] `COMPATIBILITY.md` atualizada
+- [x] Pelo menos `Len`, `SubStr`, `Left`, `Right`, `Upper`, `Lower`, `Trim` implementados
+- [x] Cada um com teste unitário e de compatibilidade
+- [x] `COMPATIBILITY.md` atualizada
 
 ---
 
@@ -205,9 +205,9 @@ RETURN
 
 **Aceite:**
 - [x] Pelo menos `Abs`, `Int`, `Round`, `Val`, `Str`, `ValType` implementados
-- [ ] Cada um com teste unitário e de compatibilidade
-- [ ] `Type()` ainda está parcial e restrito a avaliação textual mínima
-- [ ] `COMPATIBILITY.md` atualizada
+- [x] Cada um com teste unitário e de compatibilidade
+- [x] `Type()` ainda está parcial e restrito a avaliação textual mínima
+- [x] `COMPATIBILITY.md` atualizada
 
 ---
 
@@ -284,11 +284,11 @@ RETURN
 
 ## Critério de fechamento da Fase 7
 
-- [ ] Programa com IF, FOR, STATIC, arrays e builtins essenciais compila e executa
-- [ ] Nenhuma regressão nas fases anteriores
-- [ ] `COMPATIBILITY.md` reflete todos os recursos implementados
-- [ ] Docs temáticas atualizadas
-- [ ] Pronto para congelar `0.2.0-alpha` após Fases 8 e 9
+- [x] Programa com IF, FOR, STATIC, arrays e builtins essenciais compila e executa
+- [x] Nenhuma regressão nas fases anteriores
+- [x] `COMPATIBILITY.md` reflete todos os recursos implementados
+- [x] Docs temáticas atualizadas
+- [x] Pronto para congelar `0.2.0-alpha` após Fases 8 e 9
 
 ## Fixture de aceite da fase
 
@@ -309,7 +309,7 @@ PROCEDURE Main()
       ENDIF
    NEXT
 
-   ? "Total de nomes longos: " + Str(s_total)
+   ? "Total de nomes longos: " + LTrim(Str(s_total))
    ? "Tipo do array: " + ValType(names)
 RETURN
 ```

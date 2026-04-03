@@ -53,8 +53,8 @@ Status:
 | `ValType()` | Clipper | partial | 7 | `src/rtl/valtype.c`, `utils/hbtest/rt_hvm.prg` | runtime + compat + codegen-c + cli run | `ValType()` agora cobre os tipos já materializados no runtime atual, com `U/L/N/C/A` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array`; o dispatch em `codegen-c` e no runtime host C já executa esse mesmo baseline, e `tests/fixtures/compat/valtype_runtime.out` ancora o recorte observado em `rt_hvm.prg`; datas, objetos, codeblocks, memos e outros tipos ainda fora do runtime seguem pendentes |
 | `Type()` | Clipper | partial | 7 | `src/rtl/type.c`, `utils/hbtest/rt_hvm.prg` | runtime + compat + codegen-c + cli run | `Type()` agora cobre um recorte textual mínimo e explícito: ausência de argumento ou argumento não-string emite `BASE 1121`, e strings de origem como `NIL`, `.T./.F.`, números simples, literais `{...}` e strings quoted retornam `U/L/N/A/C`; nomes textuais não resolvidos retornam `U`; `tests/fixtures/parser/type_builtin.prg` cobre o caminho executável e `tests/fixtures/compat/type_runtime.out` ancora esse baseline parcial contra `rt_hvm.prg`; macro evaluation completa, resolução de nomes, datas, objetos, codeblocks e demais tipos do upstream continuam pendentes |
 | `Empty()` | Clipper | partial | 7 | `src/rtl/empty.c`, `utils/hbtest/rt_hvma.prg` | runtime + compat + codegen-c + cli run | `Empty()` agora cobre o recorte atual para `NIL`, `Logical`, `Integer/Float`, `String` e `Array`, com baseline leniente alinhado ao upstream: `NIL`, `.F.`, `0`, `0.0`, strings compostas apenas por whitespace ASCII e arrays vazios retornam `.T.`; o runtime Rust também preserva o caso observado de `Chr(0)` tornando a string não vazia; `tests/fixtures/parser/empty_builtin.prg` cobre o caminho executável e `tests/fixtures/compat/empty_runtime.out` ancora o recorte observado em `rt_hvma.prg`; datas, codeblocks, pointers, hashes, objetos e `Chr(0)` embutido no runtime host C continuam pendentes |
-| builtins de string | Clipper | planned | 7 | `src/rtl`, `utils/hbtest/rt_str.prg` | compat | por prioridade, não em lote |
-| builtins matemáticos | Clipper | planned | 7 | `utils/hbtest/rt_math.prg` | compat | |
+| builtins de string | Clipper | partial | 7 | `src/rtl`, `utils/hbtest/rt_str.prg` | runtime + compat + codegen-c + cli run | `Len`, `SubStr`, `Left`, `Right`, `Upper`, `Lower`, `Trim`, `LTrim`, `RTrim`, `At`, `Replicate` e `Space` já têm baseline executável e compat focada; `StrTran()` e `Pad*()` seguem pendentes |
+| builtins matemáticos e conversão | Clipper | partial | 7 | `utils/hbtest/rt_math.prg`, `utils/hbtest/rt_hvm*.prg`, `utils/hbtest/rt_str.prg` | runtime + compat + codegen-c + cli run | `Abs`, `Int`, `Round`, `Mod`, `Val`, `Str`, `ValType`, `Type`, `Empty`, `Max`, `Min`, `Sqrt`, `Log`, `Exp`, `Sin`, `Cos` e `Tan` já têm baseline executável; várias superfícies ainda seguem parciais e documentadas por builtin |
 | `#define` | Clipper | partial | 6 | `doc/pp.txt`, `tests/pp.prg` | unit + integração | parsing inicial de diretiva, registro de defines e expansão recursiva case-insensitive de macros objeto em linhas normais, com diagnóstico de ciclo; macros parametrizadas e expansão token-based ainda pendentes |
 | `#include` | Clipper | partial | 6 | `ppcore.c` | integração + cli build/run | resolução inicial relativa ao arquivo atual, fallback por search paths configuráveis, suporte inicial a `<...>` e handoff `pp -> parser` no CLI; spans finos e política completa de busca ainda pendentes |
 | `#command` | Clipper | planned | 9 | `tests/hbpp/_pp_test.prg` | compat | implementação incremental |
@@ -81,6 +81,13 @@ O aceite da Fase 6 está fechado com o baseline inicial de pré-processamento:
 - `#define` objeto já expande em linhas normais, inclusive de forma recursiva,
 - ciclos de macro objeto geram diagnóstico explícito,
 - `#include "..."` e `#include <...>` já entram no caminho `pp -> parser` do CLI com `-I/--include-dir`.
+
+O aceite da Fase 7 está fechado com compatibilidade procedural ampliada:
+
+- `tests/fixtures/parser/phase7_acceptance.prg` compila e executa com `IF`, `FOR`, `STATIC`, arrays e builtins essenciais,
+- `STATIC` same-routine e de módulo já atravessam `parser -> hir -> sema -> ir -> codegen-c -> cli run`,
+- arrays, builtins essenciais de string, builtins essenciais de math/conversão e operadores compostos já têm baseline executável,
+- a matriz acima passa a registrar as limitações remanescentes builtin a builtin, em vez de tratar a fase como não concluída.
 
 ## Regras
 
