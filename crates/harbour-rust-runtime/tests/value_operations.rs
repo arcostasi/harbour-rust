@@ -1,8 +1,8 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, asize, at, call_builtin,
-    call_builtin_mut, empty, exp_value, int, left, log_value, lower, ltrim, max_value, min_value,
-    mod_value, qout, replicate, right, round_value, rtrim, space, sqrt_value, str_value, substr,
-    trim, type_value, upper, val, valtype,
+    call_builtin_mut, cos_value, empty, exp_value, int, left, log_value, lower, ltrim, max_value,
+    min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value,
+    str_value, substr, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -239,6 +239,73 @@ fn public_sqrt_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from(10_f64.sqrt()))
     );
     assert_eq!(mutable_arguments[0], Value::from(10_i64));
+}
+
+#[test]
+fn public_sin_and_cos_match_the_current_numeric_runtime_baseline() {
+    assert_eq!(
+        sin_value(Some(&Value::from(0_i64))),
+        Ok(Value::from(0.0_f64))
+    );
+    assert_eq!(
+        cos_value(Some(&Value::from(0_i64))),
+        Ok(Value::from(1.0_f64))
+    );
+    assert_eq!(
+        round_value(
+            sin_value(Some(&Value::from(1_i64))).ok().as_ref(),
+            Some(&Value::from(2_i64))
+        ),
+        Ok(Value::from(0.84_f64))
+    );
+    assert_eq!(
+        round_value(
+            cos_value(Some(&Value::from(1_i64))).ok().as_ref(),
+            Some(&Value::from(2_i64))
+        ),
+        Ok(Value::from(0.54_f64))
+    );
+}
+
+#[test]
+fn public_sin_and_cos_report_xbase_style_argument_errors() {
+    assert_eq!(
+        sin_value(Some(&Value::from("A"))),
+        Err(RuntimeError {
+            message: "BASE 1091 Argument error (SIN)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+    assert_eq!(
+        cos_value(None),
+        Err(RuntimeError {
+            message: "BASE 1091 Argument error (COS)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+}
+
+#[test]
+fn public_sin_and_cos_dispatch_through_the_immutable_builtin_surface() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("SIN", &[Value::from(0_i64)], &mut context),
+        Ok(Value::from(0.0_f64))
+    );
+    assert_eq!(
+        call_builtin("COS", &[Value::from(0_i64)], &mut context),
+        Ok(Value::from(1.0_f64))
+    );
+
+    let mut mutable_arguments = [Value::from(1_i64)];
+    assert_eq!(
+        call_builtin_mut("cos", &mut mutable_arguments, &mut context),
+        Ok(Value::from(1_f64.cos()))
+    );
+    assert_eq!(mutable_arguments[0], Value::from(1_i64));
 }
 
 #[test]

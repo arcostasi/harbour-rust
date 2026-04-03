@@ -1,0 +1,6 @@
+Sin("A") => BASE 1091 Argument error (SIN)
+Cos() => BASE 1091 Argument error (COS)
+Sin(0) => 0
+Cos(0) => 1
+Round(Sin(1), 2) => 0.84
+Round(Cos(1), 2) => 0.54

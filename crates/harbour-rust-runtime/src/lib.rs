@@ -459,6 +459,8 @@ pub enum Builtin {
     QOut,
     Abs,
     Sqrt,
+    Sin,
+    Cos,
     Exp,
     Log,
     Int,
@@ -496,6 +498,10 @@ impl Builtin {
             Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("SQRT") {
             Some(Self::Sqrt)
+        } else if name.eq_ignore_ascii_case("SIN") {
+            Some(Self::Sin)
+        } else if name.eq_ignore_ascii_case("COS") {
+            Some(Self::Cos)
         } else if name.eq_ignore_ascii_case("EXP") {
             Some(Self::Exp)
         } else if name.eq_ignore_ascii_case("LOG") {
@@ -595,6 +601,34 @@ pub fn sqrt_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
     }
 
     Ok(Value::from(number.sqrt()))
+}
+
+pub fn sin_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::sin_argument_error(None));
+    };
+
+    let number = match value {
+        Value::Integer(number) => *number as f64,
+        Value::Float(number) => *number,
+        other => return Err(RuntimeError::sin_argument_error(Some(other.kind()))),
+    };
+
+    Ok(Value::from(number.sin()))
+}
+
+pub fn cos_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::cos_argument_error(None));
+    };
+
+    let number = match value {
+        Value::Integer(number) => *number as f64,
+        Value::Float(number) => *number,
+        other => return Err(RuntimeError::cos_argument_error(Some(other.kind()))),
+    };
+
+    Ok(Value::from(number.cos()))
 }
 
 pub fn exp_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1094,6 +1128,8 @@ pub fn call_builtin(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
+        Some(Builtin::Sin) => sin_value(arguments.first()),
+        Some(Builtin::Cos) => cos_value(arguments.first()),
         Some(Builtin::Exp) => exp_value(arguments.first()),
         Some(Builtin::Log) => log_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
@@ -1135,6 +1171,8 @@ pub fn call_builtin_mut(
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
+        Some(Builtin::Sin) => sin_value(arguments.first()),
+        Some(Builtin::Cos) => cos_value(arguments.first()),
         Some(Builtin::Exp) => exp_value(arguments.first()),
         Some(Builtin::Log) => log_value(arguments.first()),
         Some(Builtin::Int) => int(arguments.first()),
@@ -1341,6 +1379,22 @@ impl RuntimeError {
     pub fn sqrt_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 1097 Argument error (SQRT)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn sin_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1091 Argument error (SIN)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn cos_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1091 Argument error (COS)".to_owned(),
             expected: None,
             actual,
         }
@@ -2050,8 +2104,9 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, exp_value, int, len, log_value, max_value, min_value,
-        mod_value, qout, replicate, round_value, space, sqrt_value, str_value, type_value, val,
+        call_builtin, call_builtin_mut, cos_value, exp_value, int, len, log_value, max_value,
+        min_value, mod_value, qout, replicate, round_value, sin_value, space, sqrt_value,
+        str_value, type_value, val,
     };
 
     #[test]
@@ -2577,6 +2632,73 @@ mod tests {
             Ok(Value::from(10_f64.sqrt()))
         );
         assert_eq!(mutable_arguments[0], Value::from(10_i64));
+    }
+
+    #[test]
+    fn sin_and_cos_match_the_current_numeric_runtime_baseline() {
+        assert_eq!(
+            sin_value(Some(&Value::from(0_i64))),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            cos_value(Some(&Value::from(0_i64))),
+            Ok(Value::from(1.0_f64))
+        );
+        assert_eq!(
+            round_value(
+                sin_value(Some(&Value::from(1_i64))).ok().as_ref(),
+                Some(&Value::from(2_i64))
+            ),
+            Ok(Value::from(0.84_f64))
+        );
+        assert_eq!(
+            round_value(
+                cos_value(Some(&Value::from(1_i64))).ok().as_ref(),
+                Some(&Value::from(2_i64))
+            ),
+            Ok(Value::from(0.54_f64))
+        );
+    }
+
+    #[test]
+    fn sin_and_cos_report_xbase_style_argument_errors() {
+        assert_eq!(
+            sin_value(Some(&Value::from("A"))),
+            Err(RuntimeError {
+                message: "BASE 1091 Argument error (SIN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::String),
+            })
+        );
+        assert_eq!(
+            cos_value(None),
+            Err(RuntimeError {
+                message: "BASE 1091 Argument error (COS)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+    }
+
+    #[test]
+    fn sin_and_cos_dispatch_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("SIN", &[Value::from(0_i64)], &mut context),
+            Ok(Value::from(0.0_f64))
+        );
+        assert_eq!(
+            call_builtin("COS", &[Value::from(0_i64)], &mut context),
+            Ok(Value::from(1.0_f64))
+        );
+
+        let mut mutable_arguments = [Value::from(1_i64)];
+        assert_eq!(
+            call_builtin_mut("sin", &mut mutable_arguments, &mut context),
+            Ok(Value::from(1_f64.sin()))
+        );
+        assert_eq!(mutable_arguments[0], Value::from(1_i64));
     }
 
     #[test]

@@ -252,6 +252,14 @@ Na slice seguinte da Fase 7, entra `Exp()` como builtin imutável de exponencial
 - argumentos inválidos agora emitem `BASE 1096 Argument error (EXP)`,
 - nesta fase o builtin continua parcial: `Str( Exp(...) )` ainda herda a largura/escala simplificada do `Str()` atual e por isso diverge do `harbour-core` em casos como `Str( Exp( 15 ) )`; handlers matemáticos do upstream, substituição de erro histórica completa e corner cases mais profundos permanecem pendentes.
 
+Na slice seguinte da Fase 7, entram `Sin()` e `Cos()` como builtins imutáveis trigonométricos:
+
+- `sin_value()` cobre o recorte inicial de `Sin( nValue )` para `Integer` e `Float`,
+- `cos_value()` cobre o recorte inicial de `Cos( nValue )` para `Integer` e `Float`,
+- ambos usam `f64::sin()` e `f64::cos()` como baseline numérico atual,
+- argumentos inválidos agora emitem `BASE 1091 Argument error (SIN)` e `BASE 1091 Argument error (COS)`,
+- nesta fase os dois continuam parciais: o checkout local do upstream não traz fixture direta em `utils/hbtest` para `Sin()`/`Cos()`, então o baseline atual é provisório e documentado por fixture local de compatibilidade até que um oracle melhor seja curado.
+
 Na slice seguinte da Fase 7, entra `Int()` como builtin imutável de truncamento numérico:
 
 - `int()` cobre o recorte inicial de `Int( nValue )` para `Integer` e `Float`,

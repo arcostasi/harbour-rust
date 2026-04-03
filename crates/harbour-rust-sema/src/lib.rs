@@ -397,6 +397,8 @@ fn is_runtime_builtin(name: &str) -> bool {
     name.eq_ignore_ascii_case("QOUT")
         || name.eq_ignore_ascii_case("ABS")
         || name.eq_ignore_ascii_case("SQRT")
+        || name.eq_ignore_ascii_case("SIN")
+        || name.eq_ignore_ascii_case("COS")
         || name.eq_ignore_ascii_case("EXP")
         || name.eq_ignore_ascii_case("LOG")
         || name.eq_ignore_ascii_case("INT")

@@ -141,6 +141,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/abs_builtin.prg` | `Abs()` numérico executa |
 | `tests/fixtures/parser/sqrt_builtin.prg` | `Sqrt()` numérico executa |
 | `tests/fixtures/parser/exp_builtin.prg` | `Exp()` numérico executa |
+| `tests/fixtures/parser/sin_cos_builtin.prg` | `Sin()` e `Cos()` numéricos executam |
 | `tests/fixtures/parser/log_builtin.prg` | `Log()` numérico executa |
 | `tests/fixtures/parser/int_builtin.prg` | `Int()` numérico executa |
 | `tests/fixtures/parser/round_builtin.prg` | `Round()` numérico executa |
@@ -174,6 +175,7 @@ Fase 5 + Fase 7 parcial:
 - `Abs()` numérico via dispatch de builtin — parcial
 - `Sqrt()` numérico via dispatch de builtin — parcial
 - `Exp()` numérico via dispatch de builtin — parcial
+- `Sin()` e `Cos()` numéricos via dispatch de builtin — parcial
 - `Log()` numérico via dispatch de builtin — parcial
 - `Int()` numérico via dispatch de builtin — parcial
 - `Round()` numérico via dispatch de builtin — parcial
@@ -199,6 +201,7 @@ Fase 5 + Fase 7 parcial:
 - `Abs()` para by-ref, handlers matemáticos do upstream e corner cases extremos — pendente
 - `Sqrt()` para handlers matemáticos do upstream, precisão/escala histórica e corner cases mais profundos — pendente
 - `Exp()` para handlers matemáticos do upstream, substituição de erro histórica e corner cases mais profundos — pendente
+- `Sin()`/`Cos()` para oracle direto do upstream, handlers matemáticos completos e corner cases mais profundos — pendente
 - `Log()` para `Exp()`, handlers matemáticos do upstream, substituição de erro histórica e corner cases mais profundos — pendente
 - `Int()` para by-ref, overflow extremo e corner cases mais profundos do upstream — pendente
 - `Round()` para escala histórica exata, zeros à direita do upstream, by-ref e corner cases mais profundos — pendente
