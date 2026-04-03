@@ -88,6 +88,8 @@ pub fn analyze_program(program: &hir::Program) -> Analysis {
         routine_symbols.push(symbol);
     }
 
+    let dynamic_memvar_mode = program_uses_dynamic_memvars(program);
+
     let routines = program
         .routines
         .iter()
@@ -98,6 +100,7 @@ pub fn analyze_program(program: &hir::Program) -> Analysis {
                 routine,
                 &routine_lookup,
                 &module_static_lookup,
+                dynamic_memvar_mode,
                 &routine_symbols,
                 &mut errors,
             )
@@ -138,6 +141,7 @@ pub struct ModuleStaticSymbol {
 pub struct RoutineAnalysis {
     pub routine_id: usize,
     pub locals: Vec<LocalSymbol>,
+    pub memvars: Vec<MemvarSymbol>,
     pub resolutions: Vec<SymbolResolution>,
 }
 
@@ -154,6 +158,21 @@ pub enum LocalSymbolKind {
     Parameter,
     Local,
     Static,
+    BlockParameter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarSymbol {
+    pub id: usize,
+    pub kind: MemvarSymbolKind,
+    pub name: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemvarSymbolKind {
+    Private,
+    Public,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,14 +187,19 @@ pub enum Binding {
     Routine(usize),
     Local(usize),
     ModuleStatic(usize),
+    Memvar(usize),
+    DynamicMemvar,
 }
 
 struct RoutineAnalyzer<'a> {
     routine_name: &'a str,
     routine_lookup: &'a HashMap<String, usize>,
     module_static_lookup: &'a HashMap<String, usize>,
+    dynamic_memvar_mode: bool,
     locals: Vec<LocalSymbol>,
-    local_lookup: HashMap<String, usize>,
+    local_scopes: Vec<HashMap<String, usize>>,
+    memvars: Vec<MemvarSymbol>,
+    memvar_lookup: HashMap<String, usize>,
     resolutions: Vec<SymbolResolution>,
     errors: &'a mut Vec<SemanticError>,
 }
@@ -185,6 +209,7 @@ fn analyze_routine(
     routine: &hir::Routine,
     routine_lookup: &HashMap<String, usize>,
     module_static_lookup: &HashMap<String, usize>,
+    dynamic_memvar_mode: bool,
     routine_symbols: &[RoutineSymbol],
     errors: &mut Vec<SemanticError>,
 ) -> RoutineAnalysis {
@@ -192,8 +217,11 @@ fn analyze_routine(
         routine_name: &routine_symbols[routine_id].name,
         routine_lookup,
         module_static_lookup,
+        dynamic_memvar_mode,
         locals: Vec::new(),
-        local_lookup: HashMap::new(),
+        local_scopes: vec![HashMap::new()],
+        memvars: Vec::new(),
+        memvar_lookup: HashMap::new(),
         resolutions: Vec::new(),
         errors,
     };
@@ -209,14 +237,25 @@ fn analyze_routine(
     RoutineAnalysis {
         routine_id,
         locals: analyzer.locals,
+        memvars: analyzer.memvars,
         resolutions: analyzer.resolutions,
     }
 }
 
 impl<'a> RoutineAnalyzer<'a> {
     fn declare_local(&mut self, symbol: &hir::Symbol, kind: LocalSymbolKind) {
+        self.declare_scoped_local(symbol, kind, false);
+    }
+
+    fn declare_scoped_local(
+        &mut self,
+        symbol: &hir::Symbol,
+        kind: LocalSymbolKind,
+        allow_shadowing: bool,
+    ) {
         let key = normalize_name(&symbol.text);
-        if let Some(existing) = self.local_lookup.get(&key) {
+        let current_scope_index = self.local_scopes.len() - 1;
+        if let Some(existing) = self.local_scopes[current_scope_index].get(&key) {
             let previous = &self.locals[*existing];
             self.errors.push(SemanticError {
                 message: format!(
@@ -231,6 +270,25 @@ impl<'a> RoutineAnalyzer<'a> {
             return;
         }
 
+        if !allow_shadowing {
+            for scope in self.local_scopes.iter().rev().skip(1) {
+                if let Some(existing) = scope.get(&key) {
+                    let previous = &self.locals[*existing];
+                    self.errors.push(SemanticError {
+                        message: format!(
+                            "duplicate local symbol `{}` in routine `{}`; first declared at line {}, column {}",
+                            symbol.text,
+                            self.routine_name,
+                            previous.span.start.line,
+                            previous.span.start.column
+                        ),
+                        span: symbol.span,
+                    });
+                    return;
+                }
+            }
+        }
+
         let id = self.locals.len();
         self.locals.push(LocalSymbol {
             id,
@@ -238,7 +296,34 @@ impl<'a> RoutineAnalyzer<'a> {
             name: symbol.text.clone(),
             span: symbol.span,
         });
-        self.local_lookup.insert(key, id);
+        self.local_scopes[current_scope_index].insert(key, id);
+    }
+
+    fn declare_memvar(&mut self, symbol: &hir::Symbol, kind: MemvarSymbolKind) {
+        let key = normalize_name(&symbol.text);
+        if let Some(existing) = self.memvar_lookup.get(&key) {
+            let previous = &self.memvars[*existing];
+            self.errors.push(SemanticError {
+                message: format!(
+                    "duplicate memvar symbol `{}` in routine `{}`; first declared at line {}, column {}",
+                    symbol.text,
+                    self.routine_name,
+                    previous.span.start.line,
+                    previous.span.start.column
+                ),
+                span: symbol.span,
+            });
+            return;
+        }
+
+        let id = self.memvars.len();
+        self.memvars.push(MemvarSymbol {
+            id,
+            kind,
+            name: symbol.text.clone(),
+            span: symbol.span,
+        });
+        self.memvar_lookup.insert(key, id);
     }
 
     fn analyze_statement(&mut self, statement: &hir::Statement) {
@@ -257,6 +342,22 @@ impl<'a> RoutineAnalyzer<'a> {
                         self.analyze_expression(initializer, ExpressionContext::Value);
                     }
                     self.declare_local(&binding.name, LocalSymbolKind::Static);
+                }
+            }
+            hir::Statement::Private(statement) => {
+                for binding in &statement.bindings {
+                    if let Some(initializer) = &binding.initializer {
+                        self.analyze_expression(initializer, ExpressionContext::Value);
+                    }
+                    self.declare_memvar(&binding.name, MemvarSymbolKind::Private);
+                }
+            }
+            hir::Statement::Public(statement) => {
+                for binding in &statement.bindings {
+                    if let Some(initializer) = &binding.initializer {
+                        self.analyze_expression(initializer, ExpressionContext::Value);
+                    }
+                    self.declare_memvar(&binding.name, MemvarSymbolKind::Public);
                 }
             }
             hir::Statement::If(statement) => {
@@ -326,6 +427,19 @@ impl<'a> RoutineAnalyzer<'a> {
                     self.analyze_expression(element, ExpressionContext::Value);
                 }
             }
+            hir::Expression::Codeblock(expression) => {
+                self.local_scopes.push(HashMap::new());
+                for param in &expression.params {
+                    self.declare_scoped_local(param, LocalSymbolKind::BlockParameter, true);
+                }
+                for value in &expression.body {
+                    self.analyze_expression(value, ExpressionContext::Value);
+                }
+                self.local_scopes.pop();
+            }
+            hir::Expression::Macro(expression) => {
+                self.analyze_expression(&expression.value, ExpressionContext::Value);
+            }
             hir::Expression::Call(expression) => {
                 self.analyze_expression(&expression.callee, ExpressionContext::CallCallee);
                 for argument in &expression.arguments {
@@ -357,13 +471,15 @@ impl<'a> RoutineAnalyzer<'a> {
 
     fn resolve_local_symbol(&mut self, symbol: &hir::Symbol) {
         let key = normalize_name(&symbol.text);
-        if let Some(local_id) = self.local_lookup.get(&key) {
-            self.resolutions.push(SymbolResolution {
-                name: symbol.text.clone(),
-                span: symbol.span,
-                binding: Binding::Local(*local_id),
-            });
-            return;
+        for scope in self.local_scopes.iter().rev() {
+            if let Some(local_id) = scope.get(&key) {
+                self.resolutions.push(SymbolResolution {
+                    name: symbol.text.clone(),
+                    span: symbol.span,
+                    binding: Binding::Local(*local_id),
+                });
+                return;
+            }
         }
 
         if let Some(module_static_id) = self.module_static_lookup.get(&key) {
@@ -371,6 +487,24 @@ impl<'a> RoutineAnalyzer<'a> {
                 name: symbol.text.clone(),
                 span: symbol.span,
                 binding: Binding::ModuleStatic(*module_static_id),
+            });
+            return;
+        }
+
+        if let Some(memvar_id) = self.memvar_lookup.get(&key) {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::Memvar(*memvar_id),
+            });
+            return;
+        }
+
+        if self.dynamic_memvar_mode {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::DynamicMemvar,
             });
             return;
         }
@@ -386,13 +520,15 @@ impl<'a> RoutineAnalyzer<'a> {
 
     fn resolve_callable_symbol(&mut self, symbol: &hir::Symbol) {
         let local_key = normalize_name(&symbol.text);
-        if let Some(local_id) = self.local_lookup.get(&local_key) {
-            self.resolutions.push(SymbolResolution {
-                name: symbol.text.clone(),
-                span: symbol.span,
-                binding: Binding::Local(*local_id),
-            });
-            return;
+        for scope in self.local_scopes.iter().rev() {
+            if let Some(local_id) = scope.get(&local_key) {
+                self.resolutions.push(SymbolResolution {
+                    name: symbol.text.clone(),
+                    span: symbol.span,
+                    binding: Binding::Local(*local_id),
+                });
+                return;
+            }
         }
 
         if let Some(routine_id) = self.routine_lookup.get(&local_key) {
@@ -400,6 +536,15 @@ impl<'a> RoutineAnalyzer<'a> {
                 name: symbol.text.clone(),
                 span: symbol.span,
                 binding: Binding::Routine(*routine_id),
+            });
+            return;
+        }
+
+        if let Some(memvar_id) = self.memvar_lookup.get(&local_key) {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::Memvar(*memvar_id),
             });
             return;
         }
@@ -442,6 +587,7 @@ fn normalize_name(name: &str) -> String {
 
 fn is_runtime_builtin(name: &str) -> bool {
     name.eq_ignore_ascii_case("QOUT")
+        || name.eq_ignore_ascii_case("EVAL")
         || name.eq_ignore_ascii_case("ABS")
         || name.eq_ignore_ascii_case("SQRT")
         || name.eq_ignore_ascii_case("SIN")
@@ -477,6 +623,121 @@ fn is_runtime_builtin(name: &str) -> bool {
         || name.eq_ignore_ascii_case("ADEL")
         || name.eq_ignore_ascii_case("AINS")
         || name.eq_ignore_ascii_case("ASCAN")
+}
+
+fn program_uses_dynamic_memvars(program: &hir::Program) -> bool {
+    program
+        .routines
+        .iter()
+        .any(routine_uses_dynamic_features)
+}
+
+fn routine_uses_dynamic_features(routine: &hir::Routine) -> bool {
+    routine.body.iter().any(statement_uses_dynamic_features)
+}
+
+fn statement_uses_dynamic_features(statement: &hir::Statement) -> bool {
+    match statement {
+        hir::Statement::Private(_) | hir::Statement::Public(_) => true,
+        hir::Statement::Local(statement) => statement
+            .bindings
+            .iter()
+            .filter_map(|binding| binding.initializer.as_ref())
+            .any(expression_uses_dynamic_features),
+        hir::Statement::Static(statement) => statement
+            .bindings
+            .iter()
+            .filter_map(|binding| binding.initializer.as_ref())
+            .any(expression_uses_dynamic_features),
+        hir::Statement::If(statement) => {
+            statement.branches.iter().any(|branch| {
+                expression_uses_dynamic_features(&branch.condition)
+                    || branch.body.iter().any(statement_uses_dynamic_features)
+            }) || statement
+                .else_branch
+                .as_ref()
+                .map(|branch| branch.iter().any(statement_uses_dynamic_features))
+                .unwrap_or(false)
+        }
+        hir::Statement::DoWhile(statement) => {
+            expression_uses_dynamic_features(&statement.condition)
+                || statement.body.iter().any(statement_uses_dynamic_features)
+        }
+        hir::Statement::For(statement) => {
+            expression_uses_dynamic_features(&statement.initial_value)
+                || expression_uses_dynamic_features(&statement.limit)
+                || statement
+                    .step
+                    .as_ref()
+                    .map(expression_uses_dynamic_features)
+                    .unwrap_or(false)
+                || statement.body.iter().any(statement_uses_dynamic_features)
+        }
+        hir::Statement::Return(statement) => statement
+            .value
+            .as_ref()
+            .map(expression_uses_dynamic_features)
+            .unwrap_or(false),
+        hir::Statement::Print(statement) => statement
+            .arguments
+            .iter()
+            .any(expression_uses_dynamic_features),
+        hir::Statement::Evaluate(statement) => {
+            expression_uses_dynamic_features(&statement.expression)
+        }
+    }
+}
+
+fn expression_uses_dynamic_features(expression: &hir::Expression) -> bool {
+    match expression {
+        hir::Expression::Codeblock(expression) => {
+            !expression.body.is_empty()
+                || expression.body.iter().any(expression_uses_dynamic_features)
+        }
+        hir::Expression::Macro(_) => true,
+        hir::Expression::Array(expression) => expression
+            .elements
+            .iter()
+            .any(expression_uses_dynamic_features),
+        hir::Expression::Call(expression) => {
+            expression_uses_dynamic_features(&expression.callee)
+                || expression
+                    .arguments
+                    .iter()
+                    .any(expression_uses_dynamic_features)
+        }
+        hir::Expression::Index(expression) => {
+            expression_uses_dynamic_features(&expression.target)
+                || expression
+                    .indices
+                    .iter()
+                    .any(expression_uses_dynamic_features)
+        }
+        hir::Expression::Assign(expression) => {
+            expression_uses_dynamic_features(&expression.value)
+                || match &expression.target {
+                    hir::AssignTarget::Symbol(_) => false,
+                    hir::AssignTarget::Index(target) => {
+                        target.indices.iter().any(expression_uses_dynamic_features)
+                    }
+                }
+        }
+        hir::Expression::Binary(expression) => {
+            expression_uses_dynamic_features(&expression.left)
+                || expression_uses_dynamic_features(&expression.right)
+        }
+        hir::Expression::Unary(expression) => expression_uses_dynamic_features(&expression.operand),
+        hir::Expression::Postfix(expression) => {
+            expression_uses_dynamic_features(&expression.operand)
+        }
+        hir::Expression::Read(_)
+        | hir::Expression::Nil(_)
+        | hir::Expression::Logical(_)
+        | hir::Expression::Integer(_)
+        | hir::Expression::Float(_)
+        | hir::Expression::String(_)
+        | hir::Expression::Error(_) => false,
+    }
 }
 
 #[cfg(test)]
@@ -603,6 +864,7 @@ mod tests {
                                 span: span(40, 3, 7, 45, 3, 12),
                             },
                         ],
+                        memvars: Vec::new(),
                         resolutions: vec![
                             SymbolResolution {
                                 name: "helper".to_owned(),
@@ -634,6 +896,7 @@ mod tests {
                             name: "x".to_owned(),
                             span: span(75, 6, 8, 76, 6, 9),
                         }],
+                        memvars: Vec::new(),
                         resolutions: Vec::new(),
                     },
                 ],

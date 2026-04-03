@@ -61,8 +61,8 @@ Status:
 | `#translate` | Clipper | planned | 9 | `tests/hbpp/_pp_test.prg` | compat | |
 | `PRIVATE` | xBase | partial | 8 | `src/vm/memvars.c`, `tests/memvar.prg` | parser + snapshot | sintaxe de declaração com inicializadores opcionais já parseia em `tests/fixtures/parser/memvars.prg`; semântica dinâmica de memvar ainda pendente |
 | `PUBLIC` | xBase | partial | 8 | `src/vm/memvars.c`, `tests/memvar.prg` | parser + snapshot | sintaxe de declaração com inicializadores opcionais já parseia em `tests/fixtures/parser/memvars.prg`; runtime global e resolução dinâmica ainda pendentes |
-| memvars | xBase | partial | 8 | `src/vm/memvars.c` | parser + sema + compat | surface sintática inicial estabilizada via `PRIVATE`/`PUBLIC`; resolução e storage dinâmicos ainda pendentes |
-| codeblocks | Clipper/Harbour | partial | 8 | `src/vm/codebloc.c`, `doc/codebloc.txt` | parser + snapshot | literais `{|| ...}` e `{|x, y| ...}` já parseiam em `tests/fixtures/parser/codeblock.prg`; captura, `Eval()` e execução ainda pendentes |
+| memvars | xBase | partial | 8 | `src/vm/memvars.c` | parser + sema + compat | surface sintática inicial estabilizada via `PRIVATE`/`PUBLIC`; a sema agora registra memvars explícitas e já permite fallback dinâmico entre rotinas quando o programa entra em modo xBase dinâmico, mas storage/runtime ainda estão pendentes |
+| codeblocks | Clipper/Harbour | partial | 8 | `src/vm/codebloc.c`, `doc/codebloc.txt` | parser + sema + snapshot | literais `{|| ...}` e `{|x, y| ...}` já parseiam em `tests/fixtures/parser/codeblock.prg`; a sema já trata parâmetros de codeblock como escopo aninhado; captura, `Eval()` e execução ainda pendentes |
 | macro operator | Harbour | partial | 8/9 | `src/vm/macro.c`, `tests/macro.prg` | parser + snapshot | macro read inicial `&name` e `&(expr)` já parseia em `tests/fixtures/parser/macro_read.prg`; expansão dinâmica, callable macro e forms mais amplas continuam pendentes |
 | `FOR EACH` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | extensão Harbour, não baseline |
 | `WITH OBJECT` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | |

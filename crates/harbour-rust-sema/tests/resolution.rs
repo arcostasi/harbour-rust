@@ -169,3 +169,64 @@ fn analyzes_module_static_fixture_with_shared_module_bindings() {
             })
     );
 }
+
+#[test]
+fn analyzes_memvar_fixture_with_explicit_memvar_symbols() {
+    let analysis = analyze_fixture("tests/fixtures/parser/memvars.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+
+    assert_eq!(analysis.routines.len(), 1);
+    assert_eq!(analysis.routines[0].memvars.len(), 4);
+    assert_eq!(
+        analysis.routines[0].memvars[0].kind,
+        harbour_rust_sema::MemvarSymbolKind::Private
+    );
+    assert_eq!(
+        analysis.routines[0].memvars[2].kind,
+        harbour_rust_sema::MemvarSymbolKind::Public
+    );
+}
+
+#[test]
+fn analyzes_codeblock_fixture_with_block_parameter_resolutions() {
+    let analysis = analyze_fixture("tests/fixtures/parser/codeblock.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+
+    assert!(
+        analysis.routines[0]
+            .locals
+            .iter()
+            .any(|symbol| symbol.kind == LocalSymbolKind::BlockParameter && symbol.name == "x")
+    );
+    assert!(
+        analysis.routines[0]
+            .locals
+            .iter()
+            .any(|symbol| symbol.kind == LocalSymbolKind::BlockParameter && symbol.name == "y")
+    );
+}
+
+#[test]
+fn analyzes_private_dynamic_fixture_without_unresolved_memvar_errors() {
+    let analysis = analyze_fixture("tests/fixtures/parser/private_dynamic.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+
+    assert!(
+        analysis.routines[1]
+            .resolutions
+            .iter()
+            .any(|resolution| resolution.binding == Binding::DynamicMemvar)
+    );
+}

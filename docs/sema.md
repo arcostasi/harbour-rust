@@ -23,6 +23,7 @@ A sema **não reescreve** a HIR. Ela produz:
 - Tabela global de rotinas
 - Tabela global de `STATIC` de módulo
 - Tabelas locais por rotina (parâmetros, `LOCAL`, `STATIC`)
+- Tabelas de memvars por rotina (`PRIVATE`, `PUBLIC`)
 - Diagnósticos de resolução
 
 ## Escopos
@@ -38,6 +39,23 @@ Cada rotina mantém uma tabela com:
 - Parâmetros formais
 - Variáveis `LOCAL`
 - Variáveis `STATIC`
+- Parâmetros de codeblock em escopos aninhados
+
+### Tabela de memvars
+
+Cada rotina também mantém uma tabela explícita de memvars declaradas com:
+
+- `PRIVATE`
+- `PUBLIC`
+
+No baseline atual da Fase 8, leituras e escritas nominais ainda tentam resolver:
+
+1. escopo local mais interno
+2. `STATIC` de módulo
+3. memvar declarada na rotina
+4. memvar dinâmica implícita, quando o programa entra em modo dinâmico xBase
+
+Isso preserva os diagnósticos estritos das fases anteriores para programas puramente procedurais, mas permite o primeiro recorte de memvars dinâmicas quando `PRIVATE`, `PUBLIC`, codeblocks ou macro read entram no programa.
 
 ### Tabela de `STATIC` de módulo
 
@@ -78,6 +96,8 @@ A sema percorre todos os nós da HIR, incluindo:
 
 - Condições de `IF`, `DO WHILE`, `FOR`
 - Elementos de literais de array
+- Corpos e parâmetros de codeblocks
+- Expressões de macro read
 - Targets e índices de indexação
 - Argumentos de chamadas
 
@@ -89,12 +109,16 @@ A sema percorre todos os nós da HIR, incluindo:
 | `tests/fixtures/sema/control_flow_missing_callables.prg` | `.errors` |
 | `tests/fixtures/parser/static.prg` | sucesso semântico com bindings `STATIC` same-routine |
 | `tests/fixtures/parser/static_module.prg` | sucesso semântico com bindings `STATIC` compartilhados |
+| `tests/fixtures/parser/memvars.prg` | sucesso semântico com bindings `PRIVATE`/`PUBLIC` explícitos |
+| `tests/fixtures/parser/private_dynamic.prg` | sucesso semântico com fallback de memvar dinâmica entre rotinas |
+| `tests/fixtures/parser/codeblock.prg` | sucesso semântico com parâmetros de codeblock e resolução em escopo aninhado |
 
 ## Próximos passos (Fase 7+)
 
 - Resolução mais fina de tipos
 - Diagnósticos de type mismatch quando viável
-- Suporte a memvars (PRIVATE/PUBLIC) na Fase 8
+- Refinar fallback de memvar dinâmica contra o oracle do `harbour-core`
+- Separar melhor leitura local, memvar explícita e memvar dinâmica na IR/runtime
 
 ## Estado atual
 
@@ -107,3 +131,6 @@ Fase 3 + Fase 7 parcial:
 - STATIC declarado e resolvido na sema — completo
 - STATIC de módulo compartilhado entre rotinas — completo no mesmo arquivo
 - Walk de arrays e indexação — completo
+- `PRIVATE` / `PUBLIC` como memvars explícitas — completo no recorte atual
+- Parâmetros de codeblock como escopo aninhado — completo no recorte atual
+- Fallback de memvar dinâmica entre rotinas com features da Fase 8 — parcial e documentado
