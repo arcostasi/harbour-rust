@@ -244,3 +244,94 @@ fn lowers_indexed_assignment_fixture_to_flat_assign_target() {
         harbour_rust_hir::Expression::Integer(ref literal) if literal.lexeme == "1"
     ));
 }
+
+#[test]
+fn lowers_memvar_fixture_to_explicit_memvar_statements() {
+    let lowered = lower_fixture("tests/fixtures/parser/memvars.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 3);
+
+    let harbour_rust_hir::Statement::Private(private_statement) = &body[0] else {
+        panic!("expected private memvar statement");
+    };
+    assert_eq!(
+        private_statement.memvar_class,
+        harbour_rust_hir::MemvarClass::Private
+    );
+    assert_eq!(private_statement.bindings.len(), 2);
+    assert_eq!(private_statement.bindings[0].name.text, "counter");
+
+    let harbour_rust_hir::Statement::Public(public_statement) = &body[1] else {
+        panic!("expected public memvar statement");
+    };
+    assert_eq!(
+        public_statement.memvar_class,
+        harbour_rust_hir::MemvarClass::Public
+    );
+    assert_eq!(public_statement.bindings.len(), 2);
+    assert_eq!(public_statement.bindings[1].name.text, "g_label");
+}
+
+#[test]
+fn lowers_codeblock_fixture_to_explicit_codeblock_expression() {
+    let lowered = lower_fixture("tests/fixtures/parser/codeblock.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let harbour_rust_hir::Statement::Return(statement) = &lowered.program.routines[0].body[0]
+    else {
+        panic!("expected return statement");
+    };
+    let Some(harbour_rust_hir::Expression::Codeblock(codeblock)) = &statement.value else {
+        panic!("expected lowered codeblock");
+    };
+
+    assert_eq!(codeblock.params.len(), 2);
+    assert_eq!(codeblock.params[0].text, "x");
+    assert_eq!(codeblock.body.len(), 2);
+    assert!(matches!(
+        codeblock.body[0],
+        harbour_rust_hir::Expression::Binary(ref binary)
+            if binary.operator == harbour_rust_hir::BinaryOperator::Add
+    ));
+    assert!(matches!(
+        codeblock.body[1],
+        harbour_rust_hir::Expression::Codeblock(_)
+    ));
+}
+
+#[test]
+fn lowers_macro_read_fixture_to_explicit_macro_expressions() {
+    let lowered = lower_fixture("tests/fixtures/parser/macro_read.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let harbour_rust_hir::Statement::Return(statement) = &lowered.program.routines[0].body[0]
+    else {
+        panic!("expected return statement");
+    };
+    let Some(harbour_rust_hir::Expression::Binary(binary)) = &statement.value else {
+        panic!("expected binary expression");
+    };
+
+    assert!(matches!(
+        binary.left.as_ref(),
+        harbour_rust_hir::Expression::Macro(_)
+    ));
+    assert!(matches!(
+        binary.right.as_ref(),
+        harbour_rust_hir::Expression::Macro(_)
+    ));
+}

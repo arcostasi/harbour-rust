@@ -85,6 +85,8 @@ HirStatic {
 - `Call(callee, args)`
 - `Array(elements)` — literal de array
 - `Index(target, indices)` — indexação de array
+- `Codeblock(params, body)` — literal de codeblock
+- `Macro(value)` — leitura dinâmica inicial via macro operator
 
 ### Alvos de atribuição
 
@@ -139,3 +141,5 @@ Fase 3 + Fase 7 parcial:
 - Literais de array e indexação — lowering OK
 - Operadores compostos — desugaring OK
 - Atribuição indexada — lowering OK
+- `PRIVATE` / `PUBLIC` como nós explícitos de memvar — lowering OK
+- codeblocks e macro read como expressões explícitas — lowering OK

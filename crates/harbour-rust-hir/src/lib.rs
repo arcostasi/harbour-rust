@@ -84,6 +84,8 @@ pub struct Routine {
 pub enum Statement {
     Local(LocalStatement),
     Static(StaticStatement),
+    Private(MemvarStatement),
+    Public(MemvarStatement),
     If(Box<IfStatement>),
     DoWhile(Box<DoWhileStatement>),
     For(Box<ForStatement>),
@@ -97,6 +99,8 @@ impl Statement {
         match self {
             Self::Local(statement) => statement.span,
             Self::Static(statement) => statement.span,
+            Self::Private(statement) => statement.span,
+            Self::Public(statement) => statement.span,
             Self::If(statement) => statement.span,
             Self::DoWhile(statement) => statement.span,
             Self::For(statement) => statement.span,
@@ -128,6 +132,26 @@ pub struct StaticStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticBinding {
+    pub name: Symbol,
+    pub initializer: Option<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemvarClass {
+    Private,
+    Public,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarStatement {
+    pub memvar_class: MemvarClass,
+    pub bindings: Vec<MemvarBinding>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarBinding {
     pub name: Symbol,
     pub initializer: Option<Expression>,
     pub span: Span,
@@ -191,6 +215,8 @@ pub enum Expression {
     Float(FloatLiteral),
     String(StringLiteral),
     Array(ArrayLiteral),
+    Codeblock(CodeblockLiteral),
+    Macro(MacroExpression),
     Call(CallExpression),
     Index(IndexExpression),
     Assign(AssignExpression),
@@ -210,6 +236,8 @@ impl Expression {
             Self::Float(literal) => literal.span,
             Self::String(literal) => literal.span,
             Self::Array(expression) => expression.span,
+            Self::Codeblock(expression) => expression.span,
+            Self::Macro(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
             Self::Assign(expression) => expression.span,
@@ -278,6 +306,19 @@ pub struct StringLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArrayLiteral {
     pub elements: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeblockLiteral {
+    pub params: Vec<Symbol>,
+    pub body: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MacroExpression {
+    pub value: Box<Expression>,
     pub span: Span,
 }
 
@@ -457,6 +498,16 @@ fn lower_statement(statement: &ast::Statement, errors: &mut Vec<LoweringError>) 
                 .collect(),
             span: statement.span,
         }),
+        ast::Statement::Private(statement) => Statement::Private(lower_memvar_statement(
+            statement,
+            MemvarClass::Private,
+            errors,
+        )),
+        ast::Statement::Public(statement) => Statement::Public(lower_memvar_statement(
+            statement,
+            MemvarClass::Public,
+            errors,
+        )),
         ast::Statement::If(statement) => Statement::If(Box::new(IfStatement {
             branches: statement
                 .branches
@@ -555,6 +606,19 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
                 .collect(),
             span: expression.span,
         }),
+        ast::Expression::Codeblock(expression) => Expression::Codeblock(CodeblockLiteral {
+            params: expression.params.iter().map(lower_identifier).collect(),
+            body: expression
+                .body
+                .iter()
+                .map(|value| lower_expression(value, errors))
+                .collect(),
+            span: expression.span,
+        }),
+        ast::Expression::Macro(expression) => Expression::Macro(MacroExpression {
+            value: Box::new(lower_expression(&expression.value, errors)),
+            span: expression.span,
+        }),
         ast::Expression::Call(expression) => Expression::Call(CallExpression {
             callee: Box::new(lower_expression(&expression.callee, errors)),
             arguments: expression
@@ -601,6 +665,29 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
             operator: lower_postfix_operator(expression.operator),
             span: expression.span,
         }),
+    }
+}
+
+fn lower_memvar_statement(
+    statement: &ast::MemvarStatement,
+    memvar_class: MemvarClass,
+    errors: &mut Vec<LoweringError>,
+) -> MemvarStatement {
+    MemvarStatement {
+        memvar_class,
+        bindings: statement
+            .bindings
+            .iter()
+            .map(|binding| MemvarBinding {
+                name: lower_identifier(&binding.name),
+                initializer: binding
+                    .initializer
+                    .as_ref()
+                    .map(|expression| lower_expression(expression, errors)),
+                span: binding.span,
+            })
+            .collect(),
+        span: statement.span,
     }
 }
 
