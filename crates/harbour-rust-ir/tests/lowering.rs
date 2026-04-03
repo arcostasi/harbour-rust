@@ -2,7 +2,8 @@ use std::{fs, path::PathBuf};
 
 use harbour_rust_hir::lower_program as lower_hir_program;
 use harbour_rust_ir::{
-    AssignTarget, Builtin, Expression, ReadPath, ReturnStatement, Statement, lower_program,
+    AssignTarget, Builtin, Expression, MemvarClass, ReadPath, ReturnStatement, Statement,
+    lower_program,
 };
 use harbour_rust_parser::parse;
 
@@ -210,5 +211,130 @@ fn lowers_indexed_assignment_fixture_to_explicit_ir_assign_target() {
     assert!(matches!(
         target.indices[1],
         Expression::Integer(ref literal) if literal.lexeme == "1"
+    ));
+}
+
+#[test]
+fn lowers_memvar_fixture_to_explicit_ir_memvar_statements() {
+    let lowered = lower_fixture("tests/fixtures/parser/memvars.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let body = &lowered.program.routines[0].body;
+    assert_eq!(body.len(), 3);
+
+    let Statement::Private(private_statement) = &body[0] else {
+        panic!("expected explicit PRIVATE statement in IR");
+    };
+    assert_eq!(private_statement.memvar_class, MemvarClass::Private);
+    assert_eq!(private_statement.bindings.len(), 2);
+    assert_eq!(private_statement.bindings[0].name.text, "counter");
+    assert!(matches!(
+        private_statement.bindings[0].initializer,
+        Some(Expression::Integer(_))
+    ));
+
+    let Statement::Public(public_statement) = &body[1] else {
+        panic!("expected explicit PUBLIC statement in IR");
+    };
+    assert_eq!(public_statement.memvar_class, MemvarClass::Public);
+    assert_eq!(public_statement.bindings.len(), 2);
+    assert_eq!(public_statement.bindings[0].name.text, "g_count");
+}
+
+#[test]
+fn lowers_codeblock_fixture_to_explicit_ir_codeblock_nodes() {
+    let lowered = lower_fixture("tests/fixtures/parser/codeblock.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let Statement::Return(ReturnStatement {
+        value: Some(Expression::Codeblock(codeblock)),
+        ..
+    }) = &lowered.program.routines[0].body[0]
+    else {
+        panic!("expected return with explicit IR codeblock");
+    };
+
+    assert_eq!(codeblock.params.len(), 2);
+    assert_eq!(codeblock.params[0].text, "x");
+    assert_eq!(codeblock.params[1].text, "y");
+    assert!(matches!(codeblock.body[0], Expression::Binary(_)));
+
+    let Expression::Codeblock(nested) = &codeblock.body[1] else {
+        panic!("expected nested codeblock expression");
+    };
+    assert!(nested.params.is_empty());
+    assert!(matches!(
+        nested.body[0],
+        Expression::Read(ref read) if matches!(read.path, ReadPath::Name(_))
+    ));
+}
+
+#[test]
+fn lowers_macro_fixture_to_explicit_ir_macro_nodes() {
+    let lowered = lower_fixture("tests/fixtures/parser/macro_read.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let Statement::Return(ReturnStatement {
+        value: Some(Expression::Binary(binary)),
+        ..
+    }) = &lowered.program.routines[0].body[0]
+    else {
+        panic!("expected binary return expression");
+    };
+
+    assert!(matches!(binary.left.as_ref(), Expression::Macro(_)));
+    assert!(matches!(binary.right.as_ref(), Expression::Macro(_)));
+}
+
+#[test]
+fn lowers_dynamic_memvar_reads_and_assignments_to_explicit_ir_paths() {
+    let lowered = lower_fixture("tests/fixtures/parser/private_dynamic.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    assert_eq!(lowered.program.routines.len(), 2);
+    let helper_body = &lowered.program.routines[1].body;
+    let Statement::Assign(assign) = &helper_body[0] else {
+        panic!("expected helper assignment");
+    };
+
+    assert!(matches!(
+        assign.target,
+        AssignTarget::Memvar(ref symbol) if symbol.text == "counter"
+    ));
+    assert!(matches!(
+        assign.value,
+        Expression::Binary(ref binary)
+            if matches!(
+                binary.left.as_ref(),
+                Expression::Read(read)
+                    if matches!(&read.path, ReadPath::Memvar(symbol) if symbol.text == "counter")
+            )
+    ));
+
+    let main_body = &lowered.program.routines[0].body;
+    assert!(matches!(
+        main_body[2],
+        Statement::BuiltinCall(ref statement)
+            if matches!(
+                &statement.arguments[0],
+                Expression::Read(read)
+                    if matches!(&read.path, ReadPath::Memvar(symbol) if symbol.text == "counter")
+            )
     ));
 }

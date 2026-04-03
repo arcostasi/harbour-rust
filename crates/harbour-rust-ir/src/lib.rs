@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 use harbour_rust_hir as hir;
 use harbour_rust_lexer::Span;
@@ -39,15 +39,25 @@ pub struct LoweringOutput {
 
 pub fn lower_program(program: &hir::Program) -> LoweringOutput {
     let mut errors = Vec::new();
+    let module_static_names = collect_module_static_names(program);
+    let dynamic_memvar_mode = program_uses_dynamic_features(program);
     let module_statics = program
         .module_statics
         .iter()
-        .map(|statement| lower_static_statement(statement, &mut errors))
+        .map(|statement| lower_static_statement(statement, &module_static_names, &mut errors))
         .collect();
     let routines = program
         .routines
         .iter()
-        .map(|routine| lower_routine(routine, &mut errors))
+        .map(|routine| {
+            let mut lowerer = RoutineLowerer::new(
+                &module_static_names,
+                routine,
+                dynamic_memvar_mode,
+                &mut errors,
+            );
+            lowerer.lower()
+        })
         .collect();
 
     LoweringOutput {
@@ -84,6 +94,8 @@ pub struct Routine {
 pub enum Statement {
     Local(LocalStatement),
     Static(StaticStatement),
+    Private(MemvarStatement),
+    Public(MemvarStatement),
     Assign(AssignStatement),
     If(Box<IfStatement>),
     DoWhile(Box<DoWhileStatement>),
@@ -98,6 +110,8 @@ impl Statement {
         match self {
             Self::Local(statement) => statement.span,
             Self::Static(statement) => statement.span,
+            Self::Private(statement) => statement.span,
+            Self::Public(statement) => statement.span,
             Self::Assign(statement) => statement.span,
             Self::If(statement) => statement.span,
             Self::DoWhile(statement) => statement.span,
@@ -135,9 +149,30 @@ pub struct StaticBinding {
     pub span: Span,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemvarClass {
+    Private,
+    Public,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarStatement {
+    pub memvar_class: MemvarClass,
+    pub bindings: Vec<MemvarBinding>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarBinding {
+    pub name: Symbol,
+    pub initializer: Option<Expression>,
+    pub span: Span,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AssignTarget {
     Symbol(Symbol),
+    Memvar(Symbol),
     Index(IndexedAssignTarget),
 }
 
@@ -145,6 +180,7 @@ impl AssignTarget {
     pub fn span(&self) -> Span {
         match self {
             Self::Symbol(symbol) => symbol.span,
+            Self::Memvar(symbol) => symbol.span,
             Self::Index(target) => target.span,
         }
     }
@@ -228,8 +264,11 @@ pub enum Expression {
     Float(FloatLiteral),
     String(StringLiteral),
     Array(ArrayLiteral),
+    Codeblock(CodeblockLiteral),
+    Macro(MacroExpression),
     Call(CallExpression),
     Index(IndexExpression),
+    Assign(AssignExpression),
     Binary(BinaryExpression),
     Unary(UnaryExpression),
     Postfix(PostfixExpression),
@@ -246,8 +285,11 @@ impl Expression {
             Self::Float(literal) => literal.span,
             Self::String(literal) => literal.span,
             Self::Array(expression) => expression.span,
+            Self::Codeblock(expression) => expression.span,
+            Self::Macro(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
+            Self::Assign(expression) => expression.span,
             Self::Binary(expression) => expression.span,
             Self::Unary(expression) => expression.span,
             Self::Postfix(expression) => expression.span,
@@ -272,6 +314,7 @@ impl ReadExpression {
     pub fn symbol(&self) -> &Symbol {
         match &self.path {
             ReadPath::Name(symbol) => symbol,
+            ReadPath::Memvar(symbol) => symbol,
         }
     }
 }
@@ -279,6 +322,7 @@ impl ReadExpression {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReadPath {
     Name(Symbol),
+    Memvar(Symbol),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -317,6 +361,19 @@ pub struct ArrayLiteral {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeblockLiteral {
+    pub params: Vec<Symbol>,
+    pub body: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MacroExpression {
+    pub value: Box<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallExpression {
     pub callee: Box<Expression>,
     pub arguments: Vec<Expression>,
@@ -327,6 +384,13 @@ pub struct CallExpression {
 pub struct IndexExpression {
     pub target: Box<Expression>,
     pub indices: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssignExpression {
+    pub target: AssignTarget,
+    pub value: Box<Expression>,
     pub span: Span,
 }
 
@@ -389,22 +453,9 @@ pub struct ErrorExpression {
     pub span: Span,
 }
 
-fn lower_routine(routine: &hir::Routine, errors: &mut Vec<LoweringError>) -> Routine {
-    Routine {
-        kind: lower_routine_kind(routine.kind),
-        name: lower_symbol(&routine.name),
-        params: routine.params.iter().map(lower_symbol).collect(),
-        body: routine
-            .body
-            .iter()
-            .map(|statement| lower_statement(statement, errors))
-            .collect(),
-        span: routine.span,
-    }
-}
-
 fn lower_static_statement(
     statement: &hir::StaticStatement,
+    module_static_names: &HashSet<String>,
     errors: &mut Vec<LoweringError>,
 ) -> StaticStatement {
     StaticStatement {
@@ -416,7 +467,9 @@ fn lower_static_statement(
                 initializer: binding
                     .initializer
                     .as_ref()
-                    .map(|expression| lower_expression(expression, errors)),
+                    .map(|expression| {
+                        lower_expression(expression, module_static_names, &[], false, errors)
+                    }),
                 span: binding.span,
             })
             .collect(),
@@ -431,143 +484,286 @@ fn lower_routine_kind(kind: hir::RoutineKind) -> RoutineKind {
     }
 }
 
-fn lower_statement(statement: &hir::Statement, errors: &mut Vec<LoweringError>) -> Statement {
-    match statement {
-        hir::Statement::Local(statement) => Statement::Local(LocalStatement {
-            bindings: statement
-                .bindings
-                .iter()
-                .map(|binding| LocalBinding {
-                    name: lower_symbol(&binding.name),
-                    initializer: binding
-                        .initializer
-                        .as_ref()
-                        .map(|expression| lower_expression(expression, errors)),
-                    span: binding.span,
-                })
-                .collect(),
-            span: statement.span,
-        }),
-        hir::Statement::Static(statement) => Statement::Static(StaticStatement {
-            bindings: statement
-                .bindings
-                .iter()
-                .map(|binding| StaticBinding {
-                    name: lower_symbol(&binding.name),
-                    initializer: binding
-                        .initializer
-                        .as_ref()
-                        .map(|expression| lower_expression(expression, errors)),
-                    span: binding.span,
-                })
-                .collect(),
-            span: statement.span,
-        }),
-        hir::Statement::If(statement) => Statement::If(Box::new(IfStatement {
-            branches: statement
-                .branches
-                .iter()
-                .map(|branch| ConditionalBranch {
-                    condition: lower_expression(&branch.condition, errors),
-                    body: branch
-                        .body
-                        .iter()
-                        .map(|statement| lower_statement(statement, errors))
-                        .collect(),
-                    span: branch.span,
-                })
-                .collect(),
-            else_branch: statement.else_branch.as_ref().map(|branch| {
-                branch
-                    .iter()
-                    .map(|statement| lower_statement(statement, errors))
-                    .collect()
-            }),
-            span: statement.span,
-        })),
-        hir::Statement::DoWhile(statement) => Statement::DoWhile(Box::new(DoWhileStatement {
-            condition: lower_expression(&statement.condition, errors),
-            body: statement
-                .body
-                .iter()
-                .map(|statement| lower_statement(statement, errors))
-                .collect(),
-            span: statement.span,
-        })),
-        hir::Statement::For(statement) => Statement::For(Box::new(ForStatement {
-            variable: lower_symbol(&statement.variable),
-            initial_value: lower_expression(&statement.initial_value, errors),
-            limit: lower_expression(&statement.limit, errors),
-            step: statement
-                .step
-                .as_ref()
-                .map(|expression| lower_expression(expression, errors)),
-            body: statement
-                .body
-                .iter()
-                .map(|statement| lower_statement(statement, errors))
-                .collect(),
-            span: statement.span,
-        })),
-        hir::Statement::Return(statement) => Statement::Return(ReturnStatement {
-            value: statement
-                .value
-                .as_ref()
-                .map(|expression| lower_expression(expression, errors)),
-            span: statement.span,
-        }),
-        hir::Statement::Print(statement) => Statement::BuiltinCall(BuiltinCallStatement {
-            builtin: Builtin::QOut,
-            arguments: statement
-                .arguments
-                .iter()
-                .map(|expression| lower_expression(expression, errors))
-                .collect(),
-            span: statement.span,
-        }),
-        hir::Statement::Evaluate(statement) => lower_expression_statement(statement, errors),
-    }
+struct RoutineLowerer<'a> {
+    module_static_names: &'a HashSet<String>,
+    dynamic_memvar_mode: bool,
+    errors: &'a mut Vec<LoweringError>,
+    local_scopes: Vec<HashSet<String>>,
+    routine: &'a hir::Routine,
 }
 
-fn lower_expression_statement(
-    statement: &hir::ExpressionStatement,
-    errors: &mut Vec<LoweringError>,
-) -> Statement {
-    match &statement.expression {
-        hir::Expression::Assign(expression) => Statement::Assign(AssignStatement {
-            target: lower_assign_target(&expression.target, errors),
-            value: lower_expression(&expression.value, errors),
+impl<'a> RoutineLowerer<'a> {
+    fn new(
+        module_static_names: &'a HashSet<String>,
+        routine: &'a hir::Routine,
+        dynamic_memvar_mode: bool,
+        errors: &'a mut Vec<LoweringError>,
+    ) -> Self {
+        let mut initial_scope = HashSet::new();
+        for param in &routine.params {
+            initial_scope.insert(normalize_name(&param.text));
+        }
+        Self {
+            module_static_names,
+            dynamic_memvar_mode,
+            errors,
+            local_scopes: vec![initial_scope],
+            routine,
+        }
+    }
+
+    fn lower(&mut self) -> Routine {
+        Routine {
+            kind: lower_routine_kind(self.routine.kind),
+            name: lower_symbol(&self.routine.name),
+            params: self.routine.params.iter().map(lower_symbol).collect(),
+            body: self
+                .routine
+                .body
+                .iter()
+                .map(|statement| self.lower_statement(statement))
+                .collect(),
+            span: self.routine.span,
+        }
+    }
+
+    fn lower_statement(&mut self, statement: &hir::Statement) -> Statement {
+        match statement {
+            hir::Statement::Local(statement) => {
+                for binding in &statement.bindings {
+                    self.local_scopes
+                        .last_mut()
+                        .expect("routine scope")
+                        .insert(normalize_name(&binding.name.text));
+                }
+                Statement::Local(LocalStatement {
+                    bindings: statement
+                        .bindings
+                        .iter()
+                        .map(|binding| LocalBinding {
+                            name: lower_symbol(&binding.name),
+                            initializer: binding
+                                .initializer
+                                .as_ref()
+                                .map(|expression| self.lower_expression(expression)),
+                            span: binding.span,
+                        })
+                        .collect(),
+                    span: statement.span,
+                })
+            }
+            hir::Statement::Static(statement) => {
+                for binding in &statement.bindings {
+                    self.local_scopes
+                        .last_mut()
+                        .expect("routine scope")
+                        .insert(normalize_name(&binding.name.text));
+                }
+                Statement::Static(StaticStatement {
+                    bindings: statement
+                        .bindings
+                        .iter()
+                        .map(|binding| StaticBinding {
+                            name: lower_symbol(&binding.name),
+                            initializer: binding
+                                .initializer
+                                .as_ref()
+                                .map(|expression| self.lower_expression(expression)),
+                            span: binding.span,
+                        })
+                        .collect(),
+                    span: statement.span,
+                })
+            }
+            hir::Statement::Private(statement) => {
+                Statement::Private(self.lower_memvar_statement(statement, MemvarClass::Private))
+            }
+            hir::Statement::Public(statement) => {
+                Statement::Public(self.lower_memvar_statement(statement, MemvarClass::Public))
+            }
+            hir::Statement::If(statement) => Statement::If(Box::new(IfStatement {
+                branches: statement
+                    .branches
+                    .iter()
+                    .map(|branch| ConditionalBranch {
+                        condition: self.lower_expression(&branch.condition),
+                        body: branch
+                            .body
+                            .iter()
+                            .map(|statement| self.lower_statement(statement))
+                            .collect(),
+                        span: branch.span,
+                    })
+                    .collect(),
+                else_branch: statement.else_branch.as_ref().map(|branch| {
+                    branch
+                        .iter()
+                        .map(|statement| self.lower_statement(statement))
+                        .collect()
+                }),
+                span: statement.span,
+            })),
+            hir::Statement::DoWhile(statement) => Statement::DoWhile(Box::new(DoWhileStatement {
+                condition: self.lower_expression(&statement.condition),
+                body: statement
+                    .body
+                    .iter()
+                    .map(|statement| self.lower_statement(statement))
+                    .collect(),
+                span: statement.span,
+            })),
+            hir::Statement::For(statement) => {
+                self.local_scopes
+                    .last_mut()
+                    .expect("routine scope")
+                    .insert(normalize_name(&statement.variable.text));
+                Statement::For(Box::new(ForStatement {
+                    variable: lower_symbol(&statement.variable),
+                    initial_value: self.lower_expression(&statement.initial_value),
+                    limit: self.lower_expression(&statement.limit),
+                    step: statement
+                        .step
+                        .as_ref()
+                        .map(|expression| self.lower_expression(expression)),
+                    body: statement
+                        .body
+                        .iter()
+                        .map(|statement| self.lower_statement(statement))
+                        .collect(),
+                    span: statement.span,
+                }))
+            }
+            hir::Statement::Return(statement) => Statement::Return(ReturnStatement {
+                value: statement
+                    .value
+                    .as_ref()
+                    .map(|expression| self.lower_expression(expression)),
+                span: statement.span,
+            }),
+            hir::Statement::Print(statement) => Statement::BuiltinCall(BuiltinCallStatement {
+                builtin: Builtin::QOut,
+                arguments: statement
+                    .arguments
+                    .iter()
+                    .map(|expression| self.lower_expression(expression))
+                    .collect(),
+                span: statement.span,
+            }),
+            hir::Statement::Evaluate(statement) => self.lower_expression_statement(statement),
+        }
+    }
+
+    fn lower_memvar_statement(
+        &mut self,
+        statement: &hir::MemvarStatement,
+        memvar_class: MemvarClass,
+    ) -> MemvarStatement {
+        MemvarStatement {
+            memvar_class,
+            bindings: statement
+                .bindings
+                .iter()
+                .map(|binding| MemvarBinding {
+                    name: lower_symbol(&binding.name),
+                    initializer: binding
+                        .initializer
+                        .as_ref()
+                        .map(|expression| self.lower_expression(expression)),
+                    span: binding.span,
+                })
+                .collect(),
             span: statement.span,
-        }),
-        expression => Statement::Evaluate(ExpressionStatement {
-            expression: lower_expression(expression, errors),
-            span: statement.span,
-        }),
+        }
+    }
+
+    fn lower_expression_statement(&mut self, statement: &hir::ExpressionStatement) -> Statement {
+        match &statement.expression {
+            hir::Expression::Assign(expression) => Statement::Assign(AssignStatement {
+                target: self.lower_assign_target(&expression.target),
+                value: self.lower_expression(&expression.value),
+                span: statement.span,
+            }),
+            expression => Statement::Evaluate(ExpressionStatement {
+                expression: self.lower_expression(expression),
+                span: statement.span,
+            }),
+        }
+    }
+
+    fn lower_assign_target(&mut self, target: &hir::AssignTarget) -> AssignTarget {
+        lower_assign_target(
+            target,
+            self.module_static_names,
+            &self.local_scopes,
+            self.dynamic_memvar_mode,
+            self.errors,
+        )
+    }
+
+    fn lower_expression(&mut self, expression: &hir::Expression) -> Expression {
+        lower_expression(
+            expression,
+            self.module_static_names,
+            &self.local_scopes,
+            self.dynamic_memvar_mode,
+            self.errors,
+        )
     }
 }
 
 fn lower_assign_target(
     target: &hir::AssignTarget,
+    module_static_names: &HashSet<String>,
+    local_scopes: &[HashSet<String>],
+    dynamic_memvar_mode: bool,
     errors: &mut Vec<LoweringError>,
 ) -> AssignTarget {
     match target {
-        hir::AssignTarget::Symbol(symbol) => AssignTarget::Symbol(lower_symbol(symbol)),
+        hir::AssignTarget::Symbol(symbol) => {
+            let lowered = lower_symbol(symbol);
+            if is_nominal_name(&lowered.text, module_static_names, local_scopes) {
+                AssignTarget::Symbol(lowered)
+            } else if dynamic_memvar_mode {
+                AssignTarget::Memvar(lowered)
+            } else {
+                AssignTarget::Symbol(lowered)
+            }
+        }
         hir::AssignTarget::Index(target) => AssignTarget::Index(IndexedAssignTarget {
             root: lower_symbol(&target.root),
             indices: target
                 .indices
                 .iter()
-                .map(|index| lower_expression(index, errors))
+                .map(|index| {
+                    lower_expression(
+                        index,
+                        module_static_names,
+                        local_scopes,
+                        dynamic_memvar_mode,
+                        errors,
+                    )
+                })
                 .collect(),
             span: target.span,
         }),
     }
 }
 
-fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError>) -> Expression {
+fn lower_expression(
+    expression: &hir::Expression,
+    module_static_names: &HashSet<String>,
+    local_scopes: &[HashSet<String>],
+    dynamic_memvar_mode: bool,
+    errors: &mut Vec<LoweringError>,
+) -> Expression {
     match expression {
         hir::Expression::Read(read) => Expression::Read(ReadExpression {
-            path: lower_read_path(&read.path),
+            path: lower_read_path(
+                &read.path,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+            ),
             span: read.span,
         }),
         hir::Expression::Nil(literal) => Expression::Nil(NilLiteral { span: literal.span }),
@@ -591,50 +787,155 @@ fn lower_expression(expression: &hir::Expression, errors: &mut Vec<LoweringError
             elements: expression
                 .elements
                 .iter()
-                .map(|element| lower_expression(element, errors))
+                .map(|element| {
+                    lower_expression(
+                        element,
+                        module_static_names,
+                        local_scopes,
+                        dynamic_memvar_mode,
+                        errors,
+                    )
+                })
                 .collect(),
             span: expression.span,
         }),
+        hir::Expression::Codeblock(expression) => {
+            let params: Vec<Symbol> = expression.params.iter().map(lower_symbol).collect();
+            let mut nested_scopes = local_scopes.to_vec();
+            nested_scopes.push(
+                params
+                    .iter()
+                    .map(|param| normalize_name(&param.text))
+                    .collect(),
+            );
+            Expression::Codeblock(CodeblockLiteral {
+                params,
+                body: expression
+                    .body
+                    .iter()
+                    .map(|value| {
+                        lower_expression(
+                            value,
+                            module_static_names,
+                            &nested_scopes,
+                            dynamic_memvar_mode,
+                            errors,
+                        )
+                    })
+                    .collect(),
+                span: expression.span,
+            })
+        }
+        hir::Expression::Macro(expression) => Expression::Macro(MacroExpression {
+            value: Box::new(lower_expression(
+                &expression.value,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
+            span: expression.span,
+        }),
         hir::Expression::Call(expression) => Expression::Call(CallExpression {
-            callee: Box::new(lower_expression(&expression.callee, errors)),
+            callee: Box::new(lower_call_callee(
+                &expression.callee,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
             arguments: expression
                 .arguments
                 .iter()
-                .map(|argument| lower_expression(argument, errors))
+                .map(|argument| {
+                    lower_expression(
+                        argument,
+                        module_static_names,
+                        local_scopes,
+                        dynamic_memvar_mode,
+                        errors,
+                    )
+                })
                 .collect(),
             span: expression.span,
         }),
         hir::Expression::Index(expression) => Expression::Index(IndexExpression {
-            target: Box::new(lower_expression(&expression.target, errors)),
+            target: Box::new(lower_expression(
+                &expression.target,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
             indices: expression
                 .indices
                 .iter()
-                .map(|index| lower_expression(index, errors))
+                .map(|index| {
+                    lower_expression(
+                        index,
+                        module_static_names,
+                        local_scopes,
+                        dynamic_memvar_mode,
+                        errors,
+                    )
+                })
                 .collect(),
             span: expression.span,
         }),
-        hir::Expression::Assign(expression) => {
-            errors.push(LoweringError {
-                message: "cannot lower assignment expression outside statement position".to_owned(),
-                span: expression.span,
-            });
-            Expression::Error(ErrorExpression {
-                span: expression.span,
-            })
-        }
+        hir::Expression::Assign(expression) => Expression::Assign(AssignExpression {
+            target: lower_assign_target(
+                &expression.target,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            ),
+            value: Box::new(lower_expression(
+                &expression.value,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
+            span: expression.span,
+        }),
         hir::Expression::Binary(expression) => Expression::Binary(BinaryExpression {
-            left: Box::new(lower_expression(&expression.left, errors)),
+            left: Box::new(lower_expression(
+                &expression.left,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
             operator: lower_binary_operator(expression.operator),
-            right: Box::new(lower_expression(&expression.right, errors)),
+            right: Box::new(lower_expression(
+                &expression.right,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
             span: expression.span,
         }),
         hir::Expression::Unary(expression) => Expression::Unary(UnaryExpression {
             operator: lower_unary_operator(expression.operator),
-            operand: Box::new(lower_expression(&expression.operand, errors)),
+            operand: Box::new(lower_expression(
+                &expression.operand,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
             span: expression.span,
         }),
         hir::Expression::Postfix(expression) => Expression::Postfix(PostfixExpression {
-            operand: Box::new(lower_expression(&expression.operand, errors)),
+            operand: Box::new(lower_expression(
+                &expression.operand,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
             operator: lower_postfix_operator(expression.operator),
             span: expression.span,
         }),
@@ -657,10 +958,179 @@ fn lower_symbol(symbol: &hir::Symbol) -> Symbol {
     }
 }
 
-fn lower_read_path(path: &hir::ReadPath) -> ReadPath {
+fn lower_read_path(
+    path: &hir::ReadPath,
+    module_static_names: &HashSet<String>,
+    local_scopes: &[HashSet<String>],
+    dynamic_memvar_mode: bool,
+) -> ReadPath {
     match path {
-        hir::ReadPath::Name(symbol) => ReadPath::Name(lower_symbol(symbol)),
+        hir::ReadPath::Name(symbol) => {
+            let lowered = lower_symbol(symbol);
+            if is_nominal_name(&lowered.text, module_static_names, local_scopes) {
+                ReadPath::Name(lowered)
+            } else if dynamic_memvar_mode {
+                ReadPath::Memvar(lowered)
+            } else {
+                ReadPath::Name(lowered)
+            }
+        }
     }
+}
+
+fn lower_call_callee(
+    expression: &hir::Expression,
+    module_static_names: &HashSet<String>,
+    local_scopes: &[HashSet<String>],
+    dynamic_memvar_mode: bool,
+    errors: &mut Vec<LoweringError>,
+) -> Expression {
+    match expression {
+        hir::Expression::Read(read) => Expression::Read(ReadExpression {
+            path: match &read.path {
+                hir::ReadPath::Name(symbol) => ReadPath::Name(lower_symbol(symbol)),
+            },
+            span: read.span,
+        }),
+        other => lower_expression(
+            other,
+            module_static_names,
+            local_scopes,
+            dynamic_memvar_mode,
+            errors,
+        ),
+    }
+}
+
+fn collect_module_static_names(program: &hir::Program) -> HashSet<String> {
+    program
+        .module_statics
+        .iter()
+        .flat_map(|statement| statement.bindings.iter())
+        .map(|binding| normalize_name(&binding.name.text))
+        .collect()
+}
+
+fn program_uses_dynamic_features(program: &hir::Program) -> bool {
+    program
+        .routines
+        .iter()
+        .any(|routine| routine.body.iter().any(statement_uses_dynamic_features))
+}
+
+fn statement_uses_dynamic_features(statement: &hir::Statement) -> bool {
+    match statement {
+        hir::Statement::Private(_) | hir::Statement::Public(_) => true,
+        hir::Statement::Local(statement) => statement
+            .bindings
+            .iter()
+            .filter_map(|binding| binding.initializer.as_ref())
+            .any(expression_uses_dynamic_features),
+        hir::Statement::Static(statement) => statement
+            .bindings
+            .iter()
+            .filter_map(|binding| binding.initializer.as_ref())
+            .any(expression_uses_dynamic_features),
+        hir::Statement::If(statement) => {
+            statement.branches.iter().any(|branch| {
+                expression_uses_dynamic_features(&branch.condition)
+                    || branch.body.iter().any(statement_uses_dynamic_features)
+            }) || statement
+                .else_branch
+                .as_ref()
+                .is_some_and(|branch| branch.iter().any(statement_uses_dynamic_features))
+        }
+        hir::Statement::DoWhile(statement) => {
+            expression_uses_dynamic_features(&statement.condition)
+                || statement.body.iter().any(statement_uses_dynamic_features)
+        }
+        hir::Statement::For(statement) => {
+            expression_uses_dynamic_features(&statement.initial_value)
+                || expression_uses_dynamic_features(&statement.limit)
+                || statement
+                    .step
+                    .as_ref()
+                    .is_some_and(expression_uses_dynamic_features)
+                || statement.body.iter().any(statement_uses_dynamic_features)
+        }
+        hir::Statement::Return(statement) => statement
+            .value
+            .as_ref()
+            .is_some_and(expression_uses_dynamic_features),
+        hir::Statement::Print(statement) => statement
+            .arguments
+            .iter()
+            .any(expression_uses_dynamic_features),
+        hir::Statement::Evaluate(statement) => {
+            expression_uses_dynamic_features(&statement.expression)
+        }
+    }
+}
+
+fn expression_uses_dynamic_features(expression: &hir::Expression) -> bool {
+    match expression {
+        hir::Expression::Codeblock(_) | hir::Expression::Macro(_) => true,
+        hir::Expression::Array(expression) => expression
+            .elements
+            .iter()
+            .any(expression_uses_dynamic_features),
+        hir::Expression::Call(expression) => {
+            expression_uses_dynamic_features(&expression.callee)
+                || expression
+                    .arguments
+                    .iter()
+                    .any(expression_uses_dynamic_features)
+        }
+        hir::Expression::Index(expression) => {
+            expression_uses_dynamic_features(&expression.target)
+                || expression
+                    .indices
+                    .iter()
+                    .any(expression_uses_dynamic_features)
+        }
+        hir::Expression::Assign(expression) => {
+            expression_uses_dynamic_features(&expression.value)
+                || match &expression.target {
+                    hir::AssignTarget::Symbol(_) => false,
+                    hir::AssignTarget::Index(target) => target
+                        .indices
+                        .iter()
+                        .any(expression_uses_dynamic_features),
+                }
+        }
+        hir::Expression::Binary(expression) => {
+            expression_uses_dynamic_features(&expression.left)
+                || expression_uses_dynamic_features(&expression.right)
+        }
+        hir::Expression::Unary(expression) => expression_uses_dynamic_features(&expression.operand),
+        hir::Expression::Postfix(expression) => {
+            expression_uses_dynamic_features(&expression.operand)
+        }
+        hir::Expression::Read(_)
+        | hir::Expression::Nil(_)
+        | hir::Expression::Logical(_)
+        | hir::Expression::Integer(_)
+        | hir::Expression::Float(_)
+        | hir::Expression::String(_)
+        | hir::Expression::Error(_) => false,
+    }
+}
+
+fn is_nominal_name(
+    name: &str,
+    module_static_names: &HashSet<String>,
+    local_scopes: &[HashSet<String>],
+) -> bool {
+    let normalized = normalize_name(name);
+    module_static_names.contains(&normalized)
+        || local_scopes
+            .iter()
+            .rev()
+            .any(|scope| scope.contains(&normalized))
+}
+
+fn normalize_name(name: &str) -> String {
+    name.to_ascii_uppercase()
 }
 
 fn lower_binary_operator(operator: hir::BinaryOperator) -> BinaryOperator {

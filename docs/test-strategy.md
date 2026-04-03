@@ -118,6 +118,10 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/codeblock.prg` -> `codeblock.ast`
 - `tests/fixtures/parser/macro_read.prg` -> `macro_read.ast`
 - `tests/fixtures/parser/private_dynamic.prg` -> sema sem erro com fallback de memvar dinâmica entre rotinas
+- `tests/fixtures/parser/memvars.prg` -> lowering IR com `Statement::Private` e `Statement::Public`
+- `tests/fixtures/parser/codeblock.prg` -> lowering IR com `Expression::Codeblock`
+- `tests/fixtures/parser/macro_read.prg` -> lowering IR com `Expression::Macro`
+- `tests/fixtures/parser/private_dynamic.prg` -> lowering IR com `ReadPath::Memvar` e `AssignTarget::Memvar`
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-hir` -> lowering HIR como `Read(path)` explícito

@@ -56,6 +56,8 @@ IrRoutine {
 - `BuiltinCall(name, args)` — ex.: `QOut`
 - `Local(Vec<IrLocal>)`
 - `Static(Vec<IrStatic>)`
+- `Private(Vec<IrMemvar>)`
+- `Public(Vec<IrMemvar>)`
 - `Assign { target, value }`
 - `Expression(IrExpr)`
 - `If { condition, then_body, else_body }`
@@ -65,17 +67,22 @@ IrRoutine {
 ### Expressões
 
 - `Read(path)` — leitura nominal explícita, hoje iniciando em `ReadPath::Name(Symbol)`
+- `Read(path)` — leitura explícita, distinguindo `ReadPath::Name(Symbol)` e `ReadPath::Memvar(Symbol)` no subset dinâmico da Fase 8
 - `Literal(Nil | Logical | Integer | Float | String)`
 - `Binary(op, lhs, rhs)`
 - `Unary(op, expr)`
 - `Postfix(op, expr)`
 - `Call(callee, args)`
 - `Array(elements)` — literal de array
+- `Codeblock(params, body)` — codeblock explícito
+- `Macro(value)` — início do macro operator explícito
+- `Assign(target, value)` — atribuição também pode existir em posição de expressão dentro de codeblocks
 - `Index(target, indices)` — leitura indexada
 
 ### Alvos de atribuição
 
 - `AssignTarget::Symbol(name)` — variável simples
+- `AssignTarget::Memvar(name)` — memvar dinâmica explícita
 - `AssignTarget::Index(target, indices)` — escrita indexada
 
 ## Lowering HIR -> IR
@@ -85,9 +92,13 @@ IrRoutine {
 | HIR | IR |
 | --- | --- |
 | `Print(exprs)` | `BuiltinCall("QOut", exprs)` |
-| `Read(ReadPath::Name(Symbol))` | `Read(ReadPath::Name(Symbol))` |
+| `Read(ReadPath::Name(Symbol))` | `Read(ReadPath::Name(Symbol))` ou `Read(ReadPath::Memvar(Symbol))` |
 | `Statement::Static` | `Statement::Static` |
+| `Statement::Private/Public` | `Statement::Private/Public` |
 | `Program.module_statics` | `Program.module_statics` |
+| `Expression::Codeblock` | `Expression::Codeblock` |
+| `Expression::Macro` | `Expression::Macro` |
+| `Expression::Assign` | `Expression::Assign` |
 | Expressões inválidas | Erro de lowering explícito |
 
 ### O que se preserva
@@ -97,7 +108,8 @@ IrRoutine {
 - Atribuição indexada como `AssignTarget::Index`
 - Distinção entre `Local` e `Static`
 - Distinção entre `STATIC` de módulo e `STATIC` de rotina
-- Leituras nominais explícitas como `Read(path)`
+- Leituras explícitas como `Read(path)`
+- `PRIVATE`/`PUBLIC`, `codeblock` e `macro` como nós próprios da IR
 
 ## Decisões de design
 
@@ -121,6 +133,8 @@ Fase 5 + Fase 7 parcial:
 - IF, DO WHILE, FOR — completo
 - Atribuição simples — completo
 - `STATIC` de rotina e de módulo + `Read(path)` explícitos — lowering OK
+- `PRIVATE` / `PUBLIC` — lowering OK
 - Literais de array — completo
 - Indexação (leitura e escrita) — completo
+- `Codeblock` / `macro` / memvar dinâmica explícita — lowering OK
 - Flattening de controle de fluxo — não planejado para esta fase
