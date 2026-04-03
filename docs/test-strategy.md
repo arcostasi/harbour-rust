@@ -124,6 +124,9 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/private_dynamic.prg` -> lowering IR com `ReadPath::Memvar` e `AssignTarget::Memvar`
 - `harbour-rust-runtime` -> `Value::Codeblock`, `Eval()` mínimo e `ValType()/Empty()` para codeblocks
 - `harbour-rust-runtime` -> `RuntimeContext` com storage dinâmico para `PRIVATE`/`PUBLIC`, leitura e atribuição com precedência privada
+- `tests/fixtures/parser/eval_codeblock.prg` -> `harbour-rust-cli build/run` com `Eval()` e codeblock não-capturante
+- `tests/fixtures/parser/eval_memvar_codeblock.prg` -> `harbour-rust-cli build/run` com `Eval()` e codeblock lendo memvar
+- `tests/fixtures/parser/eval_capture_error.prg` -> `harbour-rust-cli build` com erro explícito de captura lexical ainda não suportada
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-hir` -> lowering HIR como `Read(path)` explícito

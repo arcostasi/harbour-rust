@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 use harbour_rust_ir as ir;
 use harbour_rust_ir::Builtin;
@@ -53,6 +56,12 @@ struct Emitter {
     indent_level: usize,
     module_static_bindings: HashMap<String, StaticBindingStorage>,
     current_static_bindings: HashMap<String, StaticBindingStorage>,
+    local_bindings_stack: Vec<HashSet<String>>,
+    strict_name_resolution: bool,
+    codeblock_prototypes: Vec<String>,
+    codeblock_definitions: Vec<String>,
+    codeblock_counter: usize,
+    helper_section_offset: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,6 +73,7 @@ struct StaticBindingStorage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RuntimeBuiltin {
     QOut,
+    Eval,
     Abs,
     Sqrt,
     Sin,
@@ -105,6 +115,8 @@ impl RuntimeBuiltin {
     fn lookup(name: &str) -> Option<Self> {
         if name.eq_ignore_ascii_case("QOUT") {
             Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("EVAL") {
+            Some(Self::Eval)
         } else if name.eq_ignore_ascii_case("ABS") {
             Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("SQRT") {
@@ -183,6 +195,7 @@ impl RuntimeBuiltin {
     fn helper_name(self) -> &'static str {
         match self {
             Self::QOut => "harbour_builtin_qout",
+            Self::Eval => "harbour_builtin_eval",
             Self::Abs => "harbour_builtin_abs",
             Self::Sqrt => "harbour_builtin_sqrt",
             Self::Sin => "harbour_builtin_sin",
@@ -224,6 +237,7 @@ impl RuntimeBuiltin {
     fn source_name(self) -> &'static str {
         match self {
             Self::QOut => "QOut",
+            Self::Eval => "Eval",
             Self::Abs => "Abs",
             Self::Sqrt => "Sqrt",
             Self::Sin => "Sin",
@@ -275,8 +289,15 @@ impl Emitter {
             indent_level: 0,
             module_static_bindings: HashMap::new(),
             current_static_bindings: HashMap::new(),
+            local_bindings_stack: Vec::new(),
+            strict_name_resolution: false,
+            codeblock_prototypes: Vec::new(),
+            codeblock_definitions: Vec::new(),
+            codeblock_counter: 0,
+            helper_section_offset: 0,
         };
         emitter.emit_prelude();
+        emitter.helper_section_offset = emitter.source.len();
         emitter
     }
 
@@ -322,6 +343,26 @@ impl Emitter {
             self.emit_routine(routine);
         }
 
+        if !self.codeblock_prototypes.is_empty() || !self.codeblock_definitions.is_empty() {
+            let mut helper_section = String::new();
+            for prototype in &self.codeblock_prototypes {
+                helper_section.push_str(prototype);
+                helper_section.push('\n');
+            }
+            if !self.codeblock_prototypes.is_empty() {
+                helper_section.push('\n');
+            }
+            for definition in &self.codeblock_definitions {
+                helper_section.push_str(definition);
+                helper_section.push('\n');
+            }
+            helper_section.push('\n');
+            self.source
+                .insert_str(self.helper_section_offset, &helper_section);
+        }
+
+        self.codeblock_prototypes.clear();
+        self.codeblock_definitions.clear();
         self.module_static_bindings.clear();
     }
 
@@ -340,6 +381,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_from_array_items(const harbour_runtime_Value *items, size_t length);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_value_from_codeblock(harbour_runtime_Value (*function)(const harbour_runtime_Value *arguments, size_t argument_count), const char *repr);",
         );
         self.emit_line("extern bool harbour_value_is_true(harbour_runtime_Value value);");
         self.emit_line("extern size_t harbour_value_array_len(harbour_runtime_Value value);");
@@ -402,6 +446,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_eval(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_abs(const harbour_runtime_Value *arguments, size_t argument_count);",
@@ -526,6 +573,12 @@ impl Emitter {
 
     fn emit_routine(&mut self, routine: &ir::Routine) {
         self.current_static_bindings = routine_static_binding_map(routine);
+        self.push_local_scope(
+            routine
+                .params
+                .iter()
+                .map(|param| normalize_symbol_name(&param.text)),
+        );
         self.emit_line(&format!(
             "static harbour_runtime_Value {} {{",
             routine_signature(routine)
@@ -543,6 +596,7 @@ impl Emitter {
         self.indent_level -= 1;
         self.emit_line("}");
         self.emit_line("");
+        self.pop_local_scope();
         self.current_static_bindings.clear();
     }
 
@@ -562,6 +616,7 @@ impl Emitter {
             ir::Statement::BuiltinCall(statement) => self.emit_builtin_call(statement),
             ir::Statement::Local(statement) => {
                 for binding in &statement.bindings {
+                    self.register_local_name(&binding.name.text);
                     let name = mangle_symbol(&binding.name.text);
                     if let Some(initializer) = &binding.initializer {
                         match self.emit_expression(initializer) {
@@ -802,13 +857,7 @@ impl Emitter {
                     ))
                 }
             }
-            Expression::Codeblock(expression) => {
-                self.push_error(
-                    "C emission for codeblock literals is not implemented yet",
-                    expression.span,
-                );
-                None
-            }
+            Expression::Codeblock(expression) => self.emit_codeblock_literal(expression),
             Expression::Macro(expression) => {
                 let value = self.emit_expression(&expression.value)?;
                 Some(format!("harbour_macro_read({})", value))
@@ -1031,12 +1080,110 @@ impl Emitter {
 
     fn emit_read_expression(&mut self, read: &ir::ReadExpression, _span: Span) -> Option<String> {
         match &read.path {
-            ir::ReadPath::Name(symbol) => Some(self.resolve_symbol_storage_name(&symbol.text)),
+            ir::ReadPath::Name(symbol) => {
+                if self.is_visible_name(&symbol.text) || self.is_static_name(&symbol.text) {
+                    Some(self.resolve_symbol_storage_name(&symbol.text))
+                } else if self.strict_name_resolution {
+                    self.push_error(
+                        "C emission for lexical codeblock capture is not implemented yet",
+                        symbol.span,
+                    );
+                    None
+                } else {
+                    Some(self.resolve_symbol_storage_name(&symbol.text))
+                }
+            }
             ir::ReadPath::Memvar(symbol) => Some(format!(
                 "harbour_memvar_get(\"{}\")",
                 escape_c_string(&symbol.text)
             )),
         }
+    }
+
+    fn emit_codeblock_literal(&mut self, expression: &ir::CodeblockLiteral) -> Option<String> {
+        let helper_name = format!("harbour_codeblock_{}", self.codeblock_counter);
+        self.codeblock_counter += 1;
+        self.codeblock_prototypes.push(format!(
+            "static harbour_runtime_Value {}(const harbour_runtime_Value *arguments, size_t argument_count);",
+            helper_name
+        ));
+        let definition = self.build_codeblock_definition(&helper_name, expression);
+        self.codeblock_definitions.push(definition);
+        Some(format!(
+            "harbour_value_from_codeblock({}, \"{}\")",
+            helper_name,
+            escape_c_string(&render_codeblock_repr(expression))
+        ))
+    }
+
+    fn build_codeblock_definition(
+        &mut self,
+        helper_name: &str,
+        expression: &ir::CodeblockLiteral,
+    ) -> String {
+        let previous_scopes = std::mem::take(&mut self.local_bindings_stack);
+        let previous_strict_resolution = self.strict_name_resolution;
+        self.local_bindings_stack = vec![
+            expression
+                .params
+                .iter()
+                .map(|param| normalize_symbol_name(&param.text))
+                .collect(),
+        ];
+        self.strict_name_resolution = true;
+
+        let mut definition = String::new();
+        push_indented_line(
+            &mut definition,
+            0,
+            &format!(
+                "static harbour_runtime_Value {}(const harbour_runtime_Value *arguments, size_t argument_count) {{",
+                helper_name
+            ),
+        );
+
+        for (index, param) in expression.params.iter().enumerate() {
+            push_indented_line(
+                &mut definition,
+                1,
+                &format!(
+                    "harbour_runtime_Value {} = argument_count > {} ? arguments[{}] : harbour_value_nil();",
+                    mangle_symbol(&param.text),
+                    index,
+                    index
+                ),
+            );
+        }
+
+        if expression.body.is_empty() {
+            push_indented_line(&mut definition, 1, "return harbour_value_nil();");
+        } else {
+            for nested in &expression.body[..expression.body.len().saturating_sub(1)] {
+                if let Some(emitted) = self.emit_expression(nested) {
+                    push_indented_line(&mut definition, 1, &format!("(void) {};", emitted));
+                } else {
+                    push_indented_line(&mut definition, 1, "(void) harbour_value_nil();");
+                }
+            }
+
+            let return_expression = expression
+                .body
+                .last()
+                .and_then(|nested| self.emit_expression(nested))
+                .unwrap_or_else(|| "harbour_value_nil()".to_owned());
+            push_indented_line(
+                &mut definition,
+                1,
+                &format!("return {};", return_expression),
+            );
+        }
+
+        push_indented_line(&mut definition, 0, "}");
+
+        self.local_bindings_stack = previous_scopes;
+        self.strict_name_resolution = previous_strict_resolution;
+
+        definition
     }
 
     fn emit_module_static_initializer(&mut self, program: &ir::Program) {
@@ -1107,6 +1254,64 @@ impl Emitter {
             })
             .unwrap_or_else(|| mangle_symbol(name))
     }
+
+    fn push_local_scope<I>(&mut self, names: I)
+    where
+        I: IntoIterator<Item = String>,
+    {
+        self.local_bindings_stack
+            .push(names.into_iter().collect::<HashSet<_>>());
+    }
+
+    fn pop_local_scope(&mut self) {
+        let _ = self.local_bindings_stack.pop();
+    }
+
+    fn register_local_name(&mut self, name: &str) {
+        if let Some(scope) = self.local_bindings_stack.last_mut() {
+            scope.insert(normalize_symbol_name(name));
+        }
+    }
+
+    fn is_visible_name(&self, name: &str) -> bool {
+        let normalized = normalize_symbol_name(name);
+        self.local_bindings_stack
+            .iter()
+            .rev()
+            .any(|scope| scope.contains(&normalized))
+    }
+
+    fn is_static_name(&self, name: &str) -> bool {
+        let normalized = normalize_symbol_name(name);
+        self.current_static_bindings.contains_key(&normalized)
+            || self.module_static_bindings.contains_key(&normalized)
+    }
+}
+
+fn render_codeblock_repr(expression: &ir::CodeblockLiteral) -> String {
+    let params = if expression.params.is_empty() {
+        String::new()
+    } else {
+        expression
+            .params
+            .iter()
+            .map(|param| param.text.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    if params.is_empty() {
+        "{|| ... }".to_owned()
+    } else {
+        format!("{{|{}| ... }}", params)
+    }
+}
+
+fn push_indented_line(target: &mut String, indent_level: usize, line: &str) {
+    for _ in 0..indent_level {
+        target.push_str("    ");
+    }
+    target.push_str(line);
+    target.push('\n');
 }
 
 fn collect_program_static_bindings(program: &ir::Program) -> Vec<StaticBindingStorage> {
@@ -1935,6 +2140,144 @@ mod tests {
             emitted
                 .source
                 .contains("harbour_macro_read(harbour_value_from_string_literal(\"counter\"))")
+        );
+    }
+
+    #[test]
+    fn emits_eval_calls_and_non_capturing_codeblock_helpers() {
+        let call_span = span(12, 2, 4, 40, 2, 32);
+        let program = ir::Program {
+            module_statics: Vec::new(),
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![ir::Statement::Evaluate(ir::ExpressionStatement {
+                    expression: ir::Expression::Call(ir::CallExpression {
+                        callee: Box::new(ir::Expression::Read(ir::ReadExpression {
+                            path: ir::ReadPath::Name(symbol("Eval", span(12, 2, 4, 16, 2, 8))),
+                            span: span(12, 2, 4, 16, 2, 8),
+                        })),
+                        arguments: vec![
+                            ir::Expression::Codeblock(ir::CodeblockLiteral {
+                                params: vec![
+                                    symbol("x", span(20, 2, 12, 21, 2, 13)),
+                                    symbol("y", span(23, 2, 15, 24, 2, 16)),
+                                ],
+                                body: vec![ir::Expression::Binary(ir::BinaryExpression {
+                                    left: Box::new(ir::Expression::Read(ir::ReadExpression {
+                                        path: ir::ReadPath::Name(symbol(
+                                            "x",
+                                            span(27, 2, 19, 28, 2, 20),
+                                        )),
+                                        span: span(27, 2, 19, 28, 2, 20),
+                                    })),
+                                    operator: ir::BinaryOperator::Add,
+                                    right: Box::new(ir::Expression::Read(ir::ReadExpression {
+                                        path: ir::ReadPath::Name(symbol(
+                                            "y",
+                                            span(31, 2, 23, 32, 2, 24),
+                                        )),
+                                        span: span(31, 2, 23, 32, 2, 24),
+                                    })),
+                                    span: span(27, 2, 19, 32, 2, 24),
+                                })],
+                                span: span(18, 2, 10, 34, 2, 26),
+                            }),
+                            ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "2".to_owned(),
+                                span: span(36, 2, 28, 37, 2, 29),
+                            }),
+                            ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "3".to_owned(),
+                                span: span(39, 2, 31, 40, 2, 32),
+                            }),
+                        ],
+                        span: call_span,
+                    }),
+                    span: call_span,
+                })],
+                span: span(0, 1, 1, 40, 2, 32),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(emitted.source.contains("harbour_builtin_eval("));
+        assert!(emitted.source.contains("harbour_value_from_codeblock("));
+        assert!(
+            emitted
+                .source
+                .contains("static harbour_runtime_Value harbour_codeblock_0(")
+        );
+        assert!(emitted.source.contains(
+            "harbour_runtime_Value x = argument_count > 0 ? arguments[0] : harbour_value_nil();"
+        ));
+        assert!(emitted.source.contains(
+            "harbour_runtime_Value y = argument_count > 1 ? arguments[1] : harbour_value_nil();"
+        ));
+        assert!(emitted.source.contains("return harbour_value_add(x, y);"));
+    }
+
+    #[test]
+    fn reports_lexical_codeblock_capture_as_codegen_error() {
+        let codeblock_span = span(18, 3, 11, 29, 3, 22);
+        let program = ir::Program {
+            module_statics: Vec::new(),
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Function,
+                name: symbol("Build", span(0, 1, 1, 5, 1, 6)),
+                params: Vec::new(),
+                body: vec![
+                    ir::Statement::Local(ir::LocalStatement {
+                        bindings: vec![ir::LocalBinding {
+                            name: symbol("n", span(12, 2, 10, 13, 2, 11)),
+                            initializer: Some(ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "2".to_owned(),
+                                span: span(17, 2, 15, 18, 2, 16),
+                            })),
+                            span: span(12, 2, 10, 18, 2, 16),
+                        }],
+                        span: span(12, 2, 10, 18, 2, 16),
+                    }),
+                    ir::Statement::Return(ir::ReturnStatement {
+                        value: Some(ir::Expression::Codeblock(ir::CodeblockLiteral {
+                            params: vec![symbol("x", span(22, 3, 15, 23, 3, 16))],
+                            body: vec![ir::Expression::Binary(ir::BinaryExpression {
+                                left: Box::new(ir::Expression::Read(ir::ReadExpression {
+                                    path: ir::ReadPath::Name(symbol(
+                                        "x",
+                                        span(26, 3, 19, 27, 3, 20),
+                                    )),
+                                    span: span(26, 3, 19, 27, 3, 20),
+                                })),
+                                operator: ir::BinaryOperator::Add,
+                                right: Box::new(ir::Expression::Read(ir::ReadExpression {
+                                    path: ir::ReadPath::Name(symbol(
+                                        "n",
+                                        span(30, 3, 23, 31, 3, 24),
+                                    )),
+                                    span: span(30, 3, 23, 31, 3, 24),
+                                })),
+                                span: span(26, 3, 19, 31, 3, 24),
+                            })],
+                            span: codeblock_span,
+                        })),
+                        span: codeblock_span,
+                    }),
+                ],
+                span: span(0, 1, 1, 31, 3, 24),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert_eq!(emitted.errors.len(), 1);
+        assert!(
+            emitted.errors[0]
+                .message
+                .contains("lexical codeblock capture")
         );
     }
 }

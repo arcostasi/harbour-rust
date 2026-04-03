@@ -2064,6 +2064,109 @@ fn run_command_executes_macro_memvar_fixture_with_expected_output() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_eval_codeblock_fixture() {
+    let temp_dir = unique_temp_dir("eval-codeblock");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("eval_codeblock.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/eval_codeblock.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_eval("));
+    assert!(generated.contains("harbour_value_from_codeblock("));
+    assert!(generated.contains("harbour_codeblock_0"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn build_command_writes_c_output_for_eval_memvar_codeblock_fixture() {
+    let temp_dir = unique_temp_dir("eval-memvar-codeblock");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("eval_memvar_codeblock.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/eval_memvar_codeblock.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_memvar_get(\"counter\")"));
+    assert!(generated.contains("harbour_builtin_eval("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn build_command_reports_codeblock_capture_as_codegen_error() {
+    let temp_dir = unique_temp_dir("eval-capture-error");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("eval_capture_error.c");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/eval_capture_error.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .output()
+        .expect("run cli");
+
+    assert!(!output.status.success(), "expected failing build status");
+
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("lexical codeblock capture"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn run_command_executes_eval_codeblock_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/eval_codeblock.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "5\n");
+}
+
+#[test]
+fn run_command_executes_eval_memvar_codeblock_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/eval_memvar_codeblock.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "5\n");
+}
+
+#[test]
 fn run_command_uses_configured_include_directory_for_preprocess_handoff() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
