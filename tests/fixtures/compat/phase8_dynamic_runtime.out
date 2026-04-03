@@ -1,0 +1,10 @@
+Read PRIVATE counter => 4
+Read PUBLIC total => 10
+Eval(add, 2, 3) => 5
+Eval(memvar) => 5
+ValType(add) => B
+Empty(add) => .F.
+Assign PRIVATE counter => 5
+Read PRIVATE counter after assign => 5
+Read counter after pop => 10
+Eval(NIL) => BASE 1004 Argument error (EVAL)
