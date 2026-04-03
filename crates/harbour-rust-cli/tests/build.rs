@@ -2167,6 +2167,49 @@ fn run_command_executes_eval_memvar_codeblock_fixture_with_expected_output() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_phase8_acceptance_fixture() {
+    let temp_dir = unique_temp_dir("phase8-acceptance");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("phase8_acceptance.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/phase8_acceptance.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_eval("));
+    assert!(generated.contains("harbour_memvar_define_private(\"counter\""));
+    assert!(generated.contains("harbour_memvar_define_public(\"g_total\""));
+    assert!(generated.contains("harbour_macro_read("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn run_command_executes_phase8_acceptance_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/phase8_acceptance.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "5\n5\n10\n10\n5\n15\n");
+}
+
+#[test]
 fn run_command_uses_configured_include_directory_for_preprocess_handoff() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")

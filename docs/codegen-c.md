@@ -183,6 +183,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/macro_memvar.prg` | `&name` / `&(expr)` leem memvar via helper de macro read |
 | `tests/fixtures/parser/eval_codeblock.prg` | `Eval()` com codeblock não-capturante executa |
 | `tests/fixtures/parser/eval_memvar_codeblock.prg` | `Eval()` com codeblock lendo memvar executa |
+| `tests/fixtures/parser/phase8_acceptance.prg` | baseline de aceite da Fase 8 executa fim a fim |
 | `tests/fixtures/parser/phase7_acceptance.prg` | baseline de aceite da Fase 7 executa fim a fim |
 
 ## Estado atual
