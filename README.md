@@ -50,7 +50,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4, 5, 6 e 7 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5, 6, 7 e 8 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -79,9 +79,12 @@ As Fases 0, 1, 2, 3, 4, 5, 6 e 7 estão concluídas:
 - arrays com leitura/escrita indexada, builtins essenciais e comparação observável básica,
 - operadores compostos `+= -= *= /=` executáveis,
 - builtins essenciais de string, math e conversão executáveis no caminho `cli run`,
-- fixture de aceite da Fase 7 curado em `tests/fixtures/parser/phase7_acceptance.prg`.
+- fixture de aceite da Fase 7 curado em `tests/fixtures/parser/phase7_acceptance.prg`,
+- `PRIVATE`, `PUBLIC`, leitura/atribuição dinâmica de memvar e macro read mínima executáveis no caminho `cli run`,
+- `Eval()` com codeblocks não-capturantes e codeblocks lendo memvar executável no caminho `cli run`,
+- fixture de aceite da Fase 8 curado em `tests/fixtures/parser/phase8_acceptance.prg`.
 
-O próximo passo técnico é iniciar a Fase 8 com compatibilidade dinâmica xBase (`PRIVATE`, `PUBLIC`, memvars, codeblocks e avaliação dinâmica).
+O próximo passo técnico é iniciar a Fase 9 com o pré-processador avançado (`#command`, `#translate` e expansão parametrizada).
 
 O baseline fim a fim atual oferece geração de C:
 

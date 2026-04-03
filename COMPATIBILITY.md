@@ -98,6 +98,13 @@ O baseline atual da Fase 8 já cobre o primeiro recorte executável de semântic
 - `tests/fixtures/parser/eval_memvar_codeblock.prg` valida `Eval()` com codeblock lendo memvar,
 - `tests/fixtures/parser/eval_capture_error.prg` fixa o erro explícito de captura lexical ainda não suportada no backend C.
 
+O aceite da Fase 8 está fechado com compatibilidade dinâmica xBase no recorte escolhido:
+
+- `tests/fixtures/parser/phase8_acceptance.prg` compila e executa com `PRIVATE`, `PUBLIC`, memvars dinâmicas entre rotinas, `Eval()` e macro read mínima,
+- `tests/fixtures/compat/phase8_dynamic_runtime.out` ancora o baseline focado de memvars e codeblocks contra `harbour-core/tests/memvar.prg`, `harbour-core/doc/codebloc.txt` e `harbour-core/src/vm/codebloc.c`,
+- captura lexical de `LOCAL` em codeblocks permanece documentada como divergência conhecida e coberta por erro explícito de codegen em `tests/fixtures/parser/eval_capture_error.prg`,
+- a matriz acima passa a registrar as limitações remanescentes de memvars, codeblocks e macro operator sem manter a fase em aberto.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.
