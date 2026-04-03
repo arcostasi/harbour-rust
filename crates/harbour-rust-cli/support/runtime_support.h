@@ -11,8 +11,13 @@ struct harbour_runtime_Value {
         HARBOUR_VALUE_FLOAT = 3,
         HARBOUR_VALUE_STRING = 4,
         HARBOUR_VALUE_ARRAY = 5,
-        HARBOUR_VALUE_ERROR = 6
+        HARBOUR_VALUE_CODEBLOCK = 6,
+        HARBOUR_VALUE_ERROR = 7
     } kind;
+    struct harbour_runtime_Value (*codeblock_function)(
+        const struct harbour_runtime_Value *arguments,
+        size_t argument_count
+    );
     union {
         _Bool logical;
         long long integer;
@@ -24,8 +29,17 @@ struct harbour_runtime_Value {
             size_t length;
             unsigned long long identity;
         } array;
+        struct {
+            unsigned long long identity;
+            const char *repr;
+        } codeblock;
     } as;
 };
+
+typedef struct harbour_runtime_Value (*harbour_runtime_CodeblockFunction)(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 
 _Bool harbour_value_is_true(struct harbour_runtime_Value value);
 struct harbour_runtime_Value harbour_value_equals(
@@ -90,7 +104,29 @@ struct harbour_runtime_Value harbour_value_array_set_path(
     size_t index_count,
     struct harbour_runtime_Value assigned
 );
+void harbour_memvar_push_private_frame(void);
+void harbour_memvar_pop_private_frame(void);
+struct harbour_runtime_Value harbour_memvar_define_private(
+    const char *name,
+    struct harbour_runtime_Value value
+);
+struct harbour_runtime_Value harbour_memvar_define_public(
+    const char *name,
+    struct harbour_runtime_Value value
+);
+struct harbour_runtime_Value harbour_memvar_get(const char *name);
+struct harbour_runtime_Value harbour_memvar_assign(
+    const char *name,
+    struct harbour_runtime_Value value
+);
+struct harbour_runtime_Value harbour_macro_read(
+    struct harbour_runtime_Value name_value
+);
 struct harbour_runtime_Value harbour_builtin_qout(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
+struct harbour_runtime_Value harbour_builtin_eval(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
@@ -243,6 +279,10 @@ struct harbour_runtime_Value harbour_value_from_logical(_Bool logical);
 struct harbour_runtime_Value harbour_value_from_integer(long long integer);
 struct harbour_runtime_Value harbour_value_from_float(double floating);
 struct harbour_runtime_Value harbour_value_from_string_literal(const char *string);
+struct harbour_runtime_Value harbour_value_from_codeblock(
+    harbour_runtime_CodeblockFunction function,
+    const char *repr
+);
 struct harbour_runtime_Value harbour_value_error_literal(const char *error);
 
 #endif

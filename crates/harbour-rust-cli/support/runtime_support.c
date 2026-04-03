@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,10 +7,24 @@
 #include "runtime_support.h"
 
 typedef struct harbour_runtime_Value harbour_runtime_Value;
+typedef struct harbour_memvar_Entry harbour_memvar_Entry;
+typedef struct harbour_private_Frame harbour_private_Frame;
+
+struct harbour_memvar_Entry {
+    char *name;
+    harbour_runtime_Value value;
+    harbour_memvar_Entry *next;
+};
+
+struct harbour_private_Frame {
+    harbour_memvar_Entry *entries;
+    harbour_private_Frame *previous;
+};
 
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value);
 static _Bool harbour_value_resize_array(harbour_runtime_Value *value, size_t length);
 static unsigned long long harbour_allocate_array_identity(void);
+static unsigned long long harbour_allocate_codeblock_identity(void);
 static harbour_runtime_Value harbour_substr_from_bounds(
     const char *text,
     size_t length,
@@ -64,6 +77,18 @@ static _Bool harbour_try_max_min_compare(
     int *comparison
 );
 static _Bool harbour_string_equals_exact_off(const char *left, const char *right);
+static char *harbour_copy_string(const char *text);
+static _Bool harbour_memvar_name_equals(const char *left, const char *right);
+static harbour_memvar_Entry *harbour_find_memvar_entry(
+    harbour_memvar_Entry *entries,
+    const char *name
+);
+static harbour_memvar_Entry *harbour_upsert_memvar_entry(
+    harbour_memvar_Entry **entries,
+    const char *name,
+    harbour_runtime_Value value
+);
+static void harbour_free_memvar_entries(harbour_memvar_Entry *entries);
 static _Bool harbour_array_scan_matches(
     harbour_runtime_Value candidate,
     harbour_runtime_Value search
@@ -72,6 +97,9 @@ static harbour_runtime_Value harbour_unsupported_comparison(void);
 static harbour_runtime_Value harbour_array_comparison_error(const char *message);
 
 static unsigned long long harbour_array_identity_seed = 1;
+static unsigned long long harbour_codeblock_identity_seed = 1;
+static harbour_private_Frame *harbour_private_frame_stack = NULL;
+static harbour_memvar_Entry *harbour_public_memvars = NULL;
 
 harbour_runtime_Value harbour_value_nil(void) {
     harbour_runtime_Value value;
@@ -107,11 +135,145 @@ harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     return value;
 }
 
+harbour_runtime_Value harbour_value_from_codeblock(
+    harbour_runtime_CodeblockFunction function,
+    const char *repr
+) {
+    harbour_runtime_Value value;
+    value.kind = HARBOUR_VALUE_CODEBLOCK;
+    value.codeblock_function = function;
+    value.as.codeblock.identity = harbour_allocate_codeblock_identity();
+    value.as.codeblock.repr = repr;
+    return value;
+}
+
 harbour_runtime_Value harbour_value_error_literal(const char *error) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_ERROR;
     value.as.error = error;
     return value;
+}
+
+void harbour_memvar_push_private_frame(void) {
+    harbour_private_Frame *frame =
+        (harbour_private_Frame *) malloc(sizeof(harbour_private_Frame));
+
+    if (frame == NULL) {
+        return;
+    }
+
+    frame->entries = NULL;
+    frame->previous = harbour_private_frame_stack;
+    harbour_private_frame_stack = frame;
+}
+
+void harbour_memvar_pop_private_frame(void) {
+    harbour_private_Frame *frame = harbour_private_frame_stack;
+
+    if (frame == NULL) {
+        return;
+    }
+
+    harbour_private_frame_stack = frame->previous;
+    harbour_free_memvar_entries(frame->entries);
+    free(frame);
+}
+
+harbour_runtime_Value harbour_memvar_define_private(
+    const char *name,
+    harbour_runtime_Value value
+) {
+    if (harbour_private_frame_stack == NULL) {
+        harbour_memvar_push_private_frame();
+    }
+
+    if (harbour_private_frame_stack == NULL) {
+        return harbour_value_nil();
+    }
+
+    if (
+        harbour_upsert_memvar_entry(&harbour_private_frame_stack->entries, name, value) == NULL
+    ) {
+        return harbour_value_nil();
+    }
+
+    return value;
+}
+
+harbour_runtime_Value harbour_memvar_define_public(
+    const char *name,
+    harbour_runtime_Value value
+) {
+    if (harbour_upsert_memvar_entry(&harbour_public_memvars, name, value) == NULL) {
+        return harbour_value_nil();
+    }
+
+    return value;
+}
+
+harbour_runtime_Value harbour_memvar_get(const char *name) {
+    harbour_private_Frame *frame = harbour_private_frame_stack;
+
+    while (frame != NULL) {
+        harbour_memvar_Entry *entry = harbour_find_memvar_entry(frame->entries, name);
+        if (entry != NULL) {
+            return entry->value;
+        }
+        frame = frame->previous;
+    }
+
+    {
+        harbour_memvar_Entry *entry = harbour_find_memvar_entry(harbour_public_memvars, name);
+        if (entry != NULL) {
+            return entry->value;
+        }
+    }
+
+    return harbour_value_nil();
+}
+
+harbour_runtime_Value harbour_memvar_assign(
+    const char *name,
+    harbour_runtime_Value value
+) {
+    harbour_private_Frame *frame = harbour_private_frame_stack;
+
+    while (frame != NULL) {
+        harbour_memvar_Entry *entry = harbour_find_memvar_entry(frame->entries, name);
+        if (entry != NULL) {
+            entry->value = value;
+            return value;
+        }
+        frame = frame->previous;
+    }
+
+    {
+        harbour_memvar_Entry *entry = harbour_find_memvar_entry(harbour_public_memvars, name);
+        if (entry != NULL) {
+            entry->value = value;
+            return value;
+        }
+    }
+
+    if (harbour_private_frame_stack != NULL) {
+        if (
+            harbour_upsert_memvar_entry(&harbour_private_frame_stack->entries, name, value) ==
+            NULL
+        ) {
+            return harbour_value_nil();
+        }
+        return value;
+    }
+
+    return harbour_memvar_define_public(name, value);
+}
+
+harbour_runtime_Value harbour_macro_read(harbour_runtime_Value name_value) {
+    if (name_value.kind != HARBOUR_VALUE_STRING) {
+        return harbour_value_nil();
+    }
+
+    return harbour_memvar_get(name_value.as.string);
 }
 
 harbour_runtime_Value harbour_value_from_array_items(
@@ -381,6 +543,12 @@ harbour_runtime_Value harbour_value_exact_equals(
         return harbour_value_from_logical(strcmp(left.as.string, right.as.string) == 0);
     }
 
+    if (left.kind == HARBOUR_VALUE_CODEBLOCK && right.kind == HARBOUR_VALUE_CODEBLOCK) {
+        return harbour_value_from_logical(
+            left.as.codeblock.identity == right.as.codeblock.identity
+        );
+    }
+
     if (left.kind == HARBOUR_VALUE_ARRAY && right.kind == HARBOUR_VALUE_ARRAY) {
         return harbour_value_from_logical(left.as.array.identity == right.as.array.identity);
     }
@@ -423,6 +591,8 @@ _Bool harbour_value_is_true(harbour_runtime_Value value) {
         return value.as.string != NULL && value.as.string[0] != '\0';
     case HARBOUR_VALUE_ARRAY:
         return value.as.array.length != 0;
+    case HARBOUR_VALUE_CODEBLOCK:
+        return 1;
     default:
         return 0;
     }
@@ -561,6 +731,9 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
     case HARBOUR_VALUE_STRING:
         fputs(value->as.string, stdout);
         break;
+    case HARBOUR_VALUE_CODEBLOCK:
+        fputs(value->as.codeblock.repr, stdout);
+        break;
     case HARBOUR_VALUE_ERROR:
         fputs(value->as.error, stdout);
         break;
@@ -592,6 +765,24 @@ harbour_runtime_Value harbour_builtin_qout(
     fflush(stdout);
 
     return harbour_value_nil();
+}
+
+harbour_runtime_Value harbour_builtin_eval(
+    const harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_error_literal("BASE 1004 Argument error (EVAL)");
+    }
+
+    if (
+        arguments[0].kind != HARBOUR_VALUE_CODEBLOCK ||
+        arguments[0].codeblock_function == NULL
+    ) {
+        return harbour_value_error_literal("BASE 1004 Argument error (EVAL)");
+    }
+
+    return arguments[0].codeblock_function(arguments + 1, argument_count - 1);
 }
 
 harbour_runtime_Value harbour_builtin_abs(
@@ -1864,6 +2055,8 @@ struct harbour_runtime_Value harbour_builtin_valtype(
             return harbour_value_from_string_literal("C");
         case HARBOUR_VALUE_ARRAY:
             return harbour_value_from_string_literal("A");
+        case HARBOUR_VALUE_CODEBLOCK:
+            return harbour_value_from_string_literal("B");
         case HARBOUR_VALUE_ERROR:
             return harbour_value_from_string_literal("U");
     }
@@ -1942,6 +2135,8 @@ struct harbour_runtime_Value harbour_builtin_empty(
             return harbour_value_from_logical(harbour_string_is_empty(value.as.string));
         case HARBOUR_VALUE_ARRAY:
             return harbour_value_from_logical(value.as.array.length == 0);
+        case HARBOUR_VALUE_CODEBLOCK:
+            return harbour_value_from_logical(0);
         case HARBOUR_VALUE_ERROR:
             return harbour_value_from_logical(1);
     }
@@ -2079,6 +2274,108 @@ static _Bool harbour_type_string_is_array_literal(const char *text, size_t lengt
 
 static unsigned long long harbour_allocate_array_identity(void) {
     return harbour_array_identity_seed++;
+}
+
+static unsigned long long harbour_allocate_codeblock_identity(void) {
+    return harbour_codeblock_identity_seed++;
+}
+
+static char *harbour_copy_string(const char *text) {
+    size_t length;
+    char *copy;
+
+    if (text == NULL) {
+        return NULL;
+    }
+
+    length = strlen(text);
+    copy = (char *) malloc(length + 1);
+    if (copy == NULL) {
+        return NULL;
+    }
+
+    memcpy(copy, text, length + 1);
+    return copy;
+}
+
+static _Bool harbour_memvar_name_equals(const char *left, const char *right) {
+    if (left == NULL || right == NULL) {
+        return 0;
+    }
+
+    while (*left != '\0' && *right != '\0') {
+        if (
+            toupper((unsigned char) *left) != toupper((unsigned char) *right)
+        ) {
+            return 0;
+        }
+        ++left;
+        ++right;
+    }
+
+    return *left == '\0' && *right == '\0';
+}
+
+static harbour_memvar_Entry *harbour_find_memvar_entry(
+    harbour_memvar_Entry *entries,
+    const char *name
+) {
+    harbour_memvar_Entry *entry = entries;
+
+    while (entry != NULL) {
+        if (harbour_memvar_name_equals(entry->name, name)) {
+            return entry;
+        }
+        entry = entry->next;
+    }
+
+    return NULL;
+}
+
+static harbour_memvar_Entry *harbour_upsert_memvar_entry(
+    harbour_memvar_Entry **entries,
+    const char *name,
+    harbour_runtime_Value value
+) {
+    harbour_memvar_Entry *existing;
+    harbour_memvar_Entry *entry;
+
+    if (entries == NULL || name == NULL) {
+        return NULL;
+    }
+
+    existing = harbour_find_memvar_entry(*entries, name);
+    if (existing != NULL) {
+        existing->value = value;
+        return existing;
+    }
+
+    entry = (harbour_memvar_Entry *) malloc(sizeof(harbour_memvar_Entry));
+    if (entry == NULL) {
+        return NULL;
+    }
+
+    entry->name = harbour_copy_string(name);
+    if (entry->name == NULL) {
+        free(entry);
+        return NULL;
+    }
+
+    entry->value = value;
+    entry->next = *entries;
+    *entries = entry;
+    return entry;
+}
+
+static void harbour_free_memvar_entries(harbour_memvar_Entry *entries) {
+    harbour_memvar_Entry *entry = entries;
+
+    while (entry != NULL) {
+        harbour_memvar_Entry *next = entry->next;
+        free(entry->name);
+        free(entry);
+        entry = next;
+    }
 }
 
 static _Bool harbour_try_numeric_pair(

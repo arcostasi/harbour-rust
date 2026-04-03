@@ -464,12 +464,9 @@ fn lower_static_statement(
             .iter()
             .map(|binding| StaticBinding {
                 name: lower_symbol(&binding.name),
-                initializer: binding
-                    .initializer
-                    .as_ref()
-                    .map(|expression| {
-                        lower_expression(expression, module_static_names, &[], false, errors)
-                    }),
+                initializer: binding.initializer.as_ref().map(|expression| {
+                    lower_expression(expression, module_static_names, &[], false, errors)
+                }),
                 span: binding.span,
             })
             .collect(),
@@ -1092,10 +1089,9 @@ fn expression_uses_dynamic_features(expression: &hir::Expression) -> bool {
             expression_uses_dynamic_features(&expression.value)
                 || match &expression.target {
                     hir::AssignTarget::Symbol(_) => false,
-                    hir::AssignTarget::Index(target) => target
-                        .indices
-                        .iter()
-                        .any(expression_uses_dynamic_features),
+                    hir::AssignTarget::Index(target) => {
+                        target.indices.iter().any(expression_uses_dynamic_features)
+                    }
                 }
         }
         hir::Expression::Binary(expression) => {

@@ -626,10 +626,7 @@ fn is_runtime_builtin(name: &str) -> bool {
 }
 
 fn program_uses_dynamic_memvars(program: &hir::Program) -> bool {
-    program
-        .routines
-        .iter()
-        .any(routine_uses_dynamic_features)
+    program.routines.iter().any(routine_uses_dynamic_features)
 }
 
 fn routine_uses_dynamic_features(routine: &hir::Routine) -> bool {

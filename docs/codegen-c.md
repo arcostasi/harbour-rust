@@ -178,6 +178,9 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/array_builtins.prg` | `ADel()`, `AIns()` e `AScan()` executam via helpers dedicados |
 | `tests/fixtures/parser/static.prg` | gera C com storage estático persistente por rotina |
 | `tests/fixtures/parser/static_module.prg` | gera C com storage estático compartilhado entre rotinas |
+| `tests/fixtures/parser/private_dynamic.prg` | `PRIVATE` com frame dinâmico por rotina executa |
+| `tests/fixtures/parser/public_dynamic.prg` | `PUBLIC` compartilhado executa |
+| `tests/fixtures/parser/macro_memvar.prg` | `&name` / `&(expr)` leem memvar via helper de macro read |
 | `tests/fixtures/parser/phase7_acceptance.prg` | baseline de aceite da Fase 7 executa fim a fim |
 
 ## Estado atual
@@ -211,6 +214,7 @@ Fase 5 + Fase 7 fechada no baseline de aceite, com superfícies ainda parciais o
 - `ValType()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
 - `Type()` no recorte textual atual (`NIL`, `.T./.F.`, número simples, string quoted, literal `{...}`, nome não resolvido) via dispatch de builtin — parcial
 - `Empty()` para `NIL`, `Logical`, `Integer/Float`, `String` e `Array` via dispatch de builtin — parcial
+- `PRIVATE`, `PUBLIC`, leitura/atribuição de memvar e macro read mínima via helpers dedicados — parcial
 - `ADel()`, `AIns()` e `AScan()` via dispatch de builtin — parcial
 - LOCAL com inicializador — completo
 - Literais de array — completo
@@ -241,5 +245,26 @@ Fase 5 + Fase 7 fechada no baseline de aceite, com superfícies ainda parciais o
 - `ValType()` para `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e tipos ainda não materializados no runtime — pendente
 - `Type()` com macro evaluation completa, resolução real de nomes, datas, objetos, codeblocks, memos e demais tipos do upstream — pendente
 - `Empty()` para datas, codeblocks, pointers, hashes, objetos e `Chr(0)` embutido no runtime host C — pendente
+- `Eval()` e literais de codeblock no caminho executável — pendente
+- captura lexical de locais em codeblocks — pendente
+- macro operator além de read mínimo por nome string — pendente
 - STATIC com storage persistente no C gerado para leitura no mesmo routine — completo
 - STATIC de módulo com storage compartilhado entre rotinas do mesmo arquivo — completo
+
+## Slice inicial da Fase 8
+
+O backend C agora também gera helpers explícitos para a primeira semântica dinâmica de xBase:
+
+- toda rotina empilha e desempilha um frame privado de memvars no runtime host C,
+- `PRIVATE` baixa para `harbour_memvar_define_private(...)`,
+- `PUBLIC` baixa para `harbour_memvar_define_public(...)`,
+- leituras dinâmicas baixam para `harbour_memvar_get(...)`,
+- atribuições dinâmicas baixam para `harbour_memvar_assign(...)`,
+- `&name` e `&(expr)` baixam para `harbour_macro_read(...)`.
+
+O recorte continua propositalmente pequeno:
+
+- não há ainda `Eval()` no caminho executável,
+- literais de codeblock ainda geram erro explícito de codegen,
+- macro operator continua restrito a read mínima baseada em nome string,
+- não há macro callable nem macro assignment.

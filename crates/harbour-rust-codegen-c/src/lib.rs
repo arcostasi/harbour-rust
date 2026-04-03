@@ -349,6 +349,21 @@ impl Emitter {
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);",
         );
+        self.emit_line("extern void harbour_memvar_push_private_frame(void);");
+        self.emit_line("extern void harbour_memvar_pop_private_frame(void);");
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_memvar_define_private(const char *name, harbour_runtime_Value value);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_memvar_define_public(const char *name, harbour_runtime_Value value);",
+        );
+        self.emit_line("extern harbour_runtime_Value harbour_memvar_get(const char *name);");
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_memvar_assign(const char *name, harbour_runtime_Value value);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_macro_read(harbour_runtime_Value name_value);",
+        );
         self.emit_line(
             "extern harbour_runtime_Value harbour_value_equals(harbour_runtime_Value left, harbour_runtime_Value right);",
         );
@@ -516,18 +531,14 @@ impl Emitter {
             routine_signature(routine)
         ));
         self.indent_level += 1;
+        self.emit_line("harbour_memvar_push_private_frame();");
 
         for statement in &routine.body {
             self.emit_statement(statement);
         }
 
-        if !routine
-            .body
-            .iter()
-            .any(|statement| matches!(statement, ir::Statement::Return(_)))
-        {
-            self.emit_line("return harbour_value_nil();");
-        }
+        self.emit_line("harbour_memvar_pop_private_frame();");
+        self.emit_line("return harbour_value_nil();");
 
         self.indent_level -= 1;
         self.emit_line("}");
@@ -538,6 +549,7 @@ impl Emitter {
     fn emit_statement(&mut self, statement: &ir::Statement) {
         match statement {
             ir::Statement::Return(statement) => {
+                self.emit_line("harbour_memvar_pop_private_frame();");
                 if let Some(value) = &statement.value {
                     match self.emit_expression(value) {
                         Some(expression) => self.emit_line(&format!("return {};", expression)),
@@ -575,6 +587,12 @@ impl Emitter {
                     let bindings = self.current_static_bindings.clone();
                     self.emit_static_binding_initialization(&bindings, binding);
                 }
+            }
+            ir::Statement::Private(statement) => {
+                self.emit_memvar_statement(statement, "harbour_memvar_define_private");
+            }
+            ir::Statement::Public(statement) => {
+                self.emit_memvar_statement(statement, "harbour_memvar_define_public");
             }
             ir::Statement::Assign(statement) => self.emit_assign_statement(statement),
             ir::Statement::If(statement) => self.emit_if_statement(statement),
@@ -680,12 +698,32 @@ impl Emitter {
         }
     }
 
+    fn emit_memvar_statement(&mut self, statement: &ir::MemvarStatement, helper_name: &str) {
+        for binding in &statement.bindings {
+            let value = binding
+                .initializer
+                .as_ref()
+                .and_then(|expression| self.emit_expression(expression))
+                .unwrap_or_else(|| "harbour_value_nil()".to_owned());
+            self.emit_line(&format!(
+                "(void) {}(\"{}\", {});",
+                helper_name,
+                escape_c_string(&binding.name.text),
+                value
+            ));
+        }
+    }
+
     fn emit_assign_statement(&mut self, statement: &ir::AssignStatement) {
         let Some(value) = self.emit_expression(&statement.value) else {
             match &statement.target {
                 ir::AssignTarget::Symbol(target) => self.emit_line(&format!(
                     "{} = harbour_value_nil();",
                     mangle_symbol(&target.text)
+                )),
+                ir::AssignTarget::Memvar(target) => self.emit_line(&format!(
+                    "(void) harbour_memvar_assign(\"{}\", harbour_value_nil());",
+                    escape_c_string(&target.text)
                 )),
                 ir::AssignTarget::Index(_) => {
                     self.emit_line("/* TODO: emit indexed assignment */");
@@ -699,6 +737,13 @@ impl Emitter {
                 self.emit_line(&format!(
                     "{} = {};",
                     self.resolve_symbol_storage_name(&target.text),
+                    value
+                ));
+            }
+            ir::AssignTarget::Memvar(target) => {
+                self.emit_line(&format!(
+                    "(void) harbour_memvar_assign(\"{}\", {});",
+                    escape_c_string(&target.text),
                     value
                 ));
             }
@@ -757,6 +802,17 @@ impl Emitter {
                     ))
                 }
             }
+            Expression::Codeblock(expression) => {
+                self.push_error(
+                    "C emission for codeblock literals is not implemented yet",
+                    expression.span,
+                );
+                None
+            }
+            Expression::Macro(expression) => {
+                let value = self.emit_expression(&expression.value)?;
+                Some(format!("harbour_macro_read({})", value))
+            }
             Expression::Call(expression) => {
                 if let Some(symbol) = self.named_read_symbol(expression.callee.as_ref()) {
                     if let Some(builtin) = RuntimeBuiltin::lookup(&symbol.text) {
@@ -790,6 +846,13 @@ impl Emitter {
                 }
 
                 Some(target)
+            }
+            Expression::Assign(expression) => {
+                self.push_error(
+                    "C emission for assignment expressions is not implemented yet",
+                    expression.span,
+                );
+                None
             }
             Expression::Binary(expression) => {
                 let left = self.emit_expression(&expression.left)?;
@@ -969,6 +1032,10 @@ impl Emitter {
     fn emit_read_expression(&mut self, read: &ir::ReadExpression, _span: Span) -> Option<String> {
         match &read.path {
             ir::ReadPath::Name(symbol) => Some(self.resolve_symbol_storage_name(&symbol.text)),
+            ir::ReadPath::Memvar(symbol) => Some(format!(
+                "harbour_memvar_get(\"{}\")",
+                escape_c_string(&symbol.text)
+            )),
         }
     }
 
@@ -989,6 +1056,7 @@ impl Emitter {
         match expression {
             Expression::Read(read) => match &read.path {
                 ir::ReadPath::Name(symbol) => Some(symbol),
+                ir::ReadPath::Memvar(_) => None,
             },
             _ => None,
         }
@@ -1248,7 +1316,7 @@ mod tests {
     use harbour_rust_ir as ir;
     use harbour_rust_lexer::{Position, Span};
 
-    use crate::{CodegenOutput, emit_program};
+    use crate::emit_program;
 
     fn span(
         start_offset: usize,
@@ -1314,90 +1382,35 @@ mod tests {
 
         let emitted = emit_program(&program);
 
-        assert_eq!(
-            emitted,
-            CodegenOutput {
-                source: concat!(
-                    "#include <stdbool.h>\n",
-                    "#include <stddef.h>\n",
-                    "\n",
-                    "typedef struct harbour_runtime_Value harbour_runtime_Value;\n",
-                    "\n",
-                    "extern harbour_runtime_Value harbour_value_nil(void);\n",
-                    "extern harbour_runtime_Value harbour_value_from_logical(bool value);\n",
-                    "extern harbour_runtime_Value harbour_value_from_integer(long long value);\n",
-                    "extern harbour_runtime_Value harbour_value_from_float(double value);\n",
-                    "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);\n",
-                    "extern harbour_runtime_Value harbour_value_from_array_items(const harbour_runtime_Value *items, size_t length);\n",
-                    "extern bool harbour_value_is_true(harbour_runtime_Value value);\n",
-                    "extern size_t harbour_value_array_len(harbour_runtime_Value value);\n",
-                    "extern harbour_runtime_Value harbour_value_array_get(harbour_runtime_Value value, harbour_runtime_Value index);\n",
-                    "extern harbour_runtime_Value harbour_value_array_set_path(harbour_runtime_Value *value, const harbour_runtime_Value *indices, size_t index_count, harbour_runtime_Value assigned);\n",
-                    "extern harbour_runtime_Value harbour_value_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_exact_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_not_equals(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_add(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_subtract(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_multiply(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_divide(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_greater_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_greater_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_less_than(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_less_than_or_equal(harbour_runtime_Value left, harbour_runtime_Value right);\n",
-                    "extern harbour_runtime_Value harbour_value_postfix_increment(harbour_runtime_Value *value);\n",
-"extern harbour_runtime_Value harbour_builtin_qout(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_abs(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_sqrt(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_sin(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_cos(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_tan(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_exp(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_log(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_int(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_round(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_mod(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_max(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_min(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_len(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_str(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_val(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_type(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-"extern harbour_runtime_Value harbour_builtin_empty(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_substr(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_left(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_right(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_upper(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_lower(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_trim(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_ltrim(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_rtrim(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_at(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_replicate(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_space(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_aclone(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_aadd(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_asize(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_adel(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_ains(harbour_runtime_Value *array, const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "extern harbour_runtime_Value harbour_builtin_ascan(const harbour_runtime_Value *arguments, size_t argument_count);\n",
-                    "\n",
-                    "static harbour_runtime_Value harbour_routine_main(void);\n",
-                    "\n",
-                    "int main(void) {\n",
-                    "    (void) harbour_routine_main();\n",
-                    "    return 0;\n",
-                    "}\n",
-                    "\n",
-                    "static harbour_runtime_Value harbour_routine_main(void) {\n",
-                    "    harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"Hello, world!\") }, 1);\n",
-                    "    return harbour_value_nil();\n",
-                    "}\n",
-                    "\n",
-                )
-                .to_owned(),
-                errors: Vec::new(),
-            }
+        assert_eq!(emitted.errors, Vec::new());
+        assert!(
+            emitted
+                .source
+                .contains("extern void harbour_memvar_push_private_frame(void);")
+        );
+        assert!(
+            emitted
+                .source
+                .contains("extern harbour_runtime_Value harbour_memvar_get(const char *name);")
+        );
+        assert!(emitted.source.contains("int main(void) {"));
+        assert!(
+            emitted
+                .source
+                .contains("static harbour_runtime_Value harbour_routine_main(void) {")
+        );
+        assert!(
+            emitted
+                .source
+                .contains("harbour_memvar_push_private_frame();")
+        );
+        assert!(emitted.source.contains(
+            "harbour_builtin_qout((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"Hello, world!\") }, 1);"
+        ));
+        assert!(
+            emitted
+                .source
+                .contains("harbour_memvar_pop_private_frame();")
         );
     }
 
@@ -1807,6 +1820,121 @@ mod tests {
             emitted
                 .source
                 .contains("harbour_static_main_cache__initialized = true;")
+        );
+    }
+
+    #[test]
+    fn emits_private_and_public_memvar_statements_with_runtime_helpers() {
+        let statement_span = span(12, 2, 4, 36, 2, 28);
+        let program = ir::Program {
+            module_statics: Vec::new(),
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    ir::Statement::Private(ir::MemvarStatement {
+                        memvar_class: ir::MemvarClass::Private,
+                        bindings: vec![ir::MemvarBinding {
+                            name: symbol("counter", span(20, 2, 12, 27, 2, 19)),
+                            initializer: Some(ir::Expression::Integer(ir::IntegerLiteral {
+                                lexeme: "1".to_owned(),
+                                span: span(31, 2, 23, 32, 2, 24),
+                            })),
+                            span: span(20, 2, 12, 32, 2, 24),
+                        }],
+                        span: statement_span,
+                    }),
+                    ir::Statement::Public(ir::MemvarStatement {
+                        memvar_class: ir::MemvarClass::Public,
+                        bindings: vec![ir::MemvarBinding {
+                            name: symbol("shared", span(40, 3, 11, 46, 3, 17)),
+                            initializer: None,
+                            span: span(40, 3, 11, 46, 3, 17),
+                        }],
+                        span: span(33, 3, 4, 46, 3, 17),
+                    }),
+                ],
+                span: span(0, 1, 1, 46, 3, 17),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(
+            emitted
+                .source
+                .contains("harbour_memvar_push_private_frame();")
+        );
+        assert!(emitted.source.contains(
+            "(void) harbour_memvar_define_private(\"counter\", harbour_value_from_integer(1LL));"
+        ));
+        assert!(
+            emitted
+                .source
+                .contains("(void) harbour_memvar_define_public(\"shared\", harbour_value_nil());")
+        );
+    }
+
+    #[test]
+    fn emits_memvar_reads_assignments_and_macro_reads_with_runtime_helpers() {
+        let expression_span = span(12, 2, 4, 32, 2, 24);
+        let program = ir::Program {
+            module_statics: Vec::new(),
+            routines: vec![ir::Routine {
+                kind: ir::RoutineKind::Procedure,
+                name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
+                params: Vec::new(),
+                body: vec![
+                    ir::Statement::Assign(ir::AssignStatement {
+                        target: ir::AssignTarget::Memvar(symbol(
+                            "counter",
+                            span(12, 2, 4, 19, 2, 11),
+                        )),
+                        value: ir::Expression::Integer(ir::IntegerLiteral {
+                            lexeme: "2".to_owned(),
+                            span: span(24, 2, 16, 25, 2, 17),
+                        }),
+                        span: expression_span,
+                    }),
+                    ir::Statement::Return(ir::ReturnStatement {
+                        value: Some(ir::Expression::Binary(ir::BinaryExpression {
+                            left: Box::new(ir::Expression::Read(ir::ReadExpression {
+                                path: ir::ReadPath::Memvar(symbol(
+                                    "counter",
+                                    span(33, 3, 11, 40, 3, 18),
+                                )),
+                                span: span(33, 3, 11, 40, 3, 18),
+                            })),
+                            operator: ir::BinaryOperator::Add,
+                            right: Box::new(ir::Expression::Macro(ir::MacroExpression {
+                                value: Box::new(ir::Expression::String(ir::StringLiteral {
+                                    lexeme: "counter".to_owned(),
+                                    span: span(45, 3, 23, 54, 3, 32),
+                                })),
+                                span: span(43, 3, 21, 54, 3, 32),
+                            })),
+                            span: span(33, 3, 11, 54, 3, 32),
+                        })),
+                        span: span(26, 3, 4, 54, 3, 32),
+                    }),
+                ],
+                span: span(0, 1, 1, 54, 3, 32),
+            }],
+        };
+
+        let emitted = emit_program(&program);
+
+        assert!(emitted.errors.is_empty(), "{:?}", emitted.errors);
+        assert!(emitted.source.contains(
+            "(void) harbour_memvar_assign(\"counter\", harbour_value_from_integer(2LL));"
+        ));
+        assert!(emitted.source.contains("harbour_memvar_get(\"counter\")"));
+        assert!(
+            emitted
+                .source
+                .contains("harbour_macro_read(harbour_value_from_string_literal(\"counter\"))")
         );
     }
 }

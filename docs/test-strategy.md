@@ -160,6 +160,9 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/static.prg` -> sema sem erro com bindings `STATIC`
 - `tests/fixtures/parser/static_counter.prg` -> `harbour-rust-cli build/run` com persistência same-routine de `STATIC`
 - `tests/fixtures/parser/phase7_acceptance.prg` -> `harbour-rust-cli build/run` com IF, FOR, STATIC, arrays e builtins essenciais no baseline de aceite da Fase 7
+- `tests/fixtures/parser/private_dynamic.prg` -> `harbour-rust-cli build/run` com `PRIVATE` dinâmica entre rotinas
+- `tests/fixtures/parser/public_dynamic.prg` -> `harbour-rust-cli run` com `PUBLIC` compartilhado
+- `tests/fixtures/parser/macro_memvar.prg` -> `harbour-rust-cli build/run` com `&name` e `&(expr)` como macro read mínima de memvar
 - `tests/fixtures/parser/arrays.prg` -> lowering IR explícito para `Array(elements)` sem erro de lowering
 - `tests/fixtures/parser/indexing.prg` -> lowering IR explícito para `Index(target, indices)` sem erro de lowering
 - `tests/fixtures/parser/arrays.prg` -> codegen C com `harbour_value_from_array_items(...)`
