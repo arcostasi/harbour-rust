@@ -1,10 +1,11 @@
 use harbour_rust_ast::{
     ArrayLiteral, AssignmentExpression, BinaryExpression, BinaryOperator, CallExpression,
-    ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement, FloatLiteral,
-    ForStatement, Identifier, IfStatement, IndexExpression, IntegerLiteral, Item, LocalBinding,
-    LocalStatement, LogicalLiteral, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement,
-    Program, ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement,
-    StorageClass, StringLiteral, UnaryExpression, UnaryOperator,
+    CodeblockLiteral, ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement,
+    FloatLiteral, ForStatement, Identifier, IfStatement, IndexExpression, IntegerLiteral, Item,
+    LocalBinding, LocalStatement, LogicalLiteral, MacroExpression, MemvarBinding, MemvarClass,
+    MemvarStatement, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement, Program,
+    ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass,
+    StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 use std::fmt;
@@ -179,6 +180,14 @@ impl<'src> Parser<'src> {
             return self.parse_static_statement();
         }
 
+        if self.match_keyword(Keyword::Private) {
+            return self.parse_memvar_statement(MemvarClass::Private);
+        }
+
+        if self.match_keyword(Keyword::Public) {
+            return self.parse_memvar_statement(MemvarClass::Public);
+        }
+
         if self.match_keyword(Keyword::If) {
             return self.parse_if_statement();
         }
@@ -303,6 +312,24 @@ impl<'src> Parser<'src> {
             else_branch,
             span: Span { start, end },
         })))
+    }
+
+    fn parse_memvar_statement(&mut self, memvar_class: MemvarClass) -> Option<Statement> {
+        let start = self.previous().span.start;
+        let bindings = self.parse_memvar_bindings()?;
+        let end = bindings
+            .last()
+            .map_or(self.previous().span.end, |binding| binding.span.end);
+        let statement = MemvarStatement {
+            memvar_class,
+            bindings,
+            span: Span { start, end },
+        };
+
+        Some(match memvar_class {
+            MemvarClass::Private => Statement::Private(statement),
+            MemvarClass::Public => Statement::Public(statement),
+        })
     }
 
     fn parse_do_while_statement(&mut self) -> Option<Statement> {
@@ -631,6 +658,10 @@ impl<'src> Parser<'src> {
             }));
         }
 
+        if self.match_token(TokenKind::Ampersand) {
+            return self.parse_macro_expression();
+        }
+
         self.parse_postfix()
     }
 
@@ -770,6 +801,9 @@ impl<'src> Parser<'src> {
                     span: token.span,
                 }))
             }
+            TokenKind::LeftBrace if self.peek_kind(1) == Some(TokenKind::Pipe) => {
+                self.parse_codeblock_literal()
+            }
             TokenKind::LeftBrace => self.parse_array_literal(),
             TokenKind::LeftParen => {
                 self.bump();
@@ -805,6 +839,78 @@ impl<'src> Parser<'src> {
                 start,
                 end: right_brace.span.end,
             },
+        }))
+    }
+
+    fn parse_codeblock_literal(&mut self) -> Option<Expression> {
+        let start = self.current().span.start;
+        self.bump();
+        self.expect(
+            TokenKind::Pipe,
+            "expected `|` after `{` in codeblock literal",
+        )?;
+
+        let mut params = Vec::new();
+        if !self.match_token(TokenKind::Pipe) {
+            loop {
+                params.push(self.parse_identifier()?);
+                if !self.match_token(TokenKind::Comma) {
+                    break;
+                }
+            }
+            self.expect(TokenKind::Pipe, "expected `|` after codeblock parameters")?;
+        }
+
+        let mut body = Vec::new();
+        if !self.at(TokenKind::RightBrace) {
+            loop {
+                body.push(self.parse_expression()?);
+                if !self.match_token(TokenKind::Comma) {
+                    break;
+                }
+            }
+        }
+
+        let right_brace = self.expect(
+            TokenKind::RightBrace,
+            "expected `}` after codeblock literal",
+        )?;
+        Some(Expression::Codeblock(CodeblockLiteral {
+            params,
+            body,
+            span: Span {
+                start,
+                end: right_brace.span.end,
+            },
+        }))
+    }
+
+    fn parse_macro_expression(&mut self) -> Option<Expression> {
+        let start = self.previous().span.start;
+        let value = if self.match_token(TokenKind::LeftParen) {
+            let expression = self.parse_expression()?;
+            self.expect(TokenKind::RightParen, "expected `)` after macro expression")?;
+            expression
+        } else {
+            match self.current().kind {
+                TokenKind::Identifier
+                | TokenKind::String
+                | TokenKind::LeftBrace
+                | TokenKind::LeftParen => self.parse_primary()?,
+                _ => {
+                    self.error_current("expected identifier or parenthesized expression after `&`");
+                    return None;
+                }
+            }
+        };
+
+        let span = Span {
+            start,
+            end: value.span().end,
+        };
+        Some(Expression::Macro(MacroExpression {
+            value: Box::new(value),
+            span,
         }))
     }
 
@@ -871,6 +977,37 @@ impl<'src> Parser<'src> {
             text: token.text(self.source).to_owned(),
             span: token.span,
         })
+    }
+
+    fn parse_memvar_bindings(&mut self) -> Option<Vec<MemvarBinding>> {
+        let mut bindings = Vec::new();
+
+        loop {
+            let name = self.parse_identifier()?;
+            let binding_start = name.span.start;
+            let initializer = if self.match_token(TokenKind::InAssign) {
+                Some(self.parse_expression()?)
+            } else {
+                None
+            };
+            let end = initializer
+                .as_ref()
+                .map_or(name.span.end, |expression| expression.span().end);
+            bindings.push(MemvarBinding {
+                name,
+                initializer,
+                span: Span {
+                    start: binding_start,
+                    end,
+                },
+            });
+
+            if !self.match_token(TokenKind::Comma) {
+                break;
+            }
+        }
+
+        Some(bindings)
     }
 
     fn expect(&mut self, kind: TokenKind, message: &str) -> Option<Token> {
@@ -1072,6 +1209,12 @@ impl<'src> Parser<'src> {
         &self.tokens[self.cursor]
     }
 
+    fn peek_kind(&self, offset: usize) -> Option<TokenKind> {
+        self.tokens
+            .get(self.cursor + offset)
+            .map(|token| token.kind)
+    }
+
     fn previous(&self) -> &Token {
         let index = self.cursor.saturating_sub(1);
         &self.tokens[index]
@@ -1087,7 +1230,7 @@ enum Terminator {
 #[cfg(test)]
 mod tests {
     use harbour_rust_ast::{
-        BinaryOperator, Expression, Item, RoutineKind, Statement, StorageClass,
+        BinaryOperator, Expression, Item, MemvarClass, RoutineKind, Statement, StorageClass,
     };
 
     use crate::parse;
@@ -1309,6 +1452,100 @@ FUNCTION Pick(row, col)
             Expression::Identifier(ref identifier) if identifier.text == "row"
         ));
         assert!(matches!(inner_index.target.as_ref(), Expression::Call(_)));
+    }
+
+    #[test]
+    fn parses_private_and_public_memvar_statements() {
+        let source = r#"
+PROCEDURE Main()
+   PRIVATE counter := 1, name := "inner"
+   PUBLIC g_count := 10, g_label
+   RETURN
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
+        match &routine.body[0] {
+            Statement::Private(statement) => {
+                assert_eq!(statement.memvar_class, MemvarClass::Private);
+                assert_eq!(statement.bindings.len(), 2);
+            }
+            statement => panic!("expected private statement, found {statement:?}"),
+        }
+        match &routine.body[1] {
+            Statement::Public(statement) => {
+                assert_eq!(statement.memvar_class, MemvarClass::Public);
+                assert_eq!(statement.bindings.len(), 2);
+            }
+            statement => panic!("expected public statement, found {statement:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_codeblock_literals_with_params_and_nested_blocks() {
+        let source = r#"
+FUNCTION Build()
+   RETURN {|x, y| x + y, {|| x} }
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
+        let Statement::Return(statement) = &routine.body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Codeblock(codeblock)) = &statement.value else {
+            panic!("expected codeblock literal");
+        };
+        assert_eq!(codeblock.params.len(), 2);
+        assert_eq!(codeblock.body.len(), 2);
+        assert!(matches!(
+            codeblock.body[0],
+            Expression::Binary(ref binary) if binary.operator == BinaryOperator::Add
+        ));
+        assert!(matches!(codeblock.body[1], Expression::Codeblock(_)));
+    }
+
+    #[test]
+    fn parses_macro_read_expressions() {
+        let source = r#"
+FUNCTION Lookup(cName, cExpr)
+   RETURN &cName + &( cExpr )
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
+        let Statement::Return(statement) = &routine.body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Binary(binary)) = &statement.value else {
+            panic!("expected binary expression");
+        };
+        assert!(matches!(binary.left.as_ref(), Expression::Macro(_)));
+        assert!(matches!(binary.right.as_ref(), Expression::Macro(_)));
+    }
+
+    #[test]
+    fn reports_missing_pipe_after_codeblock_parameters() {
+        let source = r#"
+FUNCTION Build()
+   RETURN {|x, y x + y }
+"#;
+        let parsed = parse(source);
+
+        assert_eq!(parsed.errors.len(), 2);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected `|` after codeblock parameters; found `x` at line 3, column 18"
+        );
     }
 
     #[test]

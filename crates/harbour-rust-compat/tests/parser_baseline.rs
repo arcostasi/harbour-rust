@@ -70,3 +70,27 @@ fn indexing_fixture_matches_snapshot() {
         "tests/fixtures/parser/indexing.ast",
     );
 }
+
+#[test]
+fn memvars_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/memvars.prg",
+        "tests/fixtures/parser/memvars.ast",
+    );
+}
+
+#[test]
+fn codeblock_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/codeblock.prg",
+        "tests/fixtures/parser/codeblock.ast",
+    );
+}
+
+#[test]
+fn macro_read_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/macro_read.prg",
+        "tests/fixtures/parser/macro_read.ast",
+    );
+}

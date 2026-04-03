@@ -59,11 +59,11 @@ Status:
 | `#include` | Clipper | partial | 6 | `ppcore.c` | integração + cli build/run | resolução inicial relativa ao arquivo atual, fallback por search paths configuráveis, suporte inicial a `<...>` e handoff `pp -> parser` no CLI; spans finos e política completa de busca ainda pendentes |
 | `#command` | Clipper | planned | 9 | `tests/hbpp/_pp_test.prg` | compat | implementação incremental |
 | `#translate` | Clipper | planned | 9 | `tests/hbpp/_pp_test.prg` | compat | |
-| `PRIVATE` | xBase | planned | 8 | `src/vm/memvars.c`, `tests/memvar.prg` | compat | escopo dinâmico |
-| `PUBLIC` | xBase | planned | 8 | `src/vm/memvars.c`, `tests/memvar.prg` | compat | |
-| memvars | xBase | planned | 8 | `src/vm/memvars.c` | compat | |
-| codeblocks | Clipper/Harbour | planned | 8 | `src/vm/codebloc.c`, `doc/codebloc.txt` | compat | |
-| macro operator | Harbour | planned | 8/9 | `src/vm/macro.c`, `tests/macro.prg` | compat | começar parcial |
+| `PRIVATE` | xBase | partial | 8 | `src/vm/memvars.c`, `tests/memvar.prg` | parser + snapshot | sintaxe de declaração com inicializadores opcionais já parseia em `tests/fixtures/parser/memvars.prg`; semântica dinâmica de memvar ainda pendente |
+| `PUBLIC` | xBase | partial | 8 | `src/vm/memvars.c`, `tests/memvar.prg` | parser + snapshot | sintaxe de declaração com inicializadores opcionais já parseia em `tests/fixtures/parser/memvars.prg`; runtime global e resolução dinâmica ainda pendentes |
+| memvars | xBase | partial | 8 | `src/vm/memvars.c` | parser + sema + compat | surface sintática inicial estabilizada via `PRIVATE`/`PUBLIC`; resolução e storage dinâmicos ainda pendentes |
+| codeblocks | Clipper/Harbour | partial | 8 | `src/vm/codebloc.c`, `doc/codebloc.txt` | parser + snapshot | literais `{|| ...}` e `{|x, y| ...}` já parseiam em `tests/fixtures/parser/codeblock.prg`; captura, `Eval()` e execução ainda pendentes |
+| macro operator | Harbour | partial | 8/9 | `src/vm/macro.c`, `tests/macro.prg` | parser + snapshot | macro read inicial `&name` e `&(expr)` já parseia em `tests/fixtures/parser/macro_read.prg`; expansão dinâmica, callable macro e forms mais amplas continuam pendentes |
 | `FOR EACH` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | extensão Harbour, não baseline |
 | `WITH OBJECT` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | |
 | RDD/DBF | Clipper/Harbour | planned | 10 | `src/rdd`, `tests/rddtest` | integração | só após frontend estável |

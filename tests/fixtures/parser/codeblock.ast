@@ -1,0 +1,17 @@
+Program
+  Routine Function Build [1:1-2:34]
+    Params []
+    Body
+      Return [2:4-2:34]
+        Codeblock [2:11-2:34]
+          Params
+            Param x [2:13-2:14]
+            Param y [2:16-2:17]
+          Body
+            Binary Add [2:19-2:24]
+              Identifier x [2:19-2:20]
+              Identifier y [2:23-2:24]
+            Codeblock [2:26-2:32]
+              Params []
+              Body
+                Identifier x [2:30-2:31]
