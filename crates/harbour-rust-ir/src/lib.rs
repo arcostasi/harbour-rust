@@ -39,6 +39,11 @@ pub struct LoweringOutput {
 
 pub fn lower_program(program: &hir::Program) -> LoweringOutput {
     let mut errors = Vec::new();
+    let module_statics = program
+        .module_statics
+        .iter()
+        .map(|statement| lower_static_statement(statement, &mut errors))
+        .collect();
     let routines = program
         .routines
         .iter()
@@ -46,13 +51,17 @@ pub fn lower_program(program: &hir::Program) -> LoweringOutput {
         .collect();
 
     LoweringOutput {
-        program: Program { routines },
+        program: Program {
+            module_statics,
+            routines,
+        },
         errors,
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
+    pub module_statics: Vec<StaticStatement>,
     pub routines: Vec<Routine>,
 }
 
@@ -394,6 +403,27 @@ fn lower_routine(routine: &hir::Routine, errors: &mut Vec<LoweringError>) -> Rou
     }
 }
 
+fn lower_static_statement(
+    statement: &hir::StaticStatement,
+    errors: &mut Vec<LoweringError>,
+) -> StaticStatement {
+    StaticStatement {
+        bindings: statement
+            .bindings
+            .iter()
+            .map(|binding| StaticBinding {
+                name: lower_symbol(&binding.name),
+                initializer: binding
+                    .initializer
+                    .as_ref()
+                    .map(|expression| lower_expression(expression, errors)),
+                span: binding.span,
+            })
+            .collect(),
+        span: statement.span,
+    }
+}
+
 fn lower_routine_kind(kind: hir::RoutineKind) -> RoutineKind {
     match kind {
         hir::RoutineKind::Procedure => RoutineKind::Procedure,
@@ -716,6 +746,7 @@ mod tests {
         let assign_span = span(24, 3, 4, 31, 3, 11);
         let return_span = span(33, 4, 4, 40, 4, 10);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -806,6 +837,7 @@ mod tests {
     fn reports_invalid_hir_expression_during_lowering() {
         let expression_span = span(15, 2, 6, 16, 2, 7);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -826,6 +858,7 @@ mod tests {
             lowered,
             LoweringOutput {
                 program: crate::Program {
+                    module_statics: Vec::new(),
                     routines: vec![Routine {
                         kind: RoutineKind::Procedure,
                         name: Symbol {
@@ -854,6 +887,7 @@ mod tests {
     fn lowers_array_literals_to_explicit_ir_nodes() {
         let expression_span = span(15, 2, 6, 24, 2, 15);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -888,6 +922,7 @@ mod tests {
     fn lowers_static_statements_to_explicit_ir_nodes() {
         let statement_span = span(12, 2, 4, 33, 2, 25);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -933,6 +968,7 @@ mod tests {
     fn lowers_array_indexing_to_explicit_ir_nodes() {
         let expression_span = span(15, 2, 6, 25, 2, 16);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -976,6 +1012,7 @@ mod tests {
     fn lowers_identifier_reads_to_explicit_ir_read_paths() {
         let expression_span = span(12, 2, 4, 17, 2, 9);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Function,
                 name: symbol("ReadIt", span(0, 1, 1, 6, 1, 7)),
@@ -1012,6 +1049,7 @@ mod tests {
     fn lowers_indexed_assignment_targets_to_ir_surface() {
         let assign_span = span(15, 2, 6, 34, 2, 25);
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),

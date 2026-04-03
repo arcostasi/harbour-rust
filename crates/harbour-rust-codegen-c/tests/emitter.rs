@@ -686,6 +686,47 @@ fn emits_static_fixture_with_persistent_c_storage() {
 }
 
 #[test]
+fn emits_module_static_fixture_with_shared_storage_and_init_helper() {
+    let emitted = emit_fixture("tests/fixtures/parser/static_module.prg");
+
+    assert!(
+        emitted.errors.is_empty(),
+        "unexpected codegen errors: {:?}",
+        emitted.errors
+    );
+    assert!(
+        emitted
+            .source
+            .contains("static harbour_runtime_Value harbour_static_s_count;")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("static harbour_runtime_Value harbour_static_s_cache;")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("static void harbour_module_init_statics(void) {")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_static_s_count = harbour_value_from_integer(0LL);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_static_s_cache = harbour_value_nil();")
+    );
+    assert!(emitted.source.contains("harbour_module_init_statics();"));
+    assert!(emitted.source.contains("harbour_static_s_count = harbour_value_add(harbour_static_s_count, harbour_value_from_integer(1LL));"));
+    assert!(emitted.source.contains(
+        "return harbour_builtin_valtype((harbour_runtime_Value[]) { harbour_static_s_cache }, 1);"
+    ));
+}
+
+#[test]
 fn emits_array_runtime_helper_declarations_in_c_prelude() {
     let emitted = emit_fixture("tests/fixtures/parser/hello.prg");
 

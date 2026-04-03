@@ -95,6 +95,7 @@ Nesta etapa, o objetivo ainda não é parsear `STATIC`, mas estabilizar o modelo
 Segunda slice da Fase 7:
 
 - `STATIC <id> [:= <expr>] [, ...]`
+- `STATIC` também permitido no nível de módulo, antes das rotinas
 - initializer list espelhando a surface de `LOCAL`
 - snapshot dedicada para `STATIC`
 

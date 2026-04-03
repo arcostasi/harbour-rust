@@ -35,6 +35,20 @@ Todo arquivo gerado inclui:
 
 O header declara os tipos e helpers usados: `HarbourValue`, funções de aritmética, comparação, arrays e builtins.
 
+Quando o programa contém `STATIC` de módulo, o backend também gera storage C global e um helper de inicialização única:
+
+```c
+static HarbourValue harbour_static_s_count;
+static bool harbour_static_s_count__initialized;
+
+static void harbour_module_init_statics(void) {
+    if (!harbour_static_s_count__initialized) {
+        harbour_static_s_count = harbour_value_from_int(0);
+        harbour_static_s_count__initialized = true;
+    }
+}
+```
+
 ### Rotinas
 
 ```c
@@ -50,6 +64,7 @@ HarbourValue procedure_main(void) {
 
 ```c
 int main(void) {
+    harbour_module_init_statics();
     procedure_main();
     return 0;
 }
@@ -157,6 +172,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/indexing.prg` | gera C com array_get |
 | `tests/fixtures/parser/indexed_assign.prg` | gera C com array_set_path + executa |
 | `tests/fixtures/parser/static.prg` | gera C com storage estático persistente por rotina |
+| `tests/fixtures/parser/static_module.prg` | gera C com storage estático compartilhado entre rotinas |
 
 ## Estado atual
 
@@ -215,5 +231,5 @@ Fase 5 + Fase 7 parcial:
 - `ValType()` para `Date`, `Object`, `Codeblock`, `Memo`, `Hash` e tipos ainda não materializados no runtime — pendente
 - `Type()` com macro evaluation completa, resolução real de nomes, datas, objetos, codeblocks, memos e demais tipos do upstream — pendente
 - `Empty()` para datas, codeblocks, pointers, hashes, objetos e `Chr(0)` embutido no runtime host C — pendente
-- STATIC com storage persistente no C gerado para leitura no mesmo routine — parcial
-- STATIC no pipeline completo (`sema -> cli run`) — parcial
+- STATIC com storage persistente no C gerado para leitura no mesmo routine — completo
+- STATIC de módulo com storage compartilhado entre rotinas do mesmo arquivo — completo

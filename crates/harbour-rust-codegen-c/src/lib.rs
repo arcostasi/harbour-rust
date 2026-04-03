@@ -51,6 +51,7 @@ struct Emitter {
     source: String,
     errors: Vec<CodegenError>,
     indent_level: usize,
+    module_static_bindings: HashMap<String, StaticBindingStorage>,
     current_static_bindings: HashMap<String, StaticBindingStorage>,
 }
 
@@ -257,6 +258,7 @@ impl Emitter {
             source: String::new(),
             errors: Vec::new(),
             indent_level: 0,
+            module_static_bindings: HashMap::new(),
             current_static_bindings: HashMap::new(),
         };
         emitter.emit_prelude();
@@ -264,6 +266,8 @@ impl Emitter {
     }
 
     fn emit_program(&mut self, program: &ir::Program) {
+        self.module_static_bindings = collect_module_static_binding_map(program);
+
         for routine in &program.routines {
             self.emit_line(&format!(
                 "static harbour_runtime_Value {};",
@@ -287,16 +291,23 @@ impl Emitter {
             self.emit_line("");
         }
 
+        if !program.module_statics.is_empty() {
+            self.emit_module_static_initializer(program);
+            self.emit_line("");
+        }
+
         if let Some(main_routine) = program.routines.iter().find(|routine| {
             routine.kind == ir::RoutineKind::Procedure
                 && routine.name.text.eq_ignore_ascii_case("Main")
         }) {
-            self.emit_main_wrapper(main_routine);
+            self.emit_main_wrapper(main_routine, !program.module_statics.is_empty());
         }
 
         for routine in &program.routines {
             self.emit_routine(routine);
         }
+
+        self.module_static_bindings.clear();
     }
 
     fn emit_prelude(&mut self) {
@@ -461,9 +472,12 @@ impl Emitter {
         self.emit_line("");
     }
 
-    fn emit_main_wrapper(&mut self, routine: &ir::Routine) {
+    fn emit_main_wrapper(&mut self, routine: &ir::Routine, needs_module_init: bool) {
         self.emit_line("int main(void) {");
         self.indent_level += 1;
+        if needs_module_init {
+            self.emit_line("harbour_module_init_statics();");
+        }
         self.emit_line(&format!("(void) {};", routine_call(routine)));
         self.emit_line("return 0;");
         self.indent_level -= 1;
@@ -534,7 +548,8 @@ impl Emitter {
             }
             ir::Statement::Static(statement) => {
                 for binding in &statement.bindings {
-                    self.emit_static_binding_initialization(binding);
+                    let bindings = self.current_static_bindings.clone();
+                    self.emit_static_binding_initialization(&bindings, binding);
                 }
             }
             ir::Statement::Assign(statement) => self.emit_assign_statement(statement),
@@ -933,6 +948,19 @@ impl Emitter {
         }
     }
 
+    fn emit_module_static_initializer(&mut self, program: &ir::Program) {
+        let bindings = self.module_static_bindings.clone();
+        self.emit_line("static void harbour_module_init_statics(void) {");
+        self.indent_level += 1;
+        for statement in &program.module_statics {
+            for binding in &statement.bindings {
+                self.emit_static_binding_initialization(&bindings, binding);
+            }
+        }
+        self.indent_level -= 1;
+        self.emit_line("}");
+    }
+
     fn named_read_symbol<'a>(&self, expression: &'a Expression) -> Option<&'a ir::Symbol> {
         match expression {
             Expression::Read(read) => match &read.path {
@@ -942,9 +970,12 @@ impl Emitter {
         }
     }
 
-    fn emit_static_binding_initialization(&mut self, binding: &ir::StaticBinding) {
-        let Some(storage) = self
-            .current_static_bindings
+    fn emit_static_binding_initialization(
+        &mut self,
+        bindings: &HashMap<String, StaticBindingStorage>,
+        binding: &ir::StaticBinding,
+    ) {
+        let Some(storage) = bindings
             .get(&normalize_symbol_name(&binding.name.text))
             .cloned()
         else {
@@ -977,16 +1008,43 @@ impl Emitter {
         self.current_static_bindings
             .get(&normalize_symbol_name(name))
             .map(|binding| binding.storage_name.clone())
+            .or_else(|| {
+                self.module_static_bindings
+                    .get(&normalize_symbol_name(name))
+                    .map(|binding| binding.storage_name.clone())
+            })
             .unwrap_or_else(|| mangle_symbol(name))
     }
 }
 
 fn collect_program_static_bindings(program: &ir::Program) -> Vec<StaticBindingStorage> {
-    program
-        .routines
-        .iter()
-        .flat_map(collect_routine_static_bindings)
-        .collect()
+    let mut bindings = collect_module_static_binding_map(program)
+        .into_values()
+        .collect::<Vec<_>>();
+    bindings.extend(
+        program
+            .routines
+            .iter()
+            .flat_map(collect_routine_static_bindings),
+    );
+    bindings
+}
+
+fn collect_module_static_binding_map(
+    program: &ir::Program,
+) -> HashMap<String, StaticBindingStorage> {
+    let mut seen = HashMap::<String, StaticBindingStorage>::new();
+    for statement in &program.module_statics {
+        for binding in &statement.bindings {
+            let normalized_name = normalize_symbol_name(&binding.name.text);
+            seen.entry(normalized_name)
+                .or_insert_with(|| StaticBindingStorage {
+                    storage_name: mangle_module_static_storage_name(&binding.name.text),
+                    initialized_name: mangle_module_static_initialized_name(&binding.name.text),
+                });
+        }
+    }
+    seen
 }
 
 fn routine_static_binding_map(routine: &ir::Routine) -> HashMap<String, StaticBindingStorage> {
@@ -1051,10 +1109,21 @@ fn mangle_static_storage_name(routine_name: &str, symbol_name: &str) -> String {
     )
 }
 
+fn mangle_module_static_storage_name(symbol_name: &str) -> String {
+    format!("harbour_static_{}", mangle_symbol(symbol_name))
+}
+
 fn mangle_static_initialized_name(routine_name: &str, symbol_name: &str) -> String {
     format!(
         "{}__initialized",
         mangle_static_storage_name(routine_name, symbol_name)
+    )
+}
+
+fn mangle_module_static_initialized_name(symbol_name: &str) -> String {
+    format!(
+        "{}__initialized",
+        mangle_module_static_storage_name(symbol_name)
     )
 }
 
@@ -1196,6 +1265,7 @@ mod tests {
     #[test]
     fn emits_c_for_hello_style_procedure() {
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1308,6 +1378,7 @@ mod tests {
     fn emits_do_while_using_runtime_condition_helpers() {
         let loop_span = span(12, 2, 4, 24, 4, 9);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1372,6 +1443,7 @@ mod tests {
     fn emits_for_loop_with_assignment_updates() {
         let for_span = span(12, 3, 4, 34, 5, 8);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1454,6 +1526,7 @@ mod tests {
     fn emits_array_indexing_with_runtime_helpers() {
         let index_span = span(12, 2, 4, 20, 2, 12);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1487,6 +1560,7 @@ mod tests {
     fn emits_indexed_assignment_with_runtime_set_path_helper() {
         let assign_span = span(12, 2, 4, 32, 2, 24);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1528,6 +1602,7 @@ mod tests {
     fn emits_array_literals_with_runtime_helpers() {
         let array_span = span(12, 2, 4, 22, 2, 14);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1560,6 +1635,7 @@ mod tests {
     fn emits_runtime_builtin_calls_for_aclone_expressions() {
         let call_span = span(12, 2, 4, 26, 2, 18);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1590,6 +1666,7 @@ mod tests {
     fn reports_mutable_runtime_builtin_calls_as_codegen_errors() {
         let call_span = span(12, 2, 4, 24, 2, 16);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1622,6 +1699,7 @@ mod tests {
     fn emits_mutable_runtime_builtin_calls_for_symbol_first_argument() {
         let call_span = span(12, 2, 4, 31, 2, 23);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -1658,6 +1736,7 @@ mod tests {
     fn emits_static_statements_as_persistent_c_storage() {
         let static_span = span(12, 2, 4, 32, 2, 24);
         let program = ir::Program {
+            module_statics: Vec::new(),
             routines: vec![ir::Routine {
                 kind: ir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),

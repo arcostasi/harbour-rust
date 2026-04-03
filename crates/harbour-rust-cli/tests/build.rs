@@ -768,6 +768,36 @@ fn build_command_writes_c_output_for_static_counter_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_static_module_fixture() {
+    let temp_dir = unique_temp_dir("static-module");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("static_module.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/static_module.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("static harbour_runtime_Value harbour_static_s_count;"));
+    assert!(generated.contains("static harbour_runtime_Value harbour_static_s_cache;"));
+    assert!(generated.contains("static void harbour_module_init_statics(void) {"));
+    assert!(generated.contains("harbour_static_s_count = harbour_value_from_integer(0LL);"));
+    assert!(generated.contains("harbour_static_s_cache = harbour_value_nil();"));
+    assert!(generated.contains("harbour_module_init_statics();"));
+    assert!(generated.contains(
+        "harbour_builtin_qout((harbour_runtime_Value[]) { harbour_routine_increment() }, 1);"
+    ));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_uses_configured_include_directory_for_preprocess_handoff() {
     let temp_dir = unique_temp_dir("pp-include");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -1690,6 +1720,20 @@ fn run_command_executes_static_counter_fixture_with_persistent_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "1\n2\n3\n");
+}
+
+#[test]
+fn run_command_executes_static_module_fixture_with_shared_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/static_module.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "1\n2\n2\nU\n");
 }
 
 #[test]

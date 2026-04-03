@@ -40,6 +40,14 @@ fn static_fixture_matches_snapshot() {
 }
 
 #[test]
+fn global_static_fixture_matches_snapshot() {
+    assert_fixture_ast(
+        "tests/fixtures/parser/global_static.prg",
+        "tests/fixtures/parser/global_static.ast",
+    );
+}
+
+#[test]
 fn arrays_fixture_matches_snapshot() {
     assert_fixture_ast(
         "tests/fixtures/parser/arrays.prg",

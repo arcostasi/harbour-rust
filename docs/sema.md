@@ -21,6 +21,7 @@ HIR ──sema──> HIR + side tables (símbolos resolvidos, diagnósticos)
 A sema **não reescreve** a HIR. Ela produz:
 
 - Tabela global de rotinas
+- Tabela global de `STATIC` de módulo
 - Tabelas locais por rotina (parâmetros, `LOCAL`, `STATIC`)
 - Diagnósticos de resolução
 
@@ -38,6 +39,16 @@ Cada rotina mantém uma tabela com:
 - Variáveis `LOCAL`
 - Variáveis `STATIC`
 
+### Tabela de `STATIC` de módulo
+
+O programa também mantém uma tabela global separada para `STATIC` declarados fora de rotinas. Leituras e escritas nominais dentro de rotinas consultam:
+
+1. bindings locais e parâmetros
+2. `STATIC` de módulo
+3. erro de símbolo não resolvido
+
+Isso permite o baseline atual de storage compartilhado entre rotinas do mesmo arquivo.
+
 ### Resolução case-insensitive
 
 Consistente com Clipper/Harbour: `myFunc`, `MYFUNC` e `MyFunc` resolvem para a mesma entrada.
@@ -48,6 +59,7 @@ Consistente com Clipper/Harbour: `myFunc`, `MYFUNC` e `MyFunc` resolvem para a m
 | --- | --- | --- |
 | — | Unresolved symbol | Variável ou função usada sem declaração visível |
 | — | Duplicate local | Variável declarada mais de uma vez no mesmo escopo |
+| — | Duplicate module static | `STATIC` de módulo declarado mais de uma vez |
 | — | Unresolved callable | Chamada a função/procedimento não declarado |
 
 ## Decisões de design
@@ -75,11 +87,11 @@ A sema percorre todos os nós da HIR, incluindo:
 | --- | --- |
 | `tests/fixtures/sema/control_flow_missing_locals.prg` | `.errors` |
 | `tests/fixtures/sema/control_flow_missing_callables.prg` | `.errors` |
-| `tests/fixtures/parser/static.prg` | sucesso semântico com bindings `STATIC` |
+| `tests/fixtures/parser/static.prg` | sucesso semântico com bindings `STATIC` same-routine |
+| `tests/fixtures/parser/static_module.prg` | sucesso semântico com bindings `STATIC` compartilhados |
 
 ## Próximos passos (Fase 7+)
 
-- Storage de `STATIC` compartilhado entre rotinas do mesmo módulo
 - Resolução mais fina de tipos
 - Diagnósticos de type mismatch quando viável
 - Suporte a memvars (PRIVATE/PUBLIC) na Fase 8
@@ -93,4 +105,5 @@ Fase 3 + Fase 7 parcial:
 - Resolução case-insensitive — completo
 - Diagnósticos de símbolo ausente — completo
 - STATIC declarado e resolvido na sema — completo
+- STATIC de módulo compartilhado entre rotinas — completo no mesmo arquivo
 - Walk de arrays e indexação — completo

@@ -1,0 +1,8 @@
+Program
+  ModuleStatic [1:1-1:20]
+    Binding s_count [1:8-1:20]
+      Integer 0 [1:19-1:20]
+  Routine Procedure Main [3:1-4:10]
+    Params []
+    Body
+      Return [4:4-4:10]

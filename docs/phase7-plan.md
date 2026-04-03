@@ -21,7 +21,7 @@ Após esta fase, programas procedurais reais de pequeno porte devem compilar e e
 
 ### Slice 7.1 — STATIC com runtime completo
 
-**Status:** parcial (parse + HIR + IR + sema + codegen same-routine ✓, storage compartilhado entre rotinas + runtime/CLI mais amplo ✗)
+**Status:** completo no baseline da Fase 7 (parse + HIR + IR + sema + codegen + CLI run para same-routine e módulo ✓)
 
 **Escopo:**
 - Runtime: storage persistente para STATIC (inicializado uma vez)
@@ -51,10 +51,10 @@ RETURN
 ```
 
 **Aceite:**
-- [ ] `STATIC` com inicializador persiste entre chamadas
-- [ ] `STATIC` sem inicializador começa como NIL
-- [ ] `STATIC` no nível de módulo acessível por rotinas do mesmo arquivo
-- [ ] Testes unitários + integração + CLI run
+- [x] `STATIC` com inicializador persiste entre chamadas
+- [x] `STATIC` sem inicializador começa como NIL
+- [x] `STATIC` no nível de módulo acessível por rotinas do mesmo arquivo
+- [x] Testes unitários + integração + CLI run
 
 ---
 

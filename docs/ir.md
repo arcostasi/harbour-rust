@@ -29,6 +29,15 @@ O upstream usa pcode + VM stack-based. `harbour-rust` usa uma IR estruturada pr�
 
 ## Nós principais
 
+### Programa
+
+```
+IrProgram {
+    module_statics: Vec<IrStaticStatement>,
+    routines: Vec<IrRoutine>,
+}
+```
+
 ### Rotinas
 
 ```
@@ -78,6 +87,7 @@ IrRoutine {
 | `Print(exprs)` | `BuiltinCall("QOut", exprs)` |
 | `Read(ReadPath::Name(Symbol))` | `Read(ReadPath::Name(Symbol))` |
 | `Statement::Static` | `Statement::Static` |
+| `Program.module_statics` | `Program.module_statics` |
 | Expressões inválidas | Erro de lowering explícito |
 
 ### O que se preserva
@@ -86,6 +96,7 @@ IrRoutine {
 - Arrays e indexação como nós explícitos
 - Atribuição indexada como `AssignTarget::Index`
 - Distinção entre `Local` e `Static`
+- Distinção entre `STATIC` de módulo e `STATIC` de rotina
 - Leituras nominais explícitas como `Read(path)`
 
 ## Decisões de design
@@ -109,7 +120,7 @@ Fase 5 + Fase 7 parcial:
 - Rotinas, RETURN, BuiltinCall(QOut) — completo
 - IF, DO WHILE, FOR — completo
 - Atribuição simples — completo
-- `STATIC` e `Read(path)` explícitos — lowering OK, execução de `STATIC` ainda pendente
+- `STATIC` de rotina e de módulo + `Read(path)` explícitos — lowering OK
 - Literais de array — completo
 - Indexação (leitura e escrita) — completo
 - Flattening de controle de fluxo — não planejado para esta fase

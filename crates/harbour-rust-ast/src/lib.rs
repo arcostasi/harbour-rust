@@ -19,12 +19,14 @@ impl Program {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Item {
     Routine(Routine),
+    Static(StaticStatement),
 }
 
 impl Item {
     pub fn span(&self) -> Span {
         match self {
             Self::Routine(routine) => routine.span,
+            Self::Static(statement) => statement.span,
         }
     }
 }
@@ -364,7 +366,22 @@ mod tests {
             span: span(11, 3, 1, 30, 4, 1),
         };
         let program = Program {
-            items: vec![Item::Routine(routine_a), Item::Routine(routine_b)],
+            items: vec![
+                Item::Static(StaticStatement {
+                    storage_class: StorageClass::Static,
+                    bindings: vec![StaticBinding {
+                        name: Identifier {
+                            text: "shared".to_owned(),
+                            span: span(0, 1, 1, 6, 1, 7),
+                        },
+                        initializer: None,
+                        span: span(0, 1, 1, 6, 1, 7),
+                    }],
+                    span: span(0, 1, 1, 10, 1, 11),
+                }),
+                Item::Routine(routine_a),
+                Item::Routine(routine_b),
+            ],
         };
 
         assert_eq!(program.span(), Some(span(0, 1, 1, 30, 4, 1)));

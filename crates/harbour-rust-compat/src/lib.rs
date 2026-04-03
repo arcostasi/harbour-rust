@@ -67,6 +67,7 @@ fn render_program(out: &mut String, program: &Program, level: usize) {
 fn render_item(out: &mut String, item: &Item, level: usize) {
     match item {
         Item::Routine(routine) => render_routine(out, routine, level),
+        Item::Static(statement) => render_static_item(out, statement, level),
     }
 }
 
@@ -96,6 +97,32 @@ fn render_routine(out: &mut String, routine: &Routine, level: usize) {
         push_line(out, level + 1, "Body");
         for statement in &routine.body {
             render_statement(out, statement, level + 2);
+        }
+    }
+}
+
+fn render_static_item(
+    out: &mut String,
+    statement: &harbour_rust_ast::StaticStatement,
+    level: usize,
+) {
+    push_line(
+        out,
+        level,
+        &format!("ModuleStatic [{}]", format_span(statement.span)),
+    );
+    for binding in &statement.bindings {
+        push_line(
+            out,
+            level + 1,
+            &format!(
+                "Binding {} [{}]",
+                binding.name.text,
+                format_span(binding.span)
+            ),
+        );
+        if let Some(initializer) = &binding.initializer {
+            render_expression(out, initializer, level + 2);
         }
     }
 }

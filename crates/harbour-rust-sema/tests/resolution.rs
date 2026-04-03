@@ -126,3 +126,36 @@ fn analyzes_aclones_fixture_without_semantic_errors() {
         analysis.errors
     );
 }
+
+#[test]
+fn analyzes_module_static_fixture_with_shared_module_bindings() {
+    let analysis = analyze_fixture("tests/fixtures/parser/static_module.prg");
+    assert!(
+        analysis.errors.is_empty(),
+        "unexpected semantic errors: {:?}",
+        analysis.errors
+    );
+    assert_eq!(analysis.module_static_symbols.len(), 2);
+    assert_eq!(analysis.module_static_symbols[0].name, "s_count");
+    assert_eq!(analysis.module_static_symbols[1].name, "s_cache");
+    assert!(
+        analysis
+            .routines
+            .iter()
+            .flat_map(|routine| &routine.resolutions)
+            .any(|resolution| {
+                matches!(resolution.binding, Binding::ModuleStatic(0))
+                    && resolution.name == "s_count"
+            })
+    );
+    assert!(
+        analysis
+            .routines
+            .iter()
+            .flat_map(|routine| &routine.resolutions)
+            .any(|resolution| {
+                matches!(resolution.binding, Binding::ModuleStatic(1))
+                    && resolution.name == "s_cache"
+            })
+    );
+}

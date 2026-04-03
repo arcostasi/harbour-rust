@@ -24,8 +24,18 @@ A HIR é o formato que a análise semântica consome. Ela normaliza:
 - Leituras nominais para `Read(path)` explícito, separado de alvo de escrita
 - Atribuição restringida a alvo nominal simples
 - Sugar sintático desmontado (ex.: operadores compostos -> `Assignment + Binary`)
+- `STATIC` de módulo separado das rotinas, pronto para storage compartilhado
 
 ## Nós principais
+
+### Programa
+
+```
+HirProgram {
+    module_statics: Vec<HirStaticStatement>,
+    routines: Vec<HirRoutine>,
+}
+```
 
 ### Rotinas
 
@@ -115,12 +125,16 @@ A sema anota a HIR via side tables, sem reescrevê-la. Isso mantém a HIR estáv
 
 Leituras simples também deixam de ser um `Symbol` cru e passam a usar `Read(path)` explícito. Nesta slice, o path inicial ainda é `ReadPath::Name(Symbol)`, mas a forma já fica pronta para storage e endereçamento mais específicos nas próximas fases.
 
+### `STATIC` de módulo explícito
+
+`STATIC` no nível de módulo também não é achatado para dentro de uma rotina artificial. O programa lowered preserva `module_statics` separados de `routines`, o que deixa explícito o contrato necessário para storage compartilhado entre rotinas do mesmo arquivo no backend.
+
 ## Estado atual
 
 Fase 3 + Fase 7 parcial:
 
 - Rotinas, LOCAL, RETURN, IF, DO WHILE, FOR, `?` — completo
-- STATIC como nó explícito de HIR — lowering OK, runtime pendente
+- STATIC same-routine e module-level como nós explícitos de HIR — lowering OK
 - Leituras nominais como `Read(path)` explícito — lowering OK
 - Literais de array e indexação — lowering OK
 - Operadores compostos — desugaring OK

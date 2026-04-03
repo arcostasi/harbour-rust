@@ -33,6 +33,7 @@ impl fmt::Display for SemanticError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Analysis {
+    pub module_static_symbols: Vec<ModuleStaticSymbol>,
     pub routine_symbols: Vec<RoutineSymbol>,
     pub routines: Vec<RoutineAnalysis>,
     pub errors: Vec<SemanticError>,
@@ -40,6 +41,30 @@ pub struct Analysis {
 
 pub fn analyze_program(program: &hir::Program) -> Analysis {
     let mut errors = Vec::new();
+    let mut module_static_lookup = HashMap::new();
+    let mut module_static_symbols: Vec<ModuleStaticSymbol> = Vec::new();
+    for statement in &program.module_statics {
+        for binding in &statement.bindings {
+            let symbol = ModuleStaticSymbol {
+                id: module_static_symbols.len(),
+                name: binding.name.text.clone(),
+                span: binding.name.span,
+            };
+            let key = normalize_name(&symbol.name);
+            if let Some(existing) = module_static_lookup.insert(key, symbol.id) {
+                let previous = &module_static_symbols[existing];
+                errors.push(SemanticError {
+                    message: format!(
+                        "duplicate module static symbol `{}`; first declared at line {}, column {}",
+                        symbol.name, previous.span.start.line, previous.span.start.column
+                    ),
+                    span: symbol.span,
+                });
+            }
+            module_static_symbols.push(symbol);
+        }
+    }
+
     let mut routine_lookup = HashMap::new();
     let mut routine_symbols: Vec<RoutineSymbol> = Vec::with_capacity(program.routines.len());
 
@@ -72,6 +97,7 @@ pub fn analyze_program(program: &hir::Program) -> Analysis {
                 routine_id,
                 routine,
                 &routine_lookup,
+                &module_static_lookup,
                 &routine_symbols,
                 &mut errors,
             )
@@ -79,6 +105,7 @@ pub fn analyze_program(program: &hir::Program) -> Analysis {
         .collect();
 
     Analysis {
+        module_static_symbols,
         routine_symbols,
         routines,
         errors,
@@ -95,6 +122,13 @@ pub fn render_errors(analysis: &Analysis) -> String {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutineSymbol {
+    pub id: usize,
+    pub name: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModuleStaticSymbol {
     pub id: usize,
     pub name: String,
     pub span: Span,
@@ -133,11 +167,13 @@ pub struct SymbolResolution {
 pub enum Binding {
     Routine(usize),
     Local(usize),
+    ModuleStatic(usize),
 }
 
 struct RoutineAnalyzer<'a> {
     routine_name: &'a str,
     routine_lookup: &'a HashMap<String, usize>,
+    module_static_lookup: &'a HashMap<String, usize>,
     locals: Vec<LocalSymbol>,
     local_lookup: HashMap<String, usize>,
     resolutions: Vec<SymbolResolution>,
@@ -148,12 +184,14 @@ fn analyze_routine(
     routine_id: usize,
     routine: &hir::Routine,
     routine_lookup: &HashMap<String, usize>,
+    module_static_lookup: &HashMap<String, usize>,
     routine_symbols: &[RoutineSymbol],
     errors: &mut Vec<SemanticError>,
 ) -> RoutineAnalysis {
     let mut analyzer = RoutineAnalyzer {
         routine_name: &routine_symbols[routine_id].name,
         routine_lookup,
+        module_static_lookup,
         locals: Vec::new(),
         local_lookup: HashMap::new(),
         resolutions: Vec::new(),
@@ -328,6 +366,15 @@ impl<'a> RoutineAnalyzer<'a> {
             return;
         }
 
+        if let Some(module_static_id) = self.module_static_lookup.get(&key) {
+            self.resolutions.push(SymbolResolution {
+                name: symbol.text.clone(),
+                span: symbol.span,
+                binding: Binding::ModuleStatic(*module_static_id),
+            });
+            return;
+        }
+
         self.errors.push(SemanticError {
             message: format!(
                 "unresolved local symbol `{}` in routine `{}`",
@@ -478,6 +525,7 @@ mod tests {
     #[test]
     fn resolves_routine_calls_and_local_symbols() {
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![
                 hir::Routine {
                     kind: hir::RoutineKind::Procedure,
@@ -522,6 +570,7 @@ mod tests {
         assert_eq!(
             analysis,
             Analysis {
+                module_static_symbols: Vec::new(),
                 routine_symbols: vec![
                     RoutineSymbol {
                         id: 0,
@@ -593,6 +642,7 @@ mod tests {
     #[test]
     fn reports_duplicate_and_unresolved_local_symbols() {
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -637,6 +687,7 @@ mod tests {
     #[test]
     fn resolves_static_symbols_without_placeholder_diagnostics() {
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -687,6 +738,7 @@ mod tests {
     #[test]
     fn resolves_symbols_inside_array_literals() {
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -736,6 +788,7 @@ mod tests {
     #[test]
     fn resolves_symbols_inside_array_index_expressions() {
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![hir::Routine {
                 kind: hir::RoutineKind::Procedure,
                 name: symbol("Main", span(0, 1, 1, 4, 1, 5)),
@@ -813,6 +866,7 @@ mod tests {
     #[test]
     fn resolves_explicit_read_paths_without_hir_rewrite() {
         let program = hir::Program {
+            module_statics: Vec::new(),
             routines: vec![
                 hir::Routine {
                     kind: hir::RoutineKind::Procedure,

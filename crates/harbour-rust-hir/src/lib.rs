@@ -39,20 +39,29 @@ pub struct LoweringOutput {
 
 pub fn lower_program(program: &ast::Program) -> LoweringOutput {
     let mut errors = Vec::new();
-    let routines = program
-        .items
-        .iter()
-        .map(|item| lower_item(item, &mut errors))
-        .collect();
+    let mut module_statics = Vec::new();
+    let mut routines = Vec::new();
+    for item in &program.items {
+        match item {
+            ast::Item::Routine(routine) => routines.push(lower_routine(routine, &mut errors)),
+            ast::Item::Static(statement) => {
+                module_statics.push(lower_static_statement(statement, &mut errors))
+            }
+        }
+    }
 
     LoweringOutput {
-        program: Program { routines },
+        program: Program {
+            module_statics,
+            routines,
+        },
         errors,
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
+    pub module_statics: Vec<StaticStatement>,
     pub routines: Vec<Routine>,
 }
 
@@ -374,12 +383,6 @@ pub struct ErrorExpression {
     pub span: Span,
 }
 
-fn lower_item(item: &ast::Item, errors: &mut Vec<LoweringError>) -> Routine {
-    match item {
-        ast::Item::Routine(routine) => lower_routine(routine, errors),
-    }
-}
-
 fn lower_routine(routine: &ast::Routine, errors: &mut Vec<LoweringError>) -> Routine {
     Routine {
         kind: lower_routine_kind(routine.kind),
@@ -391,6 +394,27 @@ fn lower_routine(routine: &ast::Routine, errors: &mut Vec<LoweringError>) -> Rou
             .map(|statement| lower_statement(statement, errors))
             .collect(),
         span: routine.span,
+    }
+}
+
+fn lower_static_statement(
+    statement: &ast::StaticStatement,
+    errors: &mut Vec<LoweringError>,
+) -> StaticStatement {
+    StaticStatement {
+        bindings: statement
+            .bindings
+            .iter()
+            .map(|binding| StaticBinding {
+                name: lower_identifier(&binding.name),
+                initializer: binding
+                    .initializer
+                    .as_ref()
+                    .map(|expression| lower_expression(expression, errors)),
+                span: binding.span,
+            })
+            .collect(),
+        span: statement.span,
     }
 }
 
@@ -851,6 +875,7 @@ mod tests {
             lowered,
             LoweringOutput {
                 program: crate::Program {
+                    module_statics: Vec::new(),
                     routines: vec![Routine {
                         kind: RoutineKind::Procedure,
                         name: Symbol {
@@ -875,6 +900,43 @@ mod tests {
                 }],
             }
         );
+    }
+
+    #[test]
+    fn lowers_module_level_static_items_to_program_statics() {
+        let program = ast::Program {
+            items: vec![
+                ast::Item::Static(ast::StaticStatement {
+                    storage_class: ast::StorageClass::Static,
+                    bindings: vec![ast::StaticBinding {
+                        name: identifier("shared", span(7, 1, 8, 13, 1, 14)),
+                        initializer: Some(ast::Expression::Integer(ast::IntegerLiteral {
+                            lexeme: "1".to_owned(),
+                            span: span(17, 1, 18, 18, 1, 19),
+                        })),
+                        span: span(7, 1, 8, 18, 1, 19),
+                    }],
+                    span: span(0, 1, 1, 18, 1, 19),
+                }),
+                ast::Item::Routine(ast::Routine {
+                    kind: ast::RoutineKind::Procedure,
+                    name: identifier("Main", span(20, 3, 1, 24, 3, 5)),
+                    params: Vec::new(),
+                    body: Vec::new(),
+                    span: span(20, 3, 1, 24, 3, 5),
+                }),
+            ],
+        };
+
+        let lowered = lower_program(&program);
+
+        assert_eq!(lowered.errors, Vec::new());
+        assert_eq!(lowered.program.module_statics.len(), 1);
+        assert_eq!(
+            lowered.program.module_statics[0].bindings[0].name.text,
+            "shared"
+        );
+        assert_eq!(lowered.program.routines.len(), 1);
     }
 
     #[test]

@@ -83,9 +83,16 @@ impl<'src> Parser<'src> {
         self.skip_separators();
 
         while !self.at(TokenKind::Eof) {
-            match self.parse_routine() {
-                Some(routine) => items.push(Item::Routine(routine)),
-                None => self.synchronize_to_next_routine(),
+            if self.match_keyword(Keyword::Static) {
+                match self.parse_module_static_item() {
+                    Some(statement) => items.push(Item::Static(statement)),
+                    None => self.synchronize_to_next_item(),
+                }
+            } else {
+                match self.parse_routine() {
+                    Some(routine) => items.push(Item::Routine(routine)),
+                    None => self.synchronize_to_next_item(),
+                }
             }
             self.skip_separators();
         }
@@ -240,41 +247,11 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_static_statement(&mut self) -> Option<Statement> {
-        let start = self.previous().span.start;
-        let mut bindings = Vec::new();
-
-        loop {
-            let name = self.parse_identifier()?;
-            let binding_start = name.span.start;
-            let initializer = if self.match_token(TokenKind::InAssign) {
-                Some(self.parse_expression()?)
-            } else {
-                None
-            };
-            let end = initializer
-                .as_ref()
-                .map_or(name.span.end, |expression| expression.span().end);
-            bindings.push(StaticBinding {
-                name,
-                initializer,
-                span: Span {
-                    start: binding_start,
-                    end,
-                },
-            });
-
-            if !self.match_token(TokenKind::Comma) {
-                break;
-            }
-        }
-
-        let end = bindings
-            .last()
-            .map_or(self.previous().span.end, |binding| binding.span.end);
+        let (bindings, span) = self.parse_static_bindings(self.previous().span.start)?;
         Some(Statement::Static(StaticStatement {
             storage_class: StorageClass::Static,
             bindings,
-            span: Span { start, end },
+            span,
         }))
     }
 
@@ -951,8 +928,9 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn synchronize_to_next_routine(&mut self) {
+    fn synchronize_to_next_item(&mut self) {
         while !self.at(TokenKind::Eof)
+            && !self.at_keyword(Keyword::Static)
             && !self.at_keyword(Keyword::Procedure)
             && !self.at_keyword(Keyword::Function)
         {
@@ -964,6 +942,52 @@ impl<'src> Parser<'src> {
         while self.at(TokenKind::Newline) || self.at(TokenKind::Semicolon) {
             self.bump();
         }
+    }
+
+    fn parse_module_static_item(&mut self) -> Option<StaticStatement> {
+        let (bindings, span) = self.parse_static_bindings(self.previous().span.start)?;
+        Some(StaticStatement {
+            storage_class: StorageClass::Static,
+            bindings,
+            span,
+        })
+    }
+
+    fn parse_static_bindings(
+        &mut self,
+        start: harbour_rust_lexer::Position,
+    ) -> Option<(Vec<StaticBinding>, Span)> {
+        let mut bindings = Vec::new();
+
+        loop {
+            let name = self.parse_identifier()?;
+            let binding_start = name.span.start;
+            let initializer = if self.match_token(TokenKind::InAssign) {
+                Some(self.parse_expression()?)
+            } else {
+                None
+            };
+            let end = initializer
+                .as_ref()
+                .map_or(name.span.end, |expression| expression.span().end);
+            bindings.push(StaticBinding {
+                name,
+                initializer,
+                span: Span {
+                    start: binding_start,
+                    end,
+                },
+            });
+
+            if !self.match_token(TokenKind::Comma) {
+                break;
+            }
+        }
+
+        let end = bindings
+            .last()
+            .map_or(self.previous().span.end, |binding| binding.span.end);
+        Some((bindings, Span { start, end }))
     }
 
     fn match_keyword(&mut self, keyword: Keyword) -> bool {
@@ -1089,7 +1113,9 @@ PROCEDURE Main()
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
 
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         assert_eq!(routine.kind, RoutineKind::Procedure);
         assert!(matches!(&routine.body[0], Statement::Local(_)));
         assert!(matches!(&routine.body[1], Statement::If(_)));
@@ -1107,7 +1133,9 @@ PROCEDURE Main()
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
 
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         match &routine.body[0] {
             Statement::Static(statement) => {
                 assert_eq!(statement.storage_class, StorageClass::Static);
@@ -1128,6 +1156,35 @@ PROCEDURE Main()
     }
 
     #[test]
+    fn parses_module_level_static_declaration_before_routine() {
+        let source = r#"
+STATIC s_count := 0
+
+PROCEDURE Main()
+   RETURN
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+        assert_eq!(parsed.program.items.len(), 2);
+
+        let Item::Static(statement) = &parsed.program.items[0] else {
+            panic!("expected module static item");
+        };
+        assert_eq!(statement.storage_class, StorageClass::Static);
+        assert_eq!(statement.bindings.len(), 1);
+        assert_eq!(statement.bindings[0].name.text, "s_count");
+        assert!(matches!(
+            statement.bindings[0].initializer,
+            Some(Expression::Integer(_))
+        ));
+
+        let Item::Routine(routine) = &parsed.program.items[1] else {
+            panic!("expected routine item");
+        };
+        assert_eq!(routine.name.text, "Main");
+    }
+
+    #[test]
     fn parses_empty_and_comma_separated_array_literals() {
         let source = r#"
 FUNCTION Build()
@@ -1136,7 +1193,9 @@ FUNCTION Build()
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
 
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         let Statement::Return(statement) = &routine.body[0] else {
             panic!("expected return statement");
         };
@@ -1181,7 +1240,9 @@ PROCEDURE Main()
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
 
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         let Statement::Expression(total_update) = &routine.body[2] else {
             panic!("expected expression statement for total update");
         };
@@ -1224,7 +1285,9 @@ FUNCTION Pick(row, col)
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
 
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         let Statement::Return(statement) = &routine.body[0] else {
             panic!("expected return statement");
         };
@@ -1306,7 +1369,9 @@ PROCEDURE Main()
 "#;
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         match &routine.body[0] {
             Statement::If(statement) => {
                 assert_eq!(statement.branches.len(), 1);
@@ -1330,7 +1395,9 @@ PROCEDURE Main()
 "#;
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         match &routine.body[0] {
             Statement::DoWhile(statement) => {
                 assert!(matches!(statement.condition, Expression::Binary(_)));
@@ -1349,7 +1416,9 @@ PROCEDURE Main()
 "#;
         let parsed = parse(source);
         assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
-        let Item::Routine(routine) = &parsed.program.items[0];
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
         match &routine.body[0] {
             Statement::For(statement) => {
                 assert_eq!(statement.variable.text, "n");

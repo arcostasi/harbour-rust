@@ -131,6 +131,27 @@ fn lowers_static_fixture_to_explicit_ir_static_nodes() {
 }
 
 #[test]
+fn lowers_module_static_fixture_to_program_level_ir_statics() {
+    let lowered = lower_fixture("tests/fixtures/parser/static_module.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected ir lowering errors: {:?}",
+        lowered.errors
+    );
+
+    assert_eq!(lowered.program.module_statics.len(), 2);
+    assert_eq!(
+        lowered.program.module_statics[0].bindings[0].name.text,
+        "s_count"
+    );
+    assert_eq!(
+        lowered.program.module_statics[1].bindings[0].name.text,
+        "s_cache"
+    );
+    assert_eq!(lowered.program.routines.len(), 3);
+}
+
+#[test]
 fn lowers_indexing_fixture_to_explicit_ir_index_nodes() {
     let lowered = lower_fixture("tests/fixtures/parser/indexing.prg");
     assert!(
