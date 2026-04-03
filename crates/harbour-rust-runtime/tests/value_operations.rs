@@ -1407,6 +1407,13 @@ fn public_valtype_matches_the_current_runtime_baseline() {
         ]))),
         Ok(Value::from("A"))
     );
+    assert_eq!(
+        valtype(Some(&Value::codeblock(
+            "{|| NIL}",
+            |_arguments, _context| Ok(Value::Nil)
+        ))),
+        Ok(Value::from("B"))
+    );
 }
 
 #[test]
@@ -1505,6 +1512,108 @@ fn public_empty_matches_the_current_runtime_baseline() {
         empty(Some(&Value::array(vec![Value::from(0_i64)]))),
         Ok(Value::from(false))
     );
+    assert_eq!(
+        empty(Some(&Value::codeblock(
+            "{|| NIL}",
+            |_arguments, _context| Ok(Value::Nil)
+        ))),
+        Ok(Value::from(false))
+    );
+}
+
+#[test]
+fn public_eval_dispatches_codeblocks_with_arguments() {
+    let mut context = RuntimeContext::new();
+    let block = Value::codeblock("{|p1, p2| p1 + p2 }", |arguments, _context| {
+        let left = arguments.first().cloned().unwrap_or(Value::Nil);
+        let right = arguments.get(1).cloned().unwrap_or(Value::Nil);
+        left.add(&right)
+    });
+
+    assert_eq!(
+        call_builtin(
+            "EVAL",
+            &[block.clone(), Value::from("A"), Value::from("B")],
+            &mut context
+        ),
+        Ok(Value::from("AB"))
+    );
+
+    let mut mutable_arguments = [block, Value::from(10_i64), Value::from(5_i64)];
+    assert_eq!(
+        call_builtin_mut("eval", &mut mutable_arguments, &mut context),
+        Ok(Value::from(15_i64))
+    );
+}
+
+#[test]
+fn public_eval_reports_xbase_style_argument_errors_for_non_codeblocks() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("EVAL", &[], &mut context),
+        Err(RuntimeError {
+            message: "BASE 1004 Argument error (EVAL)".to_owned(),
+            expected: Some(harbour_rust_runtime::ValueKind::Codeblock),
+            actual: None,
+        })
+    );
+    assert_eq!(
+        call_builtin("EVAL", &[Value::from("not-a-block")], &mut context),
+        Err(RuntimeError {
+            message: "BASE 1004 Argument error (EVAL)".to_owned(),
+            expected: Some(harbour_rust_runtime::ValueKind::Codeblock),
+            actual: Some(harbour_rust_runtime::ValueKind::String),
+        })
+    );
+}
+
+#[test]
+fn public_memvar_context_prefers_private_over_public_and_updates_existing_bindings() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        context.define_public("counter", Value::from(10_i64)),
+        Value::from(10_i64)
+    );
+    assert_eq!(context.read_memvar("counter"), Value::from(10_i64));
+
+    context.push_private_frame();
+    assert_eq!(
+        context.define_private("counter", Value::from(1_i64)),
+        Value::from(1_i64)
+    );
+    assert_eq!(context.read_memvar("counter"), Value::from(1_i64));
+
+    assert_eq!(
+        context.assign_memvar("counter", Value::from(2_i64)),
+        Value::from(2_i64)
+    );
+    assert_eq!(context.read_memvar("counter"), Value::from(2_i64));
+
+    context.pop_private_frame();
+    assert_eq!(context.read_memvar("counter"), Value::from(10_i64));
+}
+
+#[test]
+fn public_memvar_context_assigns_to_the_current_dynamic_scope_when_missing() {
+    let mut context = RuntimeContext::new();
+
+    context.push_private_frame();
+    assert_eq!(
+        context.assign_memvar("shadow", Value::from("private")),
+        Value::from("private")
+    );
+    assert_eq!(context.read_memvar("shadow"), Value::from("private"));
+
+    context.pop_private_frame();
+    assert_eq!(context.read_memvar("shadow"), Value::Nil);
+
+    assert_eq!(
+        context.assign_memvar("global", Value::from(7_i64)),
+        Value::from(7_i64)
+    );
+    assert_eq!(context.read_memvar("global"), Value::from(7_i64));
 }
 
 #[test]

@@ -21,6 +21,10 @@ fn public_value_output_string_matches_runtime_baseline() {
     assert_eq!(Value::from(9_i64).to_output_string(), "9");
     assert_eq!(Value::from("text").to_output_string(), "text");
     assert_eq!(Value::array_with_len(2).to_output_string(), "{ Array(2) }");
+    assert_eq!(
+        Value::codeblock("{|| NIL}", |_arguments, _context| Ok(Value::Nil)).to_output_string(),
+        "{|| NIL}"
+    );
 }
 
 #[test]

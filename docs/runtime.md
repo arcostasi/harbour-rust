@@ -374,6 +374,31 @@ Na slice seguinte da Fase 7, comparações de arrays ficam mais próximas do bas
 - `<`, `<=`, `>` e `>=` com arrays passam a emitir `BASE 1073` a `BASE 1076`,
 - a slice continua restrita a arrays; semântica equivalente para objetos e codeblocks permanece fora do escopo atual.
 
+## Slice inicial da Fase 8
+
+Na primeira slice da Fase 8, o runtime ganha a base mínima para recursos dinâmicos xBase:
+
+- `ValueKind::Codeblock` e `Value::Codeblock(CodeblockValue)`,
+- identidade observável de codeblocks por id estável no processo,
+- `Eval()` como builtin inicial sobre closures Rust armazenadas no valor,
+- `RuntimeContext` com storage separado para `PRIVATE` e `PUBLIC`,
+- leitura dinâmica de memvar com precedência `PRIVATE -> PUBLIC -> NIL`,
+- atribuição dinâmica mínima com update no binding mais próximo já existente.
+
+O recorte desta slice é deliberadamente pequeno:
+
+- codeblocks ainda não capturam lexicalmente valores do frontend,
+- `Eval()` só executa codeblocks já materializados pelo runtime,
+- memvars ainda não entram no caminho fim a fim `IR -> codegen-c -> cli run`,
+- macro evaluation continua fora do runtime nesta etapa.
+
+Mesmo assim, esse baseline já fixa a semântica observável necessária para a sequência da Fase 8:
+
+- `ValType()` passa a retornar `"B"` para codeblocks,
+- `Empty()` passa a tratar codeblocks como não-vazios,
+- `to_output_string()` usa a representação textual do codeblock para snapshots e diagnósticos,
+- o contexto dinâmico já diferencia storage privado e público sem confundir memvars com globais comuns.
+
 ### Erros de runtime
 
 - nada de `panic!` para erro de usuário,

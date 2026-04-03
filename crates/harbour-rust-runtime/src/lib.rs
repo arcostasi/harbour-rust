@@ -1,4 +1,13 @@
-use std::{cmp::Ordering, error::Error, fmt};
+use std::{
+    cmp::Ordering,
+    collections::HashMap,
+    error::Error,
+    fmt,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering as AtomicOrdering},
+    },
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
@@ -8,6 +17,7 @@ pub enum ValueKind {
     Float,
     String,
     Array,
+    Codeblock,
 }
 
 impl ValueKind {
@@ -19,9 +29,64 @@ impl ValueKind {
             Self::Float => "Float",
             Self::String => "String",
             Self::Array => "Array",
+            Self::Codeblock => "Codeblock",
         }
     }
 }
+
+static CODEBLOCK_ID_SEED: AtomicUsize = AtomicUsize::new(1);
+
+type CodeblockImpl =
+    dyn Fn(&[Value], &mut RuntimeContext) -> Result<Value, RuntimeError> + Send + Sync;
+
+#[derive(Clone)]
+pub struct CodeblockValue {
+    id: usize,
+    repr: String,
+    implementation: Arc<CodeblockImpl>,
+}
+
+impl CodeblockValue {
+    pub fn new<F>(repr: &str, implementation: F) -> Self
+    where
+        F: Fn(&[Value], &mut RuntimeContext) -> Result<Value, RuntimeError> + Send + Sync + 'static,
+    {
+        Self {
+            id: CODEBLOCK_ID_SEED.fetch_add(1, AtomicOrdering::Relaxed),
+            repr: repr.to_owned(),
+            implementation: Arc::new(implementation),
+        }
+    }
+
+    pub fn call(
+        &self,
+        arguments: &[Value],
+        context: &mut RuntimeContext,
+    ) -> Result<Value, RuntimeError> {
+        (self.implementation)(arguments, context)
+    }
+
+    pub fn repr(&self) -> &str {
+        &self.repr
+    }
+}
+
+impl fmt::Debug for CodeblockValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CodeblockValue")
+            .field("id", &self.id)
+            .field("repr", &self.repr)
+            .finish()
+    }
+}
+
+impl PartialEq for CodeblockValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for CodeblockValue {}
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Value {
@@ -32,6 +97,7 @@ pub enum Value {
     Float(f64),
     String(String),
     Array(Vec<Value>),
+    Codeblock(CodeblockValue),
 }
 
 impl Value {
@@ -43,6 +109,7 @@ impl Value {
             Self::Float(_) => ValueKind::Float,
             Self::String(_) => ValueKind::String,
             Self::Array(_) => ValueKind::Array,
+            Self::Codeblock(_) => ValueKind::Codeblock,
         }
     }
 
@@ -115,8 +182,25 @@ impl Value {
         }
     }
 
+    pub fn as_codeblock(&self) -> Result<&CodeblockValue, RuntimeError> {
+        match self {
+            Self::Codeblock(value) => Ok(value),
+            _ => Err(RuntimeError::type_mismatch(
+                "convert value to codeblock",
+                self.kind(),
+            )),
+        }
+    }
+
     pub fn array(values: Vec<Value>) -> Self {
         Self::Array(values)
+    }
+
+    pub fn codeblock<F>(repr: &str, implementation: F) -> Self
+    where
+        F: Fn(&[Value], &mut RuntimeContext) -> Result<Value, RuntimeError> + Send + Sync + 'static,
+    {
+        Self::Codeblock(CodeblockValue::new(repr, implementation))
     }
 
     pub fn empty_array() -> Self {
@@ -236,6 +320,7 @@ impl Value {
             Self::Float(value) => value.to_string(),
             Self::String(value) => value.clone(),
             Self::Array(values) => format!("{{ Array({}) }}", values.len()),
+            Self::Codeblock(value) => value.repr().to_owned(),
         }
     }
 
@@ -313,6 +398,7 @@ impl Value {
             (Self::Logical(left), Self::Logical(right)) => left == right,
             (Self::String(left), Self::String(right)) => left == right,
             (Self::Array(_), Self::Array(_)) => std::ptr::eq(self, rhs),
+            (Self::Codeblock(left), Self::Codeblock(right)) => left == right,
             _ => {
                 if let Ok((left, right)) = self.numeric_pair_as_float(rhs, "compare exact equality")
                 {
@@ -461,9 +547,11 @@ impl OutputBuffer {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct RuntimeContext {
     output: OutputBuffer,
+    private_frames: Vec<HashMap<String, Value>>,
+    public_memvars: HashMap<String, Value>,
 }
 
 impl RuntimeContext {
@@ -482,11 +570,74 @@ impl RuntimeContext {
     pub fn into_output(self) -> OutputBuffer {
         self.output
     }
+
+    pub fn push_private_frame(&mut self) {
+        self.private_frames.push(HashMap::new());
+    }
+
+    pub fn pop_private_frame(&mut self) {
+        self.private_frames.pop();
+    }
+
+    pub fn define_private(&mut self, name: &str, value: Value) -> Value {
+        if self.private_frames.is_empty() {
+            self.push_private_frame();
+        }
+
+        self.private_frames
+            .last_mut()
+            .expect("private frame")
+            .insert(normalize_name(name), value.clone());
+        value
+    }
+
+    pub fn define_public(&mut self, name: &str, value: Value) -> Value {
+        self.public_memvars
+            .insert(normalize_name(name), value.clone());
+        value
+    }
+
+    pub fn read_memvar(&self, name: &str) -> Value {
+        let key = normalize_name(name);
+
+        for frame in self.private_frames.iter().rev() {
+            if let Some(value) = frame.get(&key) {
+                return value.clone();
+            }
+        }
+
+        self.public_memvars.get(&key).cloned().unwrap_or(Value::Nil)
+    }
+
+    pub fn assign_memvar(&mut self, name: &str, value: Value) -> Value {
+        let key = normalize_name(name);
+
+        for frame in self.private_frames.iter_mut().rev() {
+            if let Some(existing) = frame.get_mut(&key) {
+                *existing = value.clone();
+                return value;
+            }
+        }
+
+        if let Some(existing) = self.public_memvars.get_mut(&key) {
+            *existing = value.clone();
+            return value;
+        }
+
+        if let Some(frame) = self.private_frames.last_mut() {
+            frame.insert(key, value.clone());
+            return value;
+        }
+
+        self.public_memvars.insert(key, value.clone());
+        value
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Builtin {
     QOut,
+    Eval,
     Abs,
     Sqrt,
     Sin,
@@ -528,6 +679,8 @@ impl Builtin {
     pub fn lookup(name: &str) -> Option<Self> {
         if name.eq_ignore_ascii_case("QOUT") {
             Some(Self::QOut)
+        } else if name.eq_ignore_ascii_case("EVAL") {
+            Some(Self::Eval)
         } else if name.eq_ignore_ascii_case("ABS") {
             Some(Self::Abs)
         } else if name.eq_ignore_ascii_case("SQRT") {
@@ -607,6 +760,22 @@ impl Builtin {
 pub fn qout(values: &[Value], output: &mut OutputBuffer) -> Result<Value, RuntimeError> {
     output.push_qout_line(values);
     Ok(Value::Nil)
+}
+
+pub fn eval(
+    codeblock: Option<&Value>,
+    arguments: &[Value],
+    context: &mut RuntimeContext,
+) -> Result<Value, RuntimeError> {
+    let Some(codeblock) = codeblock else {
+        return Err(RuntimeError::eval_argument_error(None));
+    };
+
+    let codeblock = codeblock
+        .as_codeblock()
+        .map_err(|_| RuntimeError::eval_argument_error(Some(codeblock.kind())))?;
+
+    codeblock.call(arguments, context)
 }
 
 pub fn abs(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -872,6 +1041,7 @@ pub fn valtype(value: Option<&Value>) -> Result<Value, RuntimeError> {
         Value::Integer(_) | Value::Float(_) => "N",
         Value::String(_) => "C",
         Value::Array(_) => "A",
+        Value::Codeblock(_) => "B",
     };
 
     Ok(Value::from(type_code))
@@ -896,6 +1066,7 @@ pub fn empty(value: Option<&Value>) -> Result<Value, RuntimeError> {
         Value::Float(value) => *value == 0.0,
         Value::String(text) => harbour_string_is_empty(text),
         Value::Array(values) => values.is_empty(),
+        Value::Codeblock(_) => false,
     };
 
     Ok(Value::from(is_empty))
@@ -1261,6 +1432,10 @@ pub fn call_builtin(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::Eval) => {
+            let rest = arguments.get(1..).unwrap_or(&[]);
+            eval(arguments.first(), rest, context)
+        }
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
         Some(Builtin::Sin) => sin_value(arguments.first()),
@@ -1311,6 +1486,12 @@ pub fn call_builtin_mut(
 ) -> Result<Value, RuntimeError> {
     match Builtin::lookup(name) {
         Some(Builtin::QOut) => qout(arguments, context.output_mut()),
+        Some(Builtin::Eval) => {
+            let Some(codeblock) = arguments.first() else {
+                return Err(RuntimeError::eval_argument_error(None));
+            };
+            eval(Some(codeblock), &arguments[1..], context)
+        }
         Some(Builtin::Abs) => abs(arguments.first()),
         Some(Builtin::Sqrt) => sqrt_value(arguments.first()),
         Some(Builtin::Sin) => sin_value(arguments.first()),
@@ -1395,6 +1576,10 @@ fn string_equals_exact_off(left: &str, right: &str) -> bool {
     left.starts_with(right)
 }
 
+fn normalize_name(name: &str) -> String {
+    name.to_ascii_uppercase()
+}
+
 impl From<()> for Value {
     fn from(_: ()) -> Self {
         Self::Nil
@@ -1434,6 +1619,12 @@ impl From<&str> for Value {
 impl From<Vec<Value>> for Value {
     fn from(value: Vec<Value>) -> Self {
         Self::Array(value)
+    }
+}
+
+impl From<CodeblockValue> for Value {
+    fn from(value: CodeblockValue) -> Self {
+        Self::Codeblock(value)
     }
 }
 
@@ -1535,6 +1726,14 @@ impl RuntimeError {
             message: format!("builtin {} requires mutable dispatch", name),
             expected: None,
             actual: None,
+        }
+    }
+
+    pub fn eval_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 1004 Argument error (EVAL)".to_owned(),
+            expected: Some(ValueKind::Codeblock),
+            actual,
         }
     }
 
