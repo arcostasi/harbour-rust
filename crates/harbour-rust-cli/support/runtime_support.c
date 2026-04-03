@@ -63,6 +63,7 @@ static _Bool harbour_try_max_min_compare(
     harbour_runtime_Value right,
     int *comparison
 );
+static _Bool harbour_string_equals_exact_off(const char *left, const char *right);
 static _Bool harbour_array_scan_matches(
     harbour_runtime_Value candidate,
     harbour_runtime_Value search
@@ -332,7 +333,9 @@ harbour_runtime_Value harbour_value_equals(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) == 0);
+        return harbour_value_from_logical(
+            harbour_string_equals_exact_off(left.as.string, right.as.string)
+        );
     }
 
     if (harbour_try_numeric_pair(left, right, &left_number, &right_number)) {
@@ -2144,14 +2147,18 @@ static _Bool harbour_array_scan_matches(
         candidate.kind == HARBOUR_VALUE_STRING &&
         search.kind == HARBOUR_VALUE_STRING
     ) {
-        size_t search_length = strlen(search.as.string);
-        return strncmp(candidate.as.string, search.as.string, search_length) == 0;
+        return harbour_string_equals_exact_off(candidate.as.string, search.as.string);
     }
     if (harbour_try_numeric_pair(candidate, search, &left_number, &right_number)) {
         return left_number == right_number;
     }
 
     return 0;
+}
+
+static _Bool harbour_string_equals_exact_off(const char *left, const char *right) {
+    size_t right_length = strlen(right);
+    return strncmp(left, right, right_length) == 0;
 }
 
 static harbour_runtime_Value harbour_unsupported_comparison(void) {

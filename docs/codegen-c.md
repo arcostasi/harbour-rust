@@ -153,6 +153,7 @@ Construções da IR que o backend C ainda não suporta geram erro de codegen exp
 | `tests/fixtures/parser/trim_builtin.prg` | `Trim()`, `LTrim()` e `RTrim()` executam |
 | `tests/fixtures/parser/at_builtin.prg` | `At()` em string executa |
 | `tests/fixtures/parser/replicate_space_builtin.prg` | `Replicate()` e `Space()` executam |
+| `tests/fixtures/parser/string_compare.prg` | `=`, `==` e `!=` de string executam com baseline EXACT OFF |
 | `tests/fixtures/parser/abs_builtin.prg` | `Abs()` numérico executa |
 | `tests/fixtures/parser/sqrt_builtin.prg` | `Sqrt()` numérico executa |
 | `tests/fixtures/parser/exp_builtin.prg` | `Exp()` numérico executa |
@@ -192,6 +193,7 @@ Fase 5 + Fase 7 parcial:
 - `Trim()`, `LTrim()` e `RTrim()` para string via dispatch de builtin — parcial
 - `At()` para string via dispatch de builtin — parcial
 - `Replicate()` e `Space()` para string via dispatch de builtin — parcial
+- `=`/`==`/`!=` para string com baseline EXACT OFF no runtime host C — parcial
 - `Abs()` numérico via dispatch de builtin — parcial
 - `Sqrt()` numérico via dispatch de builtin — parcial
 - `Exp()` numérico via dispatch de builtin — parcial

@@ -240,6 +240,8 @@ RETURN
 
 ### Slice 7.8 — Comparações mais fiéis
 
+**Status:** completo no baseline atual para strings com `=`/`==`/`!=` (EXACT OFF por padrão ✓)
+
 **Escopo:**
 - Comparação de strings com semântica prefixo de `SET EXACT OFF` como baseline padrão
 - `==` exato para strings
@@ -250,9 +252,9 @@ RETURN
 - `harbour-core/utils/hbtest/rt_str.prg`
 
 **Aceite:**
-- [ ] String comparison rules documentadas e testadas
-- [ ] `==` e `=` com semântica distinta
-- [ ] `COMPATIBILITY.md` atualizada
+- [x] String comparison rules documentadas e testadas
+- [x] `==` e `=` com semântica distinta
+- [x] `COMPATIBILITY.md` atualizada
 
 ---
 

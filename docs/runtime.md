@@ -150,6 +150,13 @@ Na slice seguinte da Fase 7, entram `ADel()`, `AIns()` e `AScan()` como builtins
 - `ADel()` e `AIns()` seguem a mesma surface mutável de `AAdd()`/`ASize()` e exigem `call_builtin_mut()`; na surface imutável geram erro explícito de dispatch,
 - o recorte atual continua parcial: `ASort()`, `AEval()`, `AFill()` e `ACopy()` seguem pendentes, e `AScan()` ainda não cobre codeblocks nem comparadores customizados.
 
+Na slice seguinte da Fase 7, as comparações de string ficam mais fiéis ao baseline Clipper:
+
+- `equals()` passa a seguir o baseline padrão de `SET EXACT OFF` para strings, usando match por prefixo direcional,
+- `exact_equals()` continua modelando `==` como igualdade estrita,
+- `not_equals()` continua como negação de `equals()`, então `"AA" != "A"` passa a ser `.F.` nesse baseline,
+- o recorte continua parcial porque ainda não existe toggle real de `SET EXACT`; nesta fase o runtime assume o baseline default mais útil para compatibilidade procedural.
+
 Na slice seguinte da Fase 7, entra `Len()` como builtin imutável compartilhado entre strings e arrays:
 
 - `len()` retorna `Integer` para `String` e `Array`,

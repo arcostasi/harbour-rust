@@ -289,7 +289,7 @@ impl Value {
             (Self::Nil, Self::Nil) => true,
             (Self::Nil, _) | (_, Self::Nil) => false,
             (Self::Logical(left), Self::Logical(right)) => left == right,
-            (Self::String(left), Self::String(right)) => left == right,
+            (Self::String(left), Self::String(right)) => string_equals_exact_off(left, right),
             _ => {
                 if let Ok((left, right)) = self.numeric_pair_as_float(rhs, "compare equality") {
                     left == right
@@ -1386,9 +1386,13 @@ fn array_scan_matches(candidate: &Value, search: &Value) -> bool {
         (Value::Integer(left), Value::Float(right)) => (*left as f64) == *right,
         (Value::Float(left), Value::Integer(right)) => *left == (*right as f64),
         (Value::Float(left), Value::Float(right)) => left == right,
-        (Value::String(left), Value::String(right)) => left.starts_with(right),
+        (Value::String(left), Value::String(right)) => string_equals_exact_off(left, right),
         _ => false,
     }
+}
+
+fn string_equals_exact_off(left: &str, right: &str) -> bool {
+    left.starts_with(right)
 }
 
 impl From<()> for Value {
@@ -2567,6 +2571,26 @@ mod tests {
         assert_eq!(
             Value::from("abc").equals(&Value::from("abc")),
             Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from("12345").equals(&Value::from("123")),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from("123").equals(&Value::from("12345")),
+            Ok(Value::from(false))
+        );
+        assert_eq!(
+            Value::from("123").equals(&Value::from("")),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            Value::from("AA").exact_equals(&Value::from("A")),
+            Ok(Value::from(false))
+        );
+        assert_eq!(
+            Value::from("AA").not_equals(&Value::from("A")),
+            Ok(Value::from(false))
         );
         assert_eq!(
             Value::from("abc").less_than(&Value::from("abd")),

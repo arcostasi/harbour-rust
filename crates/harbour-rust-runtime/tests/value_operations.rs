@@ -132,6 +132,38 @@ fn public_qout_builtin_writes_expected_output_and_returns_nil() {
 }
 
 #[test]
+fn public_string_comparison_matches_exact_off_prefix_baseline() {
+    assert_eq!(
+        Value::from("12345").equals(&Value::from("123")),
+        Ok(Value::from(true))
+    );
+    assert_eq!(
+        Value::from("123").equals(&Value::from("12345")),
+        Ok(Value::from(false))
+    );
+    assert_eq!(
+        Value::from("123").equals(&Value::from("")),
+        Ok(Value::from(true))
+    );
+    assert_eq!(
+        Value::from("").equals(&Value::from("123")),
+        Ok(Value::from(false))
+    );
+    assert_eq!(
+        Value::from("AA").exact_equals(&Value::from("A")),
+        Ok(Value::from(false))
+    );
+    assert_eq!(
+        Value::from("AA").not_equals(&Value::from("A")),
+        Ok(Value::from(false))
+    );
+    assert_eq!(
+        Value::from("Z").not_equals(&Value::from("A")),
+        Ok(Value::from(true))
+    );
+}
+
+#[test]
 fn public_abs_matches_the_current_numeric_runtime_baseline() {
     assert_eq!(abs(Some(&Value::from(0_i64))), Ok(Value::from(0_i64)));
     assert_eq!(abs(Some(&Value::from(10_i64))), Ok(Value::from(10_i64)));
