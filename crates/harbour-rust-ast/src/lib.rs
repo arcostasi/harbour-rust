@@ -50,6 +50,8 @@ pub struct Routine {
 pub enum Statement {
     Local(LocalStatement),
     Static(StaticStatement),
+    Private(MemvarStatement),
+    Public(MemvarStatement),
     If(Box<IfStatement>),
     DoWhile(Box<DoWhileStatement>),
     For(Box<ForStatement>),
@@ -63,6 +65,8 @@ impl Statement {
         match self {
             Self::Local(statement) => statement.span,
             Self::Static(statement) => statement.span,
+            Self::Private(statement) => statement.span,
+            Self::Public(statement) => statement.span,
             Self::If(statement) => statement.span,
             Self::DoWhile(statement) => statement.span,
             Self::For(statement) => statement.span,
@@ -77,6 +81,12 @@ impl Statement {
 pub enum StorageClass {
     Local,
     Static,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemvarClass {
+    Private,
+    Public,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +112,20 @@ pub struct StaticStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticBinding {
+    pub name: Identifier,
+    pub initializer: Option<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarStatement {
+    pub memvar_class: MemvarClass,
+    pub bindings: Vec<MemvarBinding>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemvarBinding {
     pub name: Identifier,
     pub initializer: Option<Expression>,
     pub span: Span,
@@ -165,6 +189,8 @@ pub enum Expression {
     Float(FloatLiteral),
     String(StringLiteral),
     Array(ArrayLiteral),
+    Codeblock(CodeblockLiteral),
+    Macro(MacroExpression),
     Call(CallExpression),
     Index(IndexExpression),
     Assignment(AssignmentExpression),
@@ -183,6 +209,8 @@ impl Expression {
             Self::Float(expression) => expression.span,
             Self::String(expression) => expression.span,
             Self::Array(expression) => expression.span,
+            Self::Codeblock(expression) => expression.span,
+            Self::Macro(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
             Self::Assignment(expression) => expression.span,
@@ -231,6 +259,19 @@ pub struct StringLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArrayLiteral {
     pub elements: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeblockLiteral {
+    pub params: Vec<Identifier>,
+    pub body: Vec<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MacroExpression {
+    pub value: Box<Expression>,
     pub span: Span,
 }
 
@@ -314,11 +355,12 @@ mod tests {
     use harbour_rust_lexer::{Position, Span};
 
     use crate::{
-        ArrayLiteral, BinaryExpression, BinaryOperator, CallExpression, ConditionalBranch,
-        DoWhileStatement, Expression, ExpressionStatement, ForStatement, Identifier, IfStatement,
-        IndexExpression, Item, LocalBinding, LocalStatement, NilLiteral, PostfixExpression,
-        PostfixOperator, PrintStatement, Program, ReturnStatement, Routine, RoutineKind, Statement,
-        StaticBinding, StaticStatement, StorageClass, StringLiteral,
+        ArrayLiteral, BinaryExpression, BinaryOperator, CallExpression, CodeblockLiteral,
+        ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement, ForStatement,
+        Identifier, IfStatement, IndexExpression, Item, LocalBinding, LocalStatement,
+        MacroExpression, MemvarBinding, MemvarClass, MemvarStatement, NilLiteral,
+        PostfixExpression, PostfixOperator, PrintStatement, Program, ReturnStatement, Routine,
+        RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass, StringLiteral,
     };
 
     fn span(
@@ -523,6 +565,40 @@ mod tests {
     }
 
     #[test]
+    fn memvar_statements_preserve_their_class_and_span() {
+        let private_statement = Statement::Private(MemvarStatement {
+            memvar_class: MemvarClass::Private,
+            bindings: vec![MemvarBinding {
+                name: Identifier {
+                    text: "counter".to_owned(),
+                    span: span(8, 1, 9, 15, 1, 16),
+                },
+                initializer: Some(Expression::Integer(super::IntegerLiteral {
+                    lexeme: "1".to_owned(),
+                    span: span(20, 1, 21, 21, 1, 22),
+                })),
+                span: span(8, 1, 9, 21, 1, 22),
+            }],
+            span: span(0, 1, 1, 21, 1, 22),
+        });
+        let public_statement = Statement::Public(MemvarStatement {
+            memvar_class: MemvarClass::Public,
+            bindings: vec![MemvarBinding {
+                name: Identifier {
+                    text: "g_name".to_owned(),
+                    span: span(7, 2, 8, 13, 2, 14),
+                },
+                initializer: None,
+                span: span(7, 2, 8, 13, 2, 14),
+            }],
+            span: span(0, 2, 1, 13, 2, 14),
+        });
+
+        assert_eq!(private_statement.span(), span(0, 1, 1, 21, 1, 22));
+        assert_eq!(public_statement.span(), span(0, 2, 1, 13, 2, 14));
+    }
+
+    #[test]
     fn binary_and_postfix_expressions_use_outer_span() {
         let expression = Expression::Binary(BinaryExpression {
             left: Box::new(Expression::Postfix(PostfixExpression {
@@ -561,6 +637,31 @@ mod tests {
         });
 
         assert_eq!(expression.span(), span(0, 1, 1, 6, 1, 7));
+    }
+
+    #[test]
+    fn codeblock_and_macro_expressions_use_outer_span() {
+        let codeblock = Expression::Codeblock(CodeblockLiteral {
+            params: vec![Identifier {
+                text: "x".to_owned(),
+                span: span(2, 1, 3, 3, 1, 4),
+            }],
+            body: vec![Expression::Identifier(Identifier {
+                text: "x".to_owned(),
+                span: span(6, 1, 7, 7, 1, 8),
+            })],
+            span: span(0, 1, 1, 8, 1, 9),
+        });
+        let macro_expression = Expression::Macro(MacroExpression {
+            value: Box::new(Expression::Identifier(Identifier {
+                text: "name".to_owned(),
+                span: span(1, 2, 2, 5, 2, 6),
+            })),
+            span: span(0, 2, 1, 5, 2, 6),
+        });
+
+        assert_eq!(codeblock.span(), span(0, 1, 1, 8, 1, 9));
+        assert_eq!(macro_expression.span(), span(0, 2, 1, 5, 2, 6));
     }
 
     #[test]

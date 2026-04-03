@@ -1,7 +1,7 @@
 use harbour_rust_ast::{
-    BinaryExpression, BinaryOperator, CallExpression, Expression, Identifier, IndexExpression,
-    Item, PostfixExpression, PostfixOperator, Program, Routine, RoutineKind, Statement,
-    UnaryExpression, UnaryOperator,
+    BinaryExpression, BinaryOperator, CallExpression, CodeblockLiteral, Expression, Identifier,
+    IndexExpression, Item, MacroExpression, MemvarClass, PostfixExpression, PostfixOperator,
+    Program, Routine, RoutineKind, Statement, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{LexedSource, Position, Span, lex};
 use harbour_rust_parser::{ParseOutput, parse};
@@ -171,6 +171,31 @@ fn render_statement(out: &mut String, statement: &Statement, level: usize) {
                 }
             }
         }
+        Statement::Private(statement) | Statement::Public(statement) => {
+            let label = match statement.memvar_class {
+                MemvarClass::Private => "Private",
+                MemvarClass::Public => "Public",
+            };
+            push_line(
+                out,
+                level,
+                &format!("{label} [{}]", format_span(statement.span)),
+            );
+            for binding in &statement.bindings {
+                push_line(
+                    out,
+                    level + 1,
+                    &format!(
+                        "Binding {} [{}]",
+                        binding.name.text,
+                        format_span(binding.span)
+                    ),
+                );
+                if let Some(initializer) = &binding.initializer {
+                    render_expression(out, initializer, level + 2);
+                }
+            }
+        }
         Statement::If(statement) => {
             push_line(out, level, &format!("If [{}]", format_span(statement.span)));
             for (index, branch) in statement.branches.iter().enumerate() {
@@ -324,6 +349,8 @@ fn render_expression(out: &mut String, expression: &Expression, level: usize) {
                 }
             }
         }
+        Expression::Codeblock(expression) => render_codeblock_expression(out, expression, level),
+        Expression::Macro(expression) => render_macro_expression(out, expression, level),
         Expression::Call(expression) => render_call_expression(out, expression, level),
         Expression::Index(expression) => render_index_expression(out, expression, level),
         Expression::Assignment(expression) => {
@@ -372,6 +399,39 @@ fn render_call_expression(out: &mut String, expression: &CallExpression, level: 
             render_expression(out, argument, level + 2);
         }
     }
+}
+
+fn render_codeblock_expression(out: &mut String, expression: &CodeblockLiteral, level: usize) {
+    push_line(
+        out,
+        level,
+        &format!("Codeblock [{}]", format_span(expression.span)),
+    );
+    if expression.params.is_empty() {
+        push_line(out, level + 1, "Params []");
+    } else {
+        push_line(out, level + 1, "Params");
+        for param in &expression.params {
+            render_identifier(out, "Param", param, level + 2);
+        }
+    }
+    if expression.body.is_empty() {
+        push_line(out, level + 1, "Body []");
+    } else {
+        push_line(out, level + 1, "Body");
+        for value in &expression.body {
+            render_expression(out, value, level + 2);
+        }
+    }
+}
+
+fn render_macro_expression(out: &mut String, expression: &MacroExpression, level: usize) {
+    push_line(
+        out,
+        level,
+        &format!("Macro [{}]", format_span(expression.span)),
+    );
+    render_expression(out, &expression.value, level + 1);
 }
 
 fn render_index_expression(out: &mut String, expression: &IndexExpression, level: usize) {

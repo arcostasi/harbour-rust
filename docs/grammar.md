@@ -129,6 +129,14 @@ Quinta slice da Fase 7:
 
 Nesta etapa, indexação de array entra no parser como `Index(target, indices)` sobre a expressão-base já existente. Lowering e execução continuam pendentes.
 
+Primeira slice da Fase 8:
+
+- `Statement::{Private, Public}` com lista de bindings e inicializadores opcionais
+- `Expression::Codeblock(CodeblockLiteral)` para `{|| ...}` e `{|x, y| ...}`
+- `Expression::Macro(MacroExpression)` para o começo do macro operator em posição de expressão
+
+Nesta etapa, o objetivo é estabilizar a superfície sintática de memvars, codeblocks e macro read sem ainda definir a semântica completa de resolução dinâmica ou execução.
+
 ## Parser baseline da Fase 2
 
 Segunda slice já coberta pelo parser:
