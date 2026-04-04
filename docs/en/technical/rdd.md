@@ -22,6 +22,7 @@ The current alpha subset includes:
 - keep storage-driver concerns separate from frontend/compiler layers;
 - start with a minimal, testable DBF baseline;
 - preserve room for future driver replacement and index support.
+- allow upstream-backed DBF oracle tests to skip cleanly in public CI when `harbour-core/` fixtures are not available.
 
 ## Current Status
 

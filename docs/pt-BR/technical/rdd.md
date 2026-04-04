@@ -22,6 +22,7 @@ O subconjunto alpha atual inclui:
 - manter preocupações de driver/storage separadas das camadas de frontend/compilador;
 - começar com um baseline DBF mínimo e testável;
 - preservar espaço para futura substituição de drivers e suporte a índices.
+- permitir que testes-oráculo de DBF apoiados no upstream sejam pulados de forma limpa na CI pública quando os fixtures de `harbour-core/` não estiverem disponíveis.
 
 ## Estado Atual
 
