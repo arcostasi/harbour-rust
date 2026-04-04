@@ -2,6 +2,24 @@
 
 Ferramentas auxiliares do projeto `harbour-rust`.
 
+## Disponíveis
+
+### Comparador harbour-core
+
+O comparador inicial da Fase 12 está disponível via:
+
+```text
+cargo run -p harbour-rust-tests --bin compare-harbour -- --fixture examples/hello.prg --harbour-runner /caminho/para/runner-harbour
+```
+
+O `runner-harbour` deve aceitar o caminho do `.prg` como primeiro argumento e retornar:
+
+- código de saída,
+- `stdout`,
+- `stderr`.
+
+O comparador executa o mesmo fixture com `harbour-rust` e com esse runner externo, compara `exit code` e `stdout`, e pode comparar `stderr` com `--match-stderr`.
+
 ## Planejadas
 
 ### Comparador harbour-core

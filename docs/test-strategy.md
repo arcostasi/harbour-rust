@@ -57,6 +57,12 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - stderr,
 - eventualmente output intermediário do PP.
 
+Na Fase 12, isso passa a ter um comparador operacional inicial:
+
+- `cargo run -p harbour-rust-tests --bin compare-harbour -- --fixture <arquivo.prg> --harbour-runner <runner>`
+- comparação de `exit code` e `stdout` por padrão,
+- comparação opcional de `stderr` com `--match-stderr`.
+
 ### Fuzz
 
 - lexer
@@ -228,6 +234,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `crates/harbour-rust-rdd/tests/schema.rs` -> roundtrip temporário de `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL` sobre cópias de DBFs reais do upstream
 - `crates/harbour-rust-cli/tests/commands.rs` -> `check` bem-sucedido para `examples/hello.prg`, erro de PP com exit code `1`, `transpile --to c` com geração de arquivo e erro de `codegen-c` com exit code `2`
 - `crates/harbour-rust-tests/tests/golden_cli.rs` -> golden snapshots de stdout para `hello`, `phase7_acceptance`, `phase8_acceptance` e `phase9_acceptance`
+- `crates/harbour-rust-tests/tests/compare_harbour.rs` -> comparador operacional inicial com runner Harbour externo fake cobrindo caso feliz e mismatch
 
 ## Critérios por PR
 
