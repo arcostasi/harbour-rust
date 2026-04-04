@@ -71,3 +71,11 @@ A abordagem-alvo é:
 - [Padrões de Documentação](./pt-BR/padroes-de-documentacao.md)
 - [Fluxo de Tradução](./pt-BR/fluxo-de-traducao.md)
 - [Guia Legal e de Proveniência](./pt-BR/legal-e-proveniencia.md)
+
+## Primeiros Guias Técnicos Migrados
+
+- [Overview](./en/technical/overview.md)
+- [Architecture](./en/technical/architecture.md)
+- [Runtime](./en/technical/runtime.md)
+- [CLI](./en/technical/cli.md)
+- [Release](./en/technical/release.md)

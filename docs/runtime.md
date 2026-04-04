@@ -1,5 +1,7 @@
 # Runtime
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/runtime.md](./en/technical/runtime.md) e [docs/pt-BR/technical/runtime.md](./pt-BR/technical/runtime.md).
+
 ## Objetivo
 
 Fornecer semântica suficiente para executar o subconjunto inicial sem comprometer a evolução para recursos dinâmicos de xBase.

@@ -1,5 +1,7 @@
 # Release
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/release.md](./en/technical/release.md) e [docs/pt-BR/technical/release.md](./pt-BR/technical/release.md).
+
 ## Objetivo
 
 Ter um checklist operacional mínimo para preparar uma release alpha do `harbour-rust`.

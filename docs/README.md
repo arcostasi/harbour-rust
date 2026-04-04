@@ -71,3 +71,11 @@ The target approach is:
 - [Documentation Standards](./en/documentation-standards.md)
 - [Translation Workflow](./en/translation-workflow.md)
 - [Legal and Provenance Guide](./en/legal-and-provenance.md)
+
+## First Migrated Technical Guides
+
+- [Overview](./en/technical/overview.md)
+- [Architecture](./en/technical/architecture.md)
+- [Runtime](./en/technical/runtime.md)
+- [CLI](./en/technical/cli.md)
+- [Release](./en/technical/release.md)

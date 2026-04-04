@@ -1,5 +1,7 @@
 # Visão geral do harbour-rust
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/overview.md](./en/technical/overview.md) e [docs/pt-BR/technical/overview.md](./pt-BR/technical/overview.md).
+
 ## O que é
 
 `harbour-rust` é um compilador moderno escrito em Rust, 100% compatível com CA-Clipper e Harbour. O objetivo é oferecer:

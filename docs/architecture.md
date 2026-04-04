@@ -1,5 +1,7 @@
 # Arquitetura
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/architecture.md](./en/technical/architecture.md) e [docs/pt-BR/technical/architecture.md](./pt-BR/technical/architecture.md).
+
 ## Meta
 
 Entregar um compilador compatível com CA-Clipper/Harbour em Rust sem copiar a estrutura monolítica do upstream.

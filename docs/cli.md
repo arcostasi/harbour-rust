@@ -1,5 +1,7 @@
 # CLI
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/cli.md](./en/technical/cli.md) e [docs/pt-BR/technical/cli.md](./pt-BR/technical/cli.md).
+
 ## Responsabilidade
 
 Interface de linha de comando do compilador `harbour-rust`. Orquestra o pipeline completo desde o source até o binário executável.
