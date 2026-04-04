@@ -48,7 +48,7 @@ Mensagens previsíveis, localizadas e úteis desde a Fase 1.
 | E001 | Unresolved symbol | Variável ou função não declarada |
 | E002 | Duplicate local | Variável declarada duas vezes no mesmo escopo |
 | E003 | Unresolved callable | Chamada a função/procedimento não encontrado |
-| E004 | Static storage unsupported | `STATIC` reconhecido mas sem runtime ainda |
+| E004 | Static storage unsupported | código histórico da fase de bootstrap de `STATIC`, hoje reservado |
 | E005 | Type mismatch | Operação com tipos incompatíveis (futuro) |
 
 ### Runtime (R)
@@ -75,6 +75,33 @@ Mensagens previsíveis, localizadas e úteis desde a Fase 1.
 | B001 | File not found | Arquivo fonte não encontrado |
 | B002 | C compiler not found | Compilador C host não detectado |
 | B003 | C compilation failed | Compilador C retornou erro |
+
+## Modelo atual do CLI
+
+Na Fase 11 o CLI passa a separar:
+
+- `exit 1` para erro de uso, leitura de entrada, PP, parser, HIR, sema e IR,
+- `exit 2` para falhas de `codegen-c`,
+- `exit 3` para ausência/falha do compilador C host,
+- `exit <programa>` para o status retornado pelo binário compilado em `run`.
+
+O formato observável atual é:
+
+```text
+<stage> failed for <arquivo>
+- <erro 1>
+- <erro 2>
+```
+
+ou, no caso de build host:
+
+```text
+B003 host C compilation failed with `<compiler>`
+stdout:
+...
+stderr:
+...
+```
 
 ## Estrutura recomendada
 

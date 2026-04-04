@@ -119,6 +119,14 @@ O aceite da Fase 10 está fechado com a camada inicial de DBF/RDD:
 - o mesmo harness valida roundtrip temporário para `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL` sem alterar os fixtures do upstream,
 - índices, memo, locking de rede e integração dos comandos xBase sobre o frontend continuam fora do recorte da fase e seguem registrados como evolução futura.
 
+O aceite da Fase 11 está fechado com CLI e diagnósticos utilizáveis:
+
+- `harbour-rust-cli help`, `help <command>` e `--help` agora cobrem o topo e os subcomandos `build`, `check`, `run` e `transpile`,
+- `harbour-rust-cli check` valida `pp -> parser -> hir -> sema` sem gerar C,
+- `harbour-rust-cli transpile --to c` expõe a geração de C de forma explícita sem invocar o compilador host,
+- o CLI agora diferencia exit code `1` para frontend, `2` para `codegen-c`, `3` para compilador C host e preserva o exit code real do programa executado,
+- `crates/harbour-rust-cli/tests/commands.rs` fixa esse baseline com casos felizes e de erro.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.

@@ -129,6 +129,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/parser/eval_capture_error.prg` -> `harbour-rust-cli build` com erro explícito de captura lexical ainda não suportada
 - `tests/fixtures/parser/phase8_acceptance.prg` -> `harbour-rust-cli build/run` com `PRIVATE`, `PUBLIC`, memvars, `Eval()` e macro read mínima no baseline de aceite da Fase 8
 - `tests/fixtures/compat/phase8_dynamic_runtime.prg` -> baseline focado de memvars dinâmicas e `Eval()`/codeblocks contra `harbour-core/tests/memvar.prg` e `harbour-core/doc/codebloc.txt`
+- `crates/harbour-rust-cli/tests/commands.rs` -> `help`, `check`, `transpile --to c` e códigos de saída coerentes do CLI na Fase 11
 - `tests/fixtures/parser/arrays.prg` -> lowering HIR sem erro
 - `tests/fixtures/parser/static.prg` -> lowering HIR com `Statement::Static`
 - leituras nominais manuais no crate `harbour-rust-hir` -> lowering HIR como `Read(path)` explícito
@@ -218,6 +219,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - Fase 9 fechada no subset acima; compatibilidade completa com `ppcore.c` e corpus maior de `tests/hbpp` segue como expansão futura, não como bloqueio do aceite atual
 - `crates/harbour-rust-rdd/tests/schema.rs` -> leitura de schema e navegação sobre `users.dbf`, `carts.dbf`, `items.dbf` e `test.dbf` do `harbour-core`
 - `crates/harbour-rust-rdd/tests/schema.rs` -> roundtrip temporário de `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL` sobre cópias de DBFs reais do upstream
+- `crates/harbour-rust-cli/tests/commands.rs` -> `check` bem-sucedido para `examples/hello.prg`, erro de PP com exit code `1`, `transpile --to c` com geração de arquivo e erro de `codegen-c` com exit code `2`
 
 ## Critérios por PR
 

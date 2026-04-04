@@ -37,22 +37,34 @@ Pipeline: `build` + compilação C + execução do binário.
 
 Detecção automática de compilador C host: `clang` > `gcc` > `cc`.
 
-### `check` (planejado)
+### `check`
 
 Verifica erros sem gerar código.
 
 ```bash
-harbour-rust check source.prg
+harbour-rust-cli check source.prg
 ```
 
 Pipeline: `source -> pp -> lexer -> parser -> AST -> HIR -> sema -> diagnósticos`
 
-### `transpile` (planejado)
+### `transpile`
 
 Gera C sem compilar.
 
 ```bash
-harbour-rust transpile --to c source.prg --out output.c
+harbour-rust-cli transpile --to c source.prg --out output.c
+```
+
+Pipeline: `source -> pp -> lexer -> parser -> AST -> HIR -> sema -> IR -> codegen-c -> .c`
+
+### `help`
+
+Mostra help geral ou de um comando específico.
+
+```bash
+harbour-rust-cli help
+harbour-rust-cli help check
+harbour-rust-cli transpile --help
 ```
 
 ## Opções
@@ -61,7 +73,8 @@ harbour-rust transpile --to c source.prg --out output.c
 | --- | --- |
 | `--out <path>` | Caminho do arquivo de saída |
 | `-I`, `--include-dir <dir>` | Diretório de includes para o PP |
-| `-v`, `--verbose` | Saída detalhada |
+| `--to c` | Target do `transpile` atual |
+| `-h`, `--help` | Help geral ou help do comando |
 
 ## Pipeline interno
 
@@ -100,6 +113,18 @@ Compila o C gerado junto com os fontes de runtime support e gera um binário tem
 | 3 | Erro do compilador C host |
 | (outro) | Código retornado pelo programa compilado |
 
+Saída atual por categoria:
+
+- `B001` para falha de leitura do source,
+- `preprocess failed for <arquivo>` para falha de PP,
+- `parse failed for <arquivo>` para falha sintática,
+- `hir lowering failed for <arquivo>` para falha de lowering,
+- `semantic analysis failed for <arquivo>` para falha de sema,
+- `ir lowering failed for <arquivo>` para falha de IR,
+- `codegen-c failed for <arquivo>` para falha de backend,
+- `B002` quando nenhum compilador C host é encontrado,
+- `B003` quando o compilador C host falha.
+
 ## Decisões de design
 
 ### Runtime support embarcado
@@ -112,10 +137,11 @@ O CLI deve reportar erros com arquivo, linha, coluna e contexto. Diagnósticos i
 
 ## Estado atual
 
-Fase 5 + Fase 6:
+Fase 11:
 
-- `build` — funcional para subconjunto procedural
-- `run` — funcional com detecção de compilador C
-- `-I/--include-dir` — funcional para includes do PP
-- `check` — planejado para Fase 11
-- `transpile` — planejado para Fase 11
+- `build` — funcional para o subset atual do frontend/backend C
+- `check` — funcional até `pp -> parser -> hir -> sema`
+- `run` — funcional com detecção de compilador C e propagação de exit code do programa
+- `transpile --to c` — funcional como wrapper explícito do caminho de geração de C
+- `help`, `-h`, `--help` — funcionais no topo e por comando
+- `-I/--include-dir` — funcional em `build`, `check`, `run` e `transpile`

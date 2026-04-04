@@ -50,7 +50,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 e 10 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 e 11 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -87,9 +87,11 @@ As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 e 10 estão concluídas:
 - fixture de aceite da Fase 9 curado em `tests/fixtures/pp/phase9_acceptance.prg`,
 - crate `harbour-rust-rdd` com trait `Rdd`, schema DBF, navegação, leitura de campos e mutação persistente básica,
 - leitura validada contra `harbour-core/contrib/hbhttpd/tests/users.dbf`, `carts.dbf`, `items.dbf` e `harbour-core/tests/test.dbf`,
-- escrita básica validada em roundtrip temporário para `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL`.
+- escrita básica validada em roundtrip temporário para `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL`,
+- CLI com help consistente por comando, `check`, `transpile --to c` e códigos de saída coerentes entre frontend, codegen e compilador C host,
+- cobertura de integração do CLI para help, `check`, `transpile` e falhas de `codegen-c`.
 
-O próximo passo técnico é iniciar a Fase 11 com diagnósticos, CLI e experiência de uso.
+O próximo passo técnico é iniciar a Fase 12 com qualidade industrial, regressão automatizada e preparação de release.
 
 O baseline fim a fim atual oferece geração de C:
 
@@ -113,6 +115,22 @@ Na Fase 6, o mesmo pipeline já aceita preprocessamento configurável no CLI:
 cargo run -p harbour-rust-cli -- build tests/fixtures/pp/angle_search_path_root.prg --include-dir tests/fixtures/pp/include-path --out target/angle_search.c
 cargo run -p harbour-rust-cli -- run tests/fixtures/pp/angle_search_path_root.prg -I tests/fixtures/pp/include-path
 ```
+
+Na Fase 11, o CLI passa a expor o fluxo de uso mínimo completo:
+
+```text
+cargo run -p harbour-rust-cli -- check examples/hello.prg
+cargo run -p harbour-rust-cli -- transpile --to c examples/hello.prg --out target/hello.c
+cargo run -p harbour-rust-cli -- help
+```
+
+O modelo atual de saída é:
+
+- `0` para sucesso,
+- `1` para erro de entrada/frontend (`pp`, parser, HIR, sema),
+- `2` para erro de `codegen-c`,
+- `3` para erro do compilador C host,
+- qualquer outro código para o exit status real do programa executado por `run`.
 
 ## Desenvolvimento
 
