@@ -1,5 +1,7 @@
 # Backend C (codegen-c)
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/codegen-c.md](./en/technical/codegen-c.md) e [docs/pt-BR/technical/codegen-c.md](./pt-BR/technical/codegen-c.md).
+
 ## Responsabilidade
 
 Gerar código C legível e depurável a partir da IR, pronto para compilação por um compilador C host (`clang`, `gcc`, `cc`).

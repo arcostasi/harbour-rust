@@ -1,5 +1,7 @@
 # Estratégia de testes
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/test-strategy.md](./en/technical/test-strategy.md) e [docs/pt-BR/technical/test-strategy.md](./pt-BR/technical/test-strategy.md).
+
 ## Princípio
 
 Compatibilidade não será assumida; será medida.

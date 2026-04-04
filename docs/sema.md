@@ -1,5 +1,7 @@
 # Análise Semântica
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/sema.md](./en/technical/sema.md) e [docs/pt-BR/technical/sema.md](./pt-BR/technical/sema.md).
+
 ## Responsabilidade
 
 Validar e anotar a HIR com informações de escopo, resolução de símbolos e diagnósticos semânticos.

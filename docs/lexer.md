@@ -1,5 +1,7 @@
 # Lexer
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/lexer.md](./en/technical/lexer.md) e [docs/pt-BR/technical/lexer.md](./pt-BR/technical/lexer.md).
+
 ## Responsabilidade
 
 Tokenizar fonte `.prg` produzindo um stream de tokens com spans, posições (linha/coluna) e diagnósticos precisos.

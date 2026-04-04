@@ -1,5 +1,7 @@
 # RDD — Replaceable Database Driver
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/rdd.md](./en/technical/rdd.md) e [docs/pt-BR/technical/rdd.md](./pt-BR/technical/rdd.md).
+
 ## Responsabilidade
 
 Implementar acesso a arquivos de dados DBF (dBASE III+/Clipper) com arquitetura de driver substituível, compatível com o modelo RDD do Clipper/Harbour.

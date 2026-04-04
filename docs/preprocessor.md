@@ -1,5 +1,7 @@
 # Pré-processador
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/preprocessor.md](./en/technical/preprocessor.md) e [docs/pt-BR/technical/preprocessor.md](./pt-BR/technical/preprocessor.md).
+
 ## Responsabilidade
 
 Processar diretivas de compilação (`#define`, `#include`, `#command`, `#translate`) antes da tokenização principal, mantendo compatibilidade com o PP do Clipper/Harbour.

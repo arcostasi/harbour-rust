@@ -1,5 +1,7 @@
 # IR — Intermediate Representation
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/ir.md](./en/technical/ir.md) e [docs/pt-BR/technical/ir.md](./pt-BR/technical/ir.md).
+
 ## Responsabilidade
 
 Representação intermediária entre a HIR e o backend de geração de código. Mais próxima do código gerado do que a HIR, mas ainda independente de target.

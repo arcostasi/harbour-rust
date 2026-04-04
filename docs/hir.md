@@ -1,5 +1,7 @@
 # HIR — High-level Intermediate Representation
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/hir.md](./en/technical/hir.md) e [docs/pt-BR/technical/hir.md](./pt-BR/technical/hir.md).
+
 ## Responsabilidade
 
 Representação intermediária de alto nível produzida por lowering da AST. Separa sintaxe de semântica, normalizando construções e preparando a estrutura para análise semântica.

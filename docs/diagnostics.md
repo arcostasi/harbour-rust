@@ -1,5 +1,7 @@
 # Diagnósticos
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/diagnostics.md](./en/technical/diagnostics.md) e [docs/pt-BR/technical/diagnostics.md](./pt-BR/technical/diagnostics.md).
+
 ## Meta
 
 Mensagens previsíveis, localizadas e úteis desde a Fase 1.

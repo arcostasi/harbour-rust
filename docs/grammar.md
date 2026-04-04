@@ -1,5 +1,7 @@
 # Gramática
 
+> Nota de transição: a versão pública bilíngue deste conteúdo está sendo migrada para [docs/en/technical/grammar.md](./en/technical/grammar.md) e [docs/pt-BR/technical/grammar.md](./pt-BR/technical/grammar.md).
+
 ## Estratégia
 
 Usar parser recursivo para statements e Pratt parser para expressões.
