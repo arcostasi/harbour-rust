@@ -1,14 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{RuntimeError, Value, type_value};
-
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
 
 fn runtime_type_baseline() -> String {
     let mut out = String::new();
@@ -66,10 +62,15 @@ fn type_fixture_parses_without_errors() {
 
 #[test]
 fn type_runtime_matches_upstream_oracle_snapshot_for_current_slice() {
-    let upstream = fs::read_to_string(workspace_fixture("harbour-core/utils/hbtest/rt_hvm.prg"))
-        .expect("upstream hbtest");
-    let upstream_rtl =
-        fs::read_to_string(workspace_fixture("harbour-core/src/rtl/type.c")).expect("upstream rtl");
+    let Some(upstream) =
+        read_upstream_or_skip("harbour-core/utils/hbtest/rt_hvm.prg", "upstream hbtest")
+    else {
+        return;
+    };
+    let Some(upstream_rtl) = read_upstream_or_skip("harbour-core/src/rtl/type.c", "upstream rtl")
+    else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture("tests/fixtures/compat/type_runtime.out"))
         .expect("fixture snapshot");
 

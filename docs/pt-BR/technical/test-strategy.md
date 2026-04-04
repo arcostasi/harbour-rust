@@ -22,6 +22,7 @@ Compatibilidade não é presumida. Ela é medida.
 - promover bugs corrigidos para cobertura de regressão;
 - preferir crescimento curado de corpus em vez de importações massivas sem controle;
 - tratar alegações de compatibilidade como afirmações apoiadas por testes.
+- permitir que testes de compatibilidade dependentes de oráculo sejam pulados de forma limpa na CI pública quando `harbour-core/` não estiver disponível.
 
 ## Estado Atual
 

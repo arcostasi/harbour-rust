@@ -22,6 +22,7 @@ Compatibility is not assumed. It is measured.
 - promote fixed bugs into regression coverage;
 - prefer curated corpus growth over uncontrolled bulk imports;
 - treat compatibility claims as test-backed statements.
+- let oracle-dependent compatibility tests skip cleanly in public CI when `harbour-core/` is not checked out.
 
 ## Current Status
 

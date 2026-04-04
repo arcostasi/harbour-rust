@@ -1,21 +1,21 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_pp::{Preprocessor, SourceFile};
 
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
-
 #[test]
 fn phase9_rule_fixture_matches_curated_upstream_subset() {
-    let upstream_doc =
-        fs::read_to_string(workspace_fixture("harbour-core/doc/pp.txt")).expect("upstream pp doc");
-    let upstream_hbpp =
-        fs::read_to_string(workspace_fixture("harbour-core/tests/hbpp/_pp_test.prg"))
-            .expect("upstream hbpp test");
+    let Some(upstream_doc) = read_upstream_or_skip("harbour-core/doc/pp.txt", "upstream pp doc")
+    else {
+        return;
+    };
+    let Some(upstream_hbpp) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/rule_markers_root.out"))
         .expect("fixture snapshot");
 

@@ -1,14 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{RuntimeError, Value, len};
-
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
 
 fn runtime_len_baseline() -> String {
     let mut out = String::new();
@@ -57,8 +53,11 @@ fn len_fixture_parses_without_errors() {
 
 #[test]
 fn len_runtime_matches_upstream_oracle_snapshot() {
-    let upstream = fs::read_to_string(workspace_fixture("harbour-core/utils/hbtest/rt_hvma.prg"))
-        .expect("upstream hbtest");
+    let Some(upstream) =
+        read_upstream_or_skip("harbour-core/utils/hbtest/rt_hvma.prg", "upstream hbtest")
+    else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture("tests/fixtures/compat/len_runtime.out"))
         .expect("fixture snapshot");
 

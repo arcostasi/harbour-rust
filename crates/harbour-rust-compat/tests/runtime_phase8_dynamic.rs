@@ -1,14 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{RuntimeContext, RuntimeError, Value, empty, eval, valtype};
-
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
 
 fn result_text(result: Result<Value, RuntimeError>) -> String {
     match result {
@@ -101,14 +97,21 @@ fn phase8_dynamic_fixture_parses_without_errors() {
 
 #[test]
 fn phase8_dynamic_runtime_matches_upstream_oracle_snapshot() {
-    let upstream_memvar = fs::read_to_string(workspace_fixture("harbour-core/tests/memvar.prg"))
-        .expect("upstream memvar test");
-    let upstream_codeblock_doc =
-        fs::read_to_string(workspace_fixture("harbour-core/doc/codebloc.txt"))
-            .expect("upstream codeblock doc");
-    let upstream_codeblock_vm =
-        fs::read_to_string(workspace_fixture("harbour-core/src/vm/codebloc.c"))
-            .expect("upstream codeblock vm");
+    let Some(upstream_memvar) =
+        read_upstream_or_skip("harbour-core/tests/memvar.prg", "upstream memvar test")
+    else {
+        return;
+    };
+    let Some(upstream_codeblock_doc) =
+        read_upstream_or_skip("harbour-core/doc/codebloc.txt", "upstream codeblock doc")
+    else {
+        return;
+    };
+    let Some(upstream_codeblock_vm) =
+        read_upstream_or_skip("harbour-core/src/vm/codebloc.c", "upstream codeblock vm")
+    else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture(
         "tests/fixtures/compat/phase8_dynamic_runtime.out",
     ))

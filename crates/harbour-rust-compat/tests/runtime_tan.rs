@@ -1,14 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{RuntimeError, Value, round_value, tan_value};
-
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
 
 fn runtime_tan_baseline() -> String {
     let mut out = String::new();
@@ -53,14 +49,18 @@ fn tan_fixture_parses_without_errors() {
 
 #[test]
 fn tan_runtime_matches_project_baseline_snapshot() {
-    let upstream_test = fs::read_to_string(workspace_fixture(
+    let Some(upstream_test) = read_upstream_or_skip(
         "harbour-core/contrib/hbct/tests/test.prg",
-    ))
-    .expect("upstream hbct test");
-    let upstream_doc = fs::read_to_string(workspace_fixture(
+        "upstream hbct test",
+    ) else {
+        return;
+    };
+    let Some(upstream_doc) = read_upstream_or_skip(
         "harbour-core/contrib/hbct/doc/en/trig.txt",
-    ))
-    .expect("upstream hbct docs");
+        "upstream hbct docs",
+    ) else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture("tests/fixtures/compat/tan_runtime.out"))
         .expect("fixture snapshot");
 

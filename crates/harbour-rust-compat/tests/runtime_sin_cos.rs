@@ -1,14 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{RuntimeError, Value, cos_value, round_value, sin_value};
-
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
 
 fn runtime_sin_cos_baseline() -> String {
     let mut out = String::new();
@@ -66,8 +62,11 @@ fn sin_cos_fixture_parses_without_errors() {
 
 #[test]
 fn sin_cos_runtime_matches_project_baseline_snapshot() {
-    let upstream_c_std = fs::read_to_string(workspace_fixture("harbour-core/doc/c_std.txt"))
-        .expect("upstream c_std");
+    let Some(upstream_c_std) =
+        read_upstream_or_skip("harbour-core/doc/c_std.txt", "upstream c_std")
+    else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture(
         "tests/fixtures/compat/sin_cos_runtime.out",
     ))

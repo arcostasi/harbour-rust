@@ -1,14 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::fs;
+
+mod support;
+use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{RuntimeError, Value, lower, upper};
-
-fn workspace_fixture(path: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(path)
-}
 
 fn runtime_upper_lower_baseline() -> String {
     let mut out = String::new();
@@ -63,8 +59,11 @@ fn upper_lower_fixture_parses_without_errors() {
 
 #[test]
 fn upper_lower_runtime_matches_upstream_oracle_snapshot() {
-    let upstream = fs::read_to_string(workspace_fixture("harbour-core/utils/hbtest/rt_str.prg"))
-        .expect("upstream hbtest");
+    let Some(upstream) =
+        read_upstream_or_skip("harbour-core/utils/hbtest/rt_str.prg", "upstream hbtest")
+    else {
+        return;
+    };
     let expected = fs::read_to_string(workspace_fixture(
         "tests/fixtures/compat/upper_lower_runtime.out",
     ))
