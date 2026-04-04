@@ -987,6 +987,46 @@ fn build_command_reports_preprocess_error_for_missing_include_search_path() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_phase9_acceptance_fixture() {
+    let temp_dir = unique_temp_dir("phase9-acceptance");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("phase9_acceptance.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/pp/phase9_acceptance.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_upper("));
+    assert!(generated.contains("harbour_builtin_qout("));
+    assert!(!generated.contains("#command"));
+    assert!(!generated.contains("#translate"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn build_command_reports_preprocess_error_for_phase9_malformed_rule_fixture() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/pp/phase9_preprocess_error.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(!output.status.success(), "expected failing build status");
+
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("preprocess failed"));
+    assert!(stderr.contains("unterminated rule marker"));
+}
+
+#[test]
 fn build_command_reports_codegen_error_for_unsupported_compound_assign_operator() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("build")
@@ -2225,4 +2265,18 @@ fn run_command_uses_configured_include_directory_for_preprocess_handoff() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "angle search path\n");
+}
+
+#[test]
+fn run_command_executes_phase9_acceptance_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/pp/phase9_acceptance.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "6\nABC\n1, 2, 3\nON\n");
 }

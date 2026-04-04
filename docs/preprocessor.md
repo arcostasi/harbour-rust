@@ -111,6 +111,12 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/cyclic_define_root.prg` | erro de ciclo |
 | `tests/fixtures/pp/quoted_search_path_root.prg` | fallback para search path |
 | `tests/fixtures/pp/angle_search_path_root.prg` | resolvido por search path |
+| `tests/fixtures/pp/command_translate_root.prg` | golden de `#command` + `#translate` |
+| `tests/fixtures/pp/rule_markers_root.prg` | golden de opcionais, lista, restrição e stringify |
+| `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
+| `tests/fixtures/pp/malformed_rule_root.prg` | erro explícito de regra malformada |
+| `tests/fixtures/pp/phase9_acceptance.prg` | `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo |
+| `tests/fixtures/pp/phase9_preprocess_error.prg` | erro explícito de preprocessamento no CLI para regra malformada |
 
 ## Estado atual
 
@@ -120,4 +126,6 @@ Fase 6 concluída e Fase 9 iniciada:
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
+- baseline de compatibilidade focado contra `doc/pp.txt` e `tests/hbpp/_pp_test.prg`
+- fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
 - markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes

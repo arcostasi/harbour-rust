@@ -212,6 +212,9 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/pp/rule_markers_root.prg` -> golden de opcionais, lista, restrição e stringify
 - `tests/fixtures/pp/multiline_command_root.prg` -> golden de diretiva multi-linha com `;`
 - `tests/fixtures/pp/malformed_rule_root.prg` -> erro explícito de regra malformada
+- `crates/harbour-rust-compat/tests/pp_phase9_rules.rs` -> baseline focado do recorte de `#command`/`#translate` ancorado em `harbour-core/doc/pp.txt` e `harbour-core/tests/hbpp/_pp_test.prg`
+- `tests/fixtures/pp/phase9_acceptance.prg` -> `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo
+- `tests/fixtures/pp/phase9_preprocess_error.prg` -> erro explícito de preprocessamento no CLI para regra malformada
 
 ## Critérios por PR
 

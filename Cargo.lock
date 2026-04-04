@@ -38,6 +38,7 @@ dependencies = [
  "harbour-rust-ast",
  "harbour-rust-lexer",
  "harbour-rust-parser",
+ "harbour-rust-pp",
  "harbour-rust-runtime",
 ]
 
