@@ -215,6 +215,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `crates/harbour-rust-compat/tests/pp_phase9_rules.rs` -> baseline focado do recorte de `#command`/`#translate` ancorado em `harbour-core/doc/pp.txt` e `harbour-core/tests/hbpp/_pp_test.prg`
 - `tests/fixtures/pp/phase9_acceptance.prg` -> `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo
 - `tests/fixtures/pp/phase9_preprocess_error.prg` -> erro explícito de preprocessamento no CLI para regra malformada
+- Fase 9 fechada no subset acima; compatibilidade completa com `ppcore.c` e corpus maior de `tests/hbpp` segue como expansão futura, não como bloqueio do aceite atual
 
 ## Critérios por PR
 

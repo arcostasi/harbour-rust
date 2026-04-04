@@ -105,6 +105,13 @@ O aceite da Fase 8 está fechado com compatibilidade dinâmica xBase no recorte 
 - captura lexical de `LOCAL` em codeblocks permanece documentada como divergência conhecida e coberta por erro explícito de codegen em `tests/fixtures/parser/eval_capture_error.prg`,
 - a matriz acima passa a registrar as limitações remanescentes de memvars, codeblocks e macro operator sem manter a fase em aberto.
 
+O aceite da Fase 9 está fechado com o recorte avançado atual do pré-processador:
+
+- `tests/fixtures/pp/phase9_acceptance.prg` compila e executa com `#command`, `#translate`, lista, restrição, opcionais, stringify e reexpansão simples no pipeline completo,
+- `crates/harbour-rust-compat/tests/pp_phase9_rules.rs` ancora o recorte em `harbour-core/doc/pp.txt` e `harbour-core/tests/hbpp/_pp_test.prg`,
+- `tests/fixtures/pp/phase9_preprocess_error.prg` fixa o erro explícito de preprocessamento para regra malformada no CLI,
+- a matriz acima continua registrando `#command` e `#translate` como `partial` por recurso, mas a fase fica fechada no subset executável e documentado.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.

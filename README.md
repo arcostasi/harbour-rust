@@ -50,7 +50,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4, 5, 6, 7 e 8 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8 e 9 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -82,9 +82,11 @@ As Fases 0, 1, 2, 3, 4, 5, 6, 7 e 8 estão concluídas:
 - fixture de aceite da Fase 7 curado em `tests/fixtures/parser/phase7_acceptance.prg`,
 - `PRIVATE`, `PUBLIC`, leitura/atribuição dinâmica de memvar e macro read mínima executáveis no caminho `cli run`,
 - `Eval()` com codeblocks não-capturantes e codeblocks lendo memvar executável no caminho `cli run`,
-- fixture de aceite da Fase 8 curado em `tests/fixtures/parser/phase8_acceptance.prg`.
+- fixture de aceite da Fase 8 curado em `tests/fixtures/parser/phase8_acceptance.prg`,
+- `#command`, `#translate`, markers de lista/restrição/opcional/stringify e continuação por `;` atravessando `pp -> parser -> cli run`,
+- fixture de aceite da Fase 9 curado em `tests/fixtures/pp/phase9_acceptance.prg`.
 
-O próximo passo técnico é iniciar a Fase 9 com o pré-processador avançado (`#command`, `#translate` e expansão parametrizada).
+O próximo passo técnico é iniciar a Fase 10 com a camada inicial de RDD/DBF.
 
 O baseline fim a fim atual oferece geração de C:
 

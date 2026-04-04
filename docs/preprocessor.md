@@ -120,7 +120,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 
 ## Estado atual
 
-Fase 6 concluída e Fase 9 iniciada:
+Fases 6 e 9 concluídas:
 
 - `#define` objeto com expansão recursiva e detecção de ciclo
 - `#include` com quoted e angle-bracket, search paths configuráveis
