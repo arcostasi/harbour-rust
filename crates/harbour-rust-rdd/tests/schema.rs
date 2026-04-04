@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use harbour_rust_rdd::{DbfSchema, DbfTable, FieldType};
+use harbour_rust_rdd::{DbfSchema, DbfTable, FieldType, Rdd};
+use harbour_rust_runtime::Value;
 
 fn workspace_path(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -78,4 +79,55 @@ fn opens_upstream_items_dbf_table_with_expected_header() {
     assert_eq!(table.recno(), 0);
     assert!(!table.is_closed());
     assert!(!table.raw_bytes().is_empty());
+}
+
+#[test]
+fn navigates_items_records_and_reads_fields() {
+    let mut table = DbfTable::open(Path::new(
+        &fixture("harbour-core/contrib/hbhttpd/tests/items.dbf"),
+    ))
+    .expect("items table");
+
+    table.go_to(1).expect("goto first");
+    assert_eq!(table.recno(), 1);
+    assert_eq!(table.field_get("code").expect("code"), Value::from("0001"));
+    assert_eq!(
+        table.field_get("TITLE").expect("title"),
+        Value::from("Linux in a Nutshell")
+    );
+    assert_eq!(table.field_get("PRICE").expect("price"), Value::Float(26.67));
+    assert!(!table.deleted().expect("deleted flag"));
+
+    table.skip(1).expect("skip forward");
+    assert_eq!(table.recno(), 2);
+    assert_eq!(table.field_get("code").expect("code"), Value::from("0002"));
+    assert_eq!(
+        table.field_get("TITLE").expect("title"),
+        Value::from("Python in a Nutshell")
+    );
+    assert_eq!(table.field_get("PRICE").expect("price"), Value::Float(26.39));
+}
+
+#[test]
+fn skip_tracks_bof_and_eof_boundaries() {
+    let mut table = DbfTable::open(Path::new(
+        &fixture("harbour-core/contrib/hbhttpd/tests/items.dbf"),
+    ))
+    .expect("items table");
+
+    table.go_to(1).expect("goto first");
+    table.skip(-1).expect("skip before first");
+    assert!(table.bof());
+    assert!(!table.eof());
+    assert_eq!(table.recno(), 0);
+    assert!(matches!(
+        table.field_get("CODE"),
+        Err(harbour_rust_rdd::RddError::NotPositioned)
+    ));
+
+    table.go_to(table.rec_count()).expect("goto last");
+    table.skip(1).expect("skip after last");
+    assert!(!table.bof());
+    assert!(table.eof());
+    assert_eq!(table.recno(), 0);
 }

@@ -120,5 +120,7 @@ Fase 10 iniciada:
 - trait `Rdd` definida com a superfície mínima de navegação e mutação planejada,
 - modelos `DbfHeader`, `FieldDescriptor` e `DbfSchema` implementados,
 - parser binário inicial de header e descritores de campo validado contra DBFs reais do `harbour-core`,
+- navegação inicial com `GOTO`, `SKIP`, `RECNO`, `RECCOUNT`, `BOF` e `EOF` implementada para DBF,
+- leitura inicial de campos `C`, `N`, `L` e `D` implementada em `field_get()` e `snapshot()`,
 - suporte atual focado em tabelas DBF dBASE III (`0x03`) com campos `C`, `N`, `L` e `D`,
-- leitura de registros e escrita persistente ainda entram nos próximos slices da fase.
+- escrita persistente (`REPLACE`, `APPEND BLANK`, `DELETE`, `RECALL`) ainda entra nos próximos slices da fase.

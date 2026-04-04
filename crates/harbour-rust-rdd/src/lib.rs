@@ -149,6 +149,7 @@ pub enum RddError {
         field: String,
         raw: String,
     },
+    UnsupportedOperation(&'static str),
 }
 
 impl RddError {
@@ -220,6 +221,9 @@ impl fmt::Display for RddError {
                 "failed to parse numeric field `{}` from raw value `{}`",
                 field, raw
             ),
+            Self::UnsupportedOperation(operation) => {
+                write!(f, "RDD operation `{}` is not implemented yet", operation)
+            }
         }
     }
 }
@@ -310,6 +314,198 @@ impl DbfTable {
 
     pub fn is_closed(&self) -> bool {
         self.is_closed
+    }
+
+    fn ensure_open(&self) -> Result<(), RddError> {
+        if self.is_closed {
+            return Err(RddError::invalid_format("operation attempted on closed DBF table"));
+        }
+        Ok(())
+    }
+
+    fn ensure_positioned(&self) -> Result<usize, RddError> {
+        self.ensure_open()?;
+        if self.current_record == 0 {
+            return Err(RddError::NotPositioned);
+        }
+        Ok(self.current_record)
+    }
+
+    fn record_offset(&self, recno: usize) -> Result<usize, RddError> {
+        if recno == 0 || recno > self.rec_count() {
+            return Err(RddError::RecordOutOfBounds {
+                requested: recno,
+                record_count: self.rec_count(),
+            });
+        }
+        Ok(self.schema.header.header_length as usize
+            + (recno - 1) * self.schema.header.record_length as usize)
+    }
+
+    fn record_bytes(&self, recno: usize) -> Result<&[u8], RddError> {
+        let offset = self.record_offset(recno)?;
+        let end = offset + self.schema.header.record_length as usize;
+        Ok(&self.bytes[offset..end])
+    }
+
+    fn current_record_bytes(&self) -> Result<&[u8], RddError> {
+        let recno = self.ensure_positioned()?;
+        self.record_bytes(recno)
+    }
+
+    fn field_descriptor(&self, name: &str) -> Result<&FieldDescriptor, RddError> {
+        self.schema
+            .field(name)
+            .ok_or_else(|| RddError::field_not_found(name))
+    }
+
+    fn decode_field(&self, field: &FieldDescriptor, record: &[u8]) -> Result<Value, RddError> {
+        let start = field.offset as usize;
+        let end = start + field.length as usize;
+        let raw = &record[start..end];
+
+        match field.field_type {
+            FieldType::Character => Ok(Value::from(trim_right_ascii_spaces(raw))),
+            FieldType::Numeric => parse_numeric_field(field, raw),
+            FieldType::Logical => parse_logical_field(raw),
+            FieldType::Date => parse_date_field(raw),
+        }
+    }
+
+    fn move_before_first(&mut self) {
+        self.current_record = 0;
+        self.bof = true;
+        self.eof = false;
+    }
+
+    fn move_after_last(&mut self) {
+        self.current_record = 0;
+        self.bof = false;
+        self.eof = true;
+    }
+}
+
+impl Rdd for DbfTable {
+    fn schema(&self) -> &DbfSchema {
+        &self.schema
+    }
+
+    fn close(&mut self) -> Result<(), RddError> {
+        self.ensure_open()?;
+        self.is_closed = true;
+        Ok(())
+    }
+
+    fn go_to(&mut self, recno: usize) -> Result<(), RddError> {
+        self.ensure_open()?;
+        if recno == 0 || recno > self.rec_count() {
+            return Err(RddError::RecordOutOfBounds {
+                requested: recno,
+                record_count: self.rec_count(),
+            });
+        }
+
+        self.current_record = recno;
+        self.bof = false;
+        self.eof = false;
+        Ok(())
+    }
+
+    fn skip(&mut self, count: i32) -> Result<(), RddError> {
+        self.ensure_open()?;
+        if self.rec_count() == 0 {
+            self.move_after_last();
+            return Ok(());
+        }
+
+        let base = if self.current_record == 0 {
+            if self.bof {
+                1
+            } else if self.eof {
+                self.rec_count()
+            } else {
+                1
+            }
+        } else {
+            self.current_record
+        };
+
+        let target = base as i64 + count as i64;
+        if target < 1 {
+            self.move_before_first();
+        } else if target > self.rec_count() as i64 {
+            self.move_after_last();
+        } else {
+            self.current_record = target as usize;
+            self.bof = false;
+            self.eof = false;
+        }
+        Ok(())
+    }
+
+    fn bof(&self) -> bool {
+        self.bof
+    }
+
+    fn eof(&self) -> bool {
+        self.eof
+    }
+
+    fn recno(&self) -> usize {
+        self.current_record
+    }
+
+    fn rec_count(&self) -> usize {
+        self.rec_count()
+    }
+
+    fn field_get(&self, name: &str) -> Result<Value, RddError> {
+        self.ensure_open()?;
+        let field = self.field_descriptor(name)?;
+        let record = self.current_record_bytes()?;
+        self.decode_field(field, record)
+    }
+
+    fn field_put(&mut self, _name: &str, _value: Value) -> Result<(), RddError> {
+        Err(RddError::UnsupportedOperation("field_put"))
+    }
+
+    fn append_blank(&mut self) -> Result<(), RddError> {
+        Err(RddError::UnsupportedOperation("append_blank"))
+    }
+
+    fn deleted(&self) -> Result<bool, RddError> {
+        self.ensure_open()?;
+        let record = self.current_record_bytes()?;
+        Ok(record[0] == DBF_DELETED_FLAG)
+    }
+
+    fn delete(&mut self) -> Result<(), RddError> {
+        Err(RddError::UnsupportedOperation("delete"))
+    }
+
+    fn recall(&mut self) -> Result<(), RddError> {
+        Err(RddError::UnsupportedOperation("recall"))
+    }
+
+    fn snapshot(&self) -> Result<RecordSnapshot, RddError> {
+        self.ensure_open()?;
+        let record = self.current_record_bytes()?;
+        let values = self
+            .schema
+            .fields
+            .iter()
+            .map(|field| {
+                self.decode_field(field, record)
+                    .map(|value| (field.name.clone(), value))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(RecordSnapshot {
+            recno: self.current_record,
+            deleted: record[0] == DBF_DELETED_FLAG,
+            values,
+        })
     }
 }
 
@@ -450,6 +646,62 @@ fn parse_field_name(raw: &[u8]) -> Result<String, RddError> {
     }
 
     Ok(name.to_owned())
+}
+
+fn trim_right_ascii_spaces(raw: &[u8]) -> String {
+    let text = String::from_utf8_lossy(raw);
+    text.trim_end_matches(' ').to_owned()
+}
+
+fn parse_numeric_field(field: &FieldDescriptor, raw: &[u8]) -> Result<Value, RddError> {
+    let text = String::from_utf8_lossy(raw);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(Value::Nil);
+    }
+
+    if field.decimals == 0 && !trimmed.contains('.') {
+        return trimmed
+            .parse::<i64>()
+            .map(Value::Integer)
+            .map_err(|_| RddError::NumericParse {
+                field: field.name.clone(),
+                raw: trimmed.to_owned(),
+            });
+    }
+
+    trimmed
+        .parse::<f64>()
+        .map(Value::Float)
+        .map_err(|_| RddError::NumericParse {
+            field: field.name.clone(),
+            raw: trimmed.to_owned(),
+        })
+}
+
+fn parse_logical_field(raw: &[u8]) -> Result<Value, RddError> {
+    match raw.first().copied().unwrap_or(b' ') {
+        b'T' | b't' | b'Y' | b'y' => Ok(Value::Logical(true)),
+        b'F' | b'f' | b'N' | b'n' => Ok(Value::Logical(false)),
+        b' ' | b'?' => Ok(Value::Nil),
+        other => Err(RddError::invalid_format(format!(
+            "invalid logical DBF byte 0x{other:02X}"
+        ))),
+    }
+}
+
+fn parse_date_field(raw: &[u8]) -> Result<Value, RddError> {
+    let text = String::from_utf8_lossy(raw);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(Value::Nil);
+    }
+    if trimmed.len() != 8 || !trimmed.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(RddError::invalid_format(format!(
+            "invalid DBF date payload `{trimmed}`"
+        )));
+    }
+    Ok(Value::from(trimmed.to_owned()))
 }
 
 #[cfg(test)]
