@@ -122,15 +122,15 @@ img {
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.72fr);
-  gap: 2.25rem;
-  padding-top: 2rem;
-  padding-bottom: 5rem;
+  gap: 2rem;
+  padding-top: 1.35rem;
+  padding-bottom: 4rem;
   align-items: start;
 }
 
 .hero__content {
   justify-self: end;
-  width: min(100%, 28rem);
+  width: min(100%, 26rem);
 }
 
 .hero__media img {
@@ -141,7 +141,7 @@ img {
 }
 
 .eyebrow {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.55rem;
   color: var(--accent);
   font-size: 0.82rem;
   font-weight: 700;
@@ -158,8 +158,8 @@ img {
 }
 
 .hero__content h1 {
-  font-size: clamp(2.2rem, 3.85vw, 3.7rem);
-  max-width: 9ch;
+  font-size: clamp(1.95rem, 3.2vw, 3.2rem);
+  max-width: 8ch;
   line-height: 1.04;
   text-wrap: balance;
 }
@@ -174,24 +174,24 @@ img {
 }
 
 .hero__summary {
-  max-width: 30rem;
-  margin: 1.1rem 0 0;
-  font-size: 0.98rem;
-  line-height: 1.75;
+  max-width: 26rem;
+  margin: 0.9rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
 }
 
 .hero__actions {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-top: 1.6rem;
+  margin-top: 1.25rem;
 }
 
 .button {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.95rem 1.25rem;
+  padding: 0.88rem 1.15rem;
   border-radius: 999px;
   font-weight: 700;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
