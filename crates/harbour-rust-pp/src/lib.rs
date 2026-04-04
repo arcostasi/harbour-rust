@@ -441,14 +441,10 @@ fn parse_directive(
         "include" => {
             parse_include(path, line_number, directive_column, rest).map(Directive::Include)
         }
-        "command" | "xcommand" => parse_rule(
-            path,
-            line_number,
-            directive_column,
-            rest,
-            RuleKind::Command,
-        )
-        .map(Directive::Rule),
+        "command" | "xcommand" => {
+            parse_rule(path, line_number, directive_column, rest, RuleKind::Command)
+                .map(Directive::Rule)
+        }
         "translate" | "xtranslate" => parse_rule(
             path,
             line_number,
@@ -717,13 +713,8 @@ fn parse_pattern_until(
 
         match ch {
             '[' => {
-                let (nested, consumed) = parse_pattern_until(
-                    &text[cursor + 1..],
-                    path,
-                    line_number,
-                    column,
-                    Some(']'),
-                )?;
+                let (nested, consumed) =
+                    parse_pattern_until(&text[cursor + 1..], path, line_number, column, Some(']'))?;
                 parts.push(PatternPart::Optional(nested));
                 cursor += 1 + consumed;
             }
@@ -899,7 +890,10 @@ fn parse_result_until(
             };
             let marker = &text[cursor + 2..cursor + 2 + close_offset];
             parts.push(ResultPart::Stringify(validate_marker_name(
-                marker, path, line_number, column,
+                marker,
+                path,
+                line_number,
+                column,
             )?));
             cursor += close_offset + 3;
             continue;
@@ -919,7 +913,10 @@ fn parse_result_until(
             };
             let marker = &text[cursor + 1..cursor + 1 + close_offset];
             parts.push(ResultPart::Marker(validate_marker_name(
-                marker, path, line_number, column,
+                marker,
+                path,
+                line_number,
+                column,
             )?));
             cursor += close_offset + 2;
             continue;
@@ -1133,7 +1130,11 @@ fn apply_command_rules(line: &str, rules: &[RuleDirective]) -> Option<String> {
         return None;
     }
 
-    for rule in rules.iter().rev().filter(|rule| rule.kind == RuleKind::Command) {
+    for rule in rules
+        .iter()
+        .rev()
+        .filter(|rule| rule.kind == RuleKind::Command)
+    {
         if let Some(captures) = match_pattern(&rule.pattern, &tokens, content, 0, true) {
             let mut rendered = leading.to_owned();
             rendered.push_str(&render_result(&rule.replacement, &captures));
@@ -1154,7 +1155,11 @@ fn apply_translate_rules(line: &str, rules: &[RuleDirective]) -> (String, bool) 
         let mut replaced = None;
 
         'outer: for start in 0..tokens.len() {
-            for rule in rules.iter().rev().filter(|rule| rule.kind == RuleKind::Translate) {
+            for rule in rules
+                .iter()
+                .rev()
+                .filter(|rule| rule.kind == RuleKind::Translate)
+            {
                 if let Some((end, captures)) =
                     match_pattern_with_end(&rule.pattern, &tokens, &current, start)
                 {
@@ -1248,8 +1253,23 @@ fn tokenize_source_line(text: &str) -> Vec<SourceToken> {
 fn is_symbol_like(ch: char) -> bool {
     matches!(
         ch,
-        '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | ':' | '+' | '-' | '*' | '/' | '='
-            | '<' | '>' | '#' | '&'
+        '(' | ')'
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | ','
+            | ';'
+            | ':'
+            | '+'
+            | '-'
+            | '*'
+            | '/'
+            | '='
+            | '<'
+            | '>'
+            | '#'
+            | '&'
     )
 }
 
@@ -1260,8 +1280,14 @@ fn match_pattern(
     start_index: usize,
     require_full: bool,
 ) -> Option<MatchCaptures> {
-    let (end, captures) =
-        match_pattern_recursive(pattern, 0, tokens, source, start_index, MatchCaptures::default())?;
+    let (end, captures) = match_pattern_recursive(
+        pattern,
+        0,
+        tokens,
+        source,
+        start_index,
+        MatchCaptures::default(),
+    )?;
     if require_full && end != tokens.len() {
         None
     } else {
@@ -1275,7 +1301,14 @@ fn match_pattern_with_end(
     source: &str,
     start_index: usize,
 ) -> Option<(usize, MatchCaptures)> {
-    match_pattern_recursive(pattern, 0, tokens, source, start_index, MatchCaptures::default())
+    match_pattern_recursive(
+        pattern,
+        0,
+        tokens,
+        source,
+        start_index,
+        MatchCaptures::default(),
+    )
 }
 
 fn match_pattern_recursive(
@@ -1307,21 +1340,17 @@ fn match_pattern_recursive(
             }
         }
         PatternPart::Optional(optional) => {
-            if let Some((next_index, next_captures)) = match_pattern_recursive(
-                optional,
-                0,
-                tokens,
-                source,
-                token_index,
-                captures.clone(),
-            ) && let Some(matched) = match_pattern_recursive(
-                pattern,
-                pattern_index + 1,
-                tokens,
-                source,
-                next_index,
-                next_captures,
-            ) {
+            if let Some((next_index, next_captures)) =
+                match_pattern_recursive(optional, 0, tokens, source, token_index, captures.clone())
+                && let Some(matched) = match_pattern_recursive(
+                    pattern,
+                    pattern_index + 1,
+                    tokens,
+                    source,
+                    next_index,
+                    next_captures,
+                )
+            {
                 return Some(matched);
             }
             match_pattern_recursive(
@@ -1359,16 +1388,11 @@ fn match_pattern_recursive(
             MarkerKind::Regular | MarkerKind::List => {
                 let minimum_end = token_index + 1;
                 for end in (minimum_end..=tokens.len()).rev() {
-                    let capture = match build_capture(
-                        &marker.kind,
-                        tokens,
-                        source,
-                        token_index,
-                        end,
-                    ) {
-                        Some(capture) => capture,
-                        None => continue,
-                    };
+                    let capture =
+                        match build_capture(&marker.kind, tokens, source, token_index, end) {
+                            Some(capture) => capture,
+                            None => continue,
+                        };
                     let next_captures = merge_capture(captures.clone(), &marker.name, capture)?;
                     if let Some(matched) = match_pattern_recursive(
                         pattern,
@@ -1421,12 +1445,12 @@ fn build_capture(
             raw,
             list_items: None,
         }),
-        MarkerKind::List => split_list_capture(tokens, source, start, end).map(|entries| {
-            CaptureValue {
+        MarkerKind::List => {
+            split_list_capture(tokens, source, start, end).map(|entries| CaptureValue {
                 raw,
                 list_items: Some(entries),
-            }
-        }),
+            })
+        }
         MarkerKind::Restricted(_) => None,
     }
 }
@@ -1514,7 +1538,9 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
 fn result_parts_have_value(parts: &[ResultPart], captures: &MatchCaptures) -> bool {
     parts.iter().any(|part| match part {
         ResultPart::Literal(_) => false,
-        ResultPart::Marker(name) | ResultPart::Stringify(name) => captures.values.contains_key(name),
+        ResultPart::Marker(name) | ResultPart::Stringify(name) => {
+            captures.values.contains_key(name)
+        }
         ResultPart::Optional(parts) => result_parts_have_value(parts, captures),
     })
 }
@@ -1873,8 +1899,15 @@ mod tests {
 
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
 
-        assert!(output.errors.is_empty(), "unexpected errors: {:?}", output.errors);
-        assert_eq!(output.text, "PROCEDURE Main()\n   LOCAL n := 3 + 3\nRETURN\n");
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(
+            output.text,
+            "PROCEDURE Main()\n   LOCAL n := 3 + 3\nRETURN\n"
+        );
     }
 
     #[test]
@@ -1886,7 +1919,11 @@ mod tests {
 
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
 
-        assert!(output.errors.is_empty(), "unexpected errors: {:?}", output.errors);
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
         assert_eq!(output.text, "PROCEDURE Main()\n   ? n\nRETURN\n");
     }
 }

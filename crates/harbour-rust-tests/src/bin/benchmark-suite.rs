@@ -3,7 +3,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use harbour_rust_cli::{BuildOptions, CheckOptions, RunOptions, build_to_c, check_source, run_with_host_compiler};
+use harbour_rust_cli::{
+    BuildOptions, CheckOptions, RunOptions, build_to_c, check_source, run_with_host_compiler,
+};
 use harbour_rust_tests::workspace_path;
 
 fn main() {
@@ -95,9 +97,7 @@ where
 }
 
 fn usage(message: &str) -> String {
-    format!(
-        "{message}\n\nUsage:\n  benchmark-suite [--fixture <path.prg>]... [--iterations <n>]"
-    )
+    format!("{message}\n\nUsage:\n  benchmark-suite [--fixture <path.prg>]... [--iterations <n>]")
 }
 
 fn benchmark_fixture(fixture: &str, iterations: u32) -> Result<BenchmarkResult, String> {

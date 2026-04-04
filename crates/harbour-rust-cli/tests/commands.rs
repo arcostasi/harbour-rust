@@ -52,7 +52,9 @@ fn check_command_succeeds_for_hello_example() {
 fn check_command_reports_preprocess_error_with_frontend_exit_code() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("check")
-        .arg(workspace_path("tests/fixtures/pp/phase9_preprocess_error.prg"))
+        .arg(workspace_path(
+            "tests/fixtures/pp/phase9_preprocess_error.prg",
+        ))
         .output()
         .expect("run cli");
 
@@ -79,7 +81,10 @@ fn transpile_command_writes_c_output_for_hello_example() {
         .output()
         .expect("run cli");
 
-    assert!(output.status.success(), "expected successful transpile status");
+    assert!(
+        output.status.success(),
+        "expected successful transpile status"
+    );
     assert!(output_path.exists(), "expected generated C output");
 
     let generated = fs::read_to_string(&output_path).expect("generated c output");
@@ -106,7 +111,9 @@ fn transpile_command_requires_explicit_c_target() {
 fn build_command_reports_codegen_failure_with_distinct_exit_code() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("build")
-        .arg(workspace_path("tests/fixtures/parser/compound_assign_mod.prg"))
+        .arg(workspace_path(
+            "tests/fixtures/parser/compound_assign_mod.prg",
+        ))
         .output()
         .expect("run cli");
 

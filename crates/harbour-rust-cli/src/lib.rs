@@ -81,7 +81,10 @@ impl CliError {
     }
 
     fn input_error(path: &Path, error: impl fmt::Display) -> Self {
-        Self::with_exit_code(format!("B001 failed to read {}: {}", path.display(), error), 1)
+        Self::with_exit_code(
+            format!("B001 failed to read {}: {}", path.display(), error),
+            1,
+        )
     }
 
     fn stage_failure(stage: &str, path: &Path, errors: Vec<String>) -> Self {
@@ -194,7 +197,8 @@ pub fn build_to_c(options: &BuildOptions) -> Result<BuildResult, CliError> {
         fs::create_dir_all(parent).map_err(|error| CliError::output_error(parent, error))?;
     }
 
-    fs::write(&output_path, emitted).map_err(|error| CliError::output_error(&output_path, error))?;
+    fs::write(&output_path, emitted)
+        .map_err(|error| CliError::output_error(&output_path, error))?;
 
     Ok(BuildResult { output_path })
 }
@@ -230,13 +234,15 @@ pub fn run_with_host_compiler(options: &RunOptions) -> Result<RunResult, CliErro
         let compile_output = compiler
             .to_command(&c_path, &runtime_c_path, &header_path, &output_path)
             .output()
-            .map_err(|error| CliError::with_exit_code(
-                format!(
-                    "failed to invoke host compiler `{}`: {}",
-                    compiler.executable, error
-                ),
-                3,
-            ))?;
+            .map_err(|error| {
+                CliError::with_exit_code(
+                    format!(
+                        "failed to invoke host compiler `{}`: {}",
+                        compiler.executable, error
+                    ),
+                    3,
+                )
+            })?;
 
         if !compile_output.status.success() {
             let stderr = String::from_utf8_lossy(&compile_output.stderr);
@@ -248,18 +254,16 @@ pub fn run_with_host_compiler(options: &RunOptions) -> Result<RunResult, CliErro
             continue;
         }
 
-        let run_output = Command::new(&output_path)
-            .output()
-            .map_err(|error| CliError::with_exit_code(
+        let run_output = Command::new(&output_path).output().map_err(|error| {
+            CliError::with_exit_code(
                 format!("failed to run {}: {}", output_path.display(), error),
                 3,
-            ))?;
+            )
+        })?;
 
-        let stdout = String::from_utf8(run_output.stdout)
-            .map_err(|error| CliError::with_exit_code(
-                format!("program stdout was not valid UTF-8: {}", error),
-                3,
-            ))?;
+        let stdout = String::from_utf8(run_output.stdout).map_err(|error| {
+            CliError::with_exit_code(format!("program stdout was not valid UTF-8: {}", error), 3)
+        })?;
         let stdout = stdout.replace("\r\n", "\n");
         let stderr = String::from_utf8_lossy(&run_output.stderr);
         let _ = fs::remove_dir_all(&temp_dir);
@@ -379,7 +383,9 @@ fn parse_check_options(args: &[String]) -> Result<CheckOptions, CliError> {
                 include_directories.push(PathBuf::from(path));
             }
             flag => {
-                return Err(CliError::usage(&format!("unsupported check option `{flag}`")));
+                return Err(CliError::usage(&format!(
+                    "unsupported check option `{flag}`"
+                )));
             }
         }
         cursor += 1;
@@ -424,7 +430,9 @@ fn parse_run_options(args: &[String]) -> Result<RunOptions, CliError> {
 
 fn parse_transpile_options(args: &[String]) -> Result<TranspileOptions, CliError> {
     if args.is_empty() {
-        return Err(CliError::usage("transpile requires --to c and an input .prg file"));
+        return Err(CliError::usage(
+            "transpile requires --to c and an input .prg file",
+        ));
     }
 
     let mut output_path = None;
@@ -548,7 +556,12 @@ fn analyze_source_with_options(
         return Err(CliError::stage_failure(
             "parse",
             input_path,
-            handoff.parsed.errors.iter().map(ToString::to_string).collect(),
+            handoff
+                .parsed
+                .errors
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
         ));
     }
 
@@ -577,7 +590,8 @@ fn preprocess_and_parse(
     input_path: &Path,
     include_directories: &[PathBuf],
 ) -> Result<PreprocessHandoff, CliError> {
-    let source = SourceFile::from_path(input_path).map_err(|error| CliError::input_error(input_path, error))?;
+    let source = SourceFile::from_path(input_path)
+        .map_err(|error| CliError::input_error(input_path, error))?;
 
     let resolver = include_directories.iter().fold(
         FileSystemIncludeResolver::new(),

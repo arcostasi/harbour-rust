@@ -1,7 +1,6 @@
 use std::{
     error::Error,
-    fmt,
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
 };
 
@@ -325,7 +324,9 @@ impl DbfTable {
 
     fn ensure_open(&self) -> Result<(), RddError> {
         if self.is_closed {
-            return Err(RddError::invalid_format("operation attempted on closed DBF table"));
+            return Err(RddError::invalid_format(
+                "operation attempted on closed DBF table",
+            ));
         }
         Ok(())
     }
@@ -631,7 +632,8 @@ fn parse_field_descriptors(
 
     let mut fields = Vec::new();
     let mut offset = 1u16;
-    for descriptor in bytes[DBF_HEADER_BASE_SIZE..terminator_index].chunks_exact(DBF_FIELD_DESCRIPTOR_SIZE)
+    for descriptor in
+        bytes[DBF_HEADER_BASE_SIZE..terminator_index].chunks_exact(DBF_FIELD_DESCRIPTOR_SIZE)
     {
         let name = parse_field_name(&descriptor[..11])?;
         let field_type = FieldType::from_code(descriptor[11])?;
@@ -658,7 +660,9 @@ fn parse_field_descriptors(
     }
 
     if fields.is_empty() {
-        return Err(RddError::invalid_format("DBF table must contain at least one field"));
+        return Err(RddError::invalid_format(
+            "DBF table must contain at least one field",
+        ));
     }
 
     let computed_record_length = offset;

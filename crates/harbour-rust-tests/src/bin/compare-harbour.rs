@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    process,
-};
+use std::{path::PathBuf, process};
 
 use harbour_rust_tests::{
     compare_against_harbour, run_external_fixture, run_harbour_rust_fixture, workspace_path,

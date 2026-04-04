@@ -1015,7 +1015,9 @@ fn build_command_writes_c_output_for_phase9_acceptance_fixture() {
 fn build_command_reports_preprocess_error_for_phase9_malformed_rule_fixture() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("build")
-        .arg(workspace_path("tests/fixtures/pp/phase9_preprocess_error.prg"))
+        .arg(workspace_path(
+            "tests/fixtures/pp/phase9_preprocess_error.prg",
+        ))
         .output()
         .expect("run cli");
 

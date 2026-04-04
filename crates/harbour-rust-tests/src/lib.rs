@@ -1,6 +1,5 @@
 use std::{
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -57,10 +56,7 @@ pub struct ComparisonMismatch {
 
 impl ComparisonMismatch {
     pub fn render(&self, match_stderr: bool) -> String {
-        let mut out = format!(
-            "comparison failed for {}\n",
-            self.fixture.display()
-        );
+        let mut out = format!("comparison failed for {}\n", self.fixture.display());
 
         if self.harbour_rust.exit_code != self.harbour.exit_code {
             out.push_str(&format!(

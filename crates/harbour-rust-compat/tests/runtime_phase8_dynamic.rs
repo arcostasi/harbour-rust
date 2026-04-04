@@ -116,9 +116,10 @@ fn phase8_dynamic_runtime_matches_upstream_oracle_snapshot() {
 
     assert!(upstream_memvar.contains("PUBLIC overrided by PRIVATE"));
     assert!(upstream_memvar.contains("PRIVATE privVar := \" (PRIVATE in MAIN) \""));
-    assert!(upstream_codeblock_doc.contains(
-        "Parameters passed to a codeblock are placed on the eval stack before a"
-    ));
+    assert!(
+        upstream_codeblock_doc
+            .contains("Parameters passed to a codeblock are placed on the eval stack before a")
+    );
     assert!(upstream_codeblock_doc.contains(
         "there is no safe method to find if a codeblock will be accessed from an outside"
     ));

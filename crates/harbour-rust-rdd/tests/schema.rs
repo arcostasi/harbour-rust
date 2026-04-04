@@ -77,9 +77,9 @@ fn reads_schema_with_numeric_field_decimals_from_upstream_carts_dbf() {
 
 #[test]
 fn opens_upstream_items_dbf_table_with_expected_header() {
-    let table = DbfTable::open(Path::new(
-        &fixture("harbour-core/contrib/hbhttpd/tests/items.dbf"),
-    ))
+    let table = DbfTable::open(Path::new(&fixture(
+        "harbour-core/contrib/hbhttpd/tests/items.dbf",
+    )))
     .expect("items table");
 
     assert_eq!(table.schema().header.record_count, 29);
@@ -95,9 +95,9 @@ fn opens_upstream_items_dbf_table_with_expected_header() {
 
 #[test]
 fn navigates_items_records_and_reads_fields() {
-    let mut table = DbfTable::open(Path::new(
-        &fixture("harbour-core/contrib/hbhttpd/tests/items.dbf"),
-    ))
+    let mut table = DbfTable::open(Path::new(&fixture(
+        "harbour-core/contrib/hbhttpd/tests/items.dbf",
+    )))
     .expect("items table");
 
     table.go_to(1).expect("goto first");
@@ -107,7 +107,10 @@ fn navigates_items_records_and_reads_fields() {
         table.field_get("TITLE").expect("title"),
         Value::from("Linux in a Nutshell")
     );
-    assert_eq!(table.field_get("PRICE").expect("price"), Value::Float(26.67));
+    assert_eq!(
+        table.field_get("PRICE").expect("price"),
+        Value::Float(26.67)
+    );
     assert!(!table.deleted().expect("deleted flag"));
 
     table.skip(1).expect("skip forward");
@@ -117,14 +120,17 @@ fn navigates_items_records_and_reads_fields() {
         table.field_get("TITLE").expect("title"),
         Value::from("Python in a Nutshell")
     );
-    assert_eq!(table.field_get("PRICE").expect("price"), Value::Float(26.39));
+    assert_eq!(
+        table.field_get("PRICE").expect("price"),
+        Value::Float(26.39)
+    );
 }
 
 #[test]
 fn skip_tracks_bof_and_eof_boundaries() {
-    let mut table = DbfTable::open(Path::new(
-        &fixture("harbour-core/contrib/hbhttpd/tests/items.dbf"),
-    ))
+    let mut table = DbfTable::open(Path::new(&fixture(
+        "harbour-core/contrib/hbhttpd/tests/items.dbf",
+    )))
     .expect("items table");
 
     table.go_to(1).expect("goto first");
@@ -171,7 +177,10 @@ fn appends_blank_and_persists_character_fields() {
     let mut reopened = DbfTable::open(&temp_path).expect("reopen temp users");
     assert_eq!(reopened.rec_count(), 1);
     reopened.go_to(1).expect("goto first");
-    assert_eq!(reopened.field_get("USER").expect("user"), Value::from("admin"));
+    assert_eq!(
+        reopened.field_get("USER").expect("user"),
+        Value::from("admin")
+    );
     assert_eq!(
         reopened.field_get("PASSWORD").expect("password"),
         Value::from("secret")
@@ -213,10 +222,22 @@ fn appends_blank_and_persists_numeric_fields() {
     let mut reopened = DbfTable::open(&temp_path).expect("reopen temp carts");
     assert_eq!(reopened.rec_count(), 1);
     reopened.go_to(1).expect("goto first");
-    assert_eq!(reopened.field_get("USER").expect("user"), Value::from("alice"));
-    assert_eq!(reopened.field_get("CODE").expect("code"), Value::from("0001"));
-    assert_eq!(reopened.field_get("AMOUNT").expect("amount"), Value::Integer(3));
-    assert_eq!(reopened.field_get("TOTAL").expect("total"), Value::Float(80.01));
+    assert_eq!(
+        reopened.field_get("USER").expect("user"),
+        Value::from("alice")
+    );
+    assert_eq!(
+        reopened.field_get("CODE").expect("code"),
+        Value::from("0001")
+    );
+    assert_eq!(
+        reopened.field_get("AMOUNT").expect("amount"),
+        Value::Integer(3)
+    );
+    assert_eq!(
+        reopened.field_get("TOTAL").expect("total"),
+        Value::Float(80.01)
+    );
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
@@ -227,8 +248,14 @@ fn reads_logical_and_date_fields_from_upstream_test_dbf() {
         DbfTable::open(Path::new(&fixture("harbour-core/tests/test.dbf"))).expect("open test.dbf");
 
     table.go_to(1).expect("goto first");
-    assert_eq!(table.field_get("FIRST").expect("first"), Value::from("Homer"));
-    assert_eq!(table.field_get("LAST").expect("last"), Value::from("Simpson"));
+    assert_eq!(
+        table.field_get("FIRST").expect("first"),
+        Value::from("Homer")
+    );
+    assert_eq!(
+        table.field_get("LAST").expect("last"),
+        Value::from("Simpson")
+    );
     assert_eq!(
         table.field_get("HIREDATE").expect("hiredate"),
         Value::from("19920918")
@@ -295,7 +322,10 @@ fn delete_and_recall_persist_record_flag() {
     let mut recalled = DbfTable::open(&temp_path).expect("reopen recalled users");
     recalled.go_to(1).expect("goto first");
     assert!(!recalled.deleted().expect("deleted flag"));
-    assert_eq!(recalled.field_get("USER").expect("user"), Value::from("admin"));
+    assert_eq!(
+        recalled.field_get("USER").expect("user"),
+        Value::from("admin")
+    );
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
