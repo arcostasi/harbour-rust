@@ -149,6 +149,10 @@ pub enum RddError {
         field: String,
         raw: String,
     },
+    ValueEncoding {
+        field: String,
+        message: String,
+    },
     UnsupportedOperation(&'static str),
 }
 
@@ -221,6 +225,9 @@ impl fmt::Display for RddError {
                 "failed to parse numeric field `{}` from raw value `{}`",
                 field, raw
             ),
+            Self::ValueEncoding { field, message } => {
+                write!(f, "failed to encode field `{}`: {}", field, message)
+            }
             Self::UnsupportedOperation(operation) => {
                 write!(f, "RDD operation `{}` is not implemented yet", operation)
             }
@@ -353,6 +360,13 @@ impl DbfTable {
         self.record_bytes(recno)
     }
 
+    fn current_record_bytes_mut(&mut self) -> Result<&mut [u8], RddError> {
+        let recno = self.ensure_positioned()?;
+        let offset = self.record_offset(recno)?;
+        let end = offset + self.schema.header.record_length as usize;
+        Ok(&mut self.bytes[offset..end])
+    }
+
     fn field_descriptor(&self, name: &str) -> Result<&FieldDescriptor, RddError> {
         self.schema
             .field(name)
@@ -382,6 +396,21 @@ impl DbfTable {
         self.current_record = 0;
         self.bof = false;
         self.eof = true;
+    }
+
+    fn sync_to_disk(&self) -> Result<(), RddError> {
+        fs::write(&self.path, &self.bytes).map_err(|error| RddError::io(&self.path, error))
+    }
+
+    fn update_record_count_header(&mut self) {
+        let bytes = self.schema.header.record_count.to_le_bytes();
+        self.bytes[4..8].copy_from_slice(&bytes);
+    }
+
+    fn blank_record(&self) -> Vec<u8> {
+        let mut record = vec![b' '; self.schema.header.record_length as usize];
+        record[0] = DBF_ACTIVE_FLAG;
+        record
     }
 }
 
@@ -467,11 +496,26 @@ impl Rdd for DbfTable {
     }
 
     fn field_put(&mut self, _name: &str, _value: Value) -> Result<(), RddError> {
-        Err(RddError::UnsupportedOperation("field_put"))
+        self.ensure_open()?;
+        let field = self.field_descriptor(_name)?.clone();
+        let encoded = encode_field_value(&field, &_value)?;
+        let start = field.offset as usize;
+        let end = start + field.length as usize;
+        let record = self.current_record_bytes_mut()?;
+        record[start..end].copy_from_slice(&encoded);
+        self.sync_to_disk()
     }
 
     fn append_blank(&mut self) -> Result<(), RddError> {
-        Err(RddError::UnsupportedOperation("append_blank"))
+        self.ensure_open()?;
+        let record = self.blank_record();
+        self.bytes.extend_from_slice(&record);
+        self.schema.header.record_count += 1;
+        self.update_record_count_header();
+        self.current_record = self.schema.header.record_count as usize;
+        self.bof = false;
+        self.eof = false;
+        self.sync_to_disk()
     }
 
     fn deleted(&self) -> Result<bool, RddError> {
@@ -702,6 +746,120 @@ fn parse_date_field(raw: &[u8]) -> Result<Value, RddError> {
         )));
     }
     Ok(Value::from(trimmed.to_owned()))
+}
+
+fn encode_field_value(field: &FieldDescriptor, value: &Value) -> Result<Vec<u8>, RddError> {
+    let encoded = match field.field_type {
+        FieldType::Character => encode_character_field(field, value)?,
+        FieldType::Numeric => encode_numeric_field(field, value)?,
+        FieldType::Logical => encode_logical_field(field, value)?,
+        FieldType::Date => encode_date_field(field, value)?,
+    };
+
+    debug_assert_eq!(encoded.len(), field.length as usize);
+    Ok(encoded)
+}
+
+fn encode_character_field(field: &FieldDescriptor, value: &Value) -> Result<Vec<u8>, RddError> {
+    let text = match value {
+        Value::String(value) => value.as_str(),
+        Value::Nil => "",
+        other => {
+            return Err(RddError::type_mismatch(
+                field.name.clone(),
+                "Character/String",
+                other.kind(),
+            ));
+        }
+    };
+
+    if text.len() > field.length as usize {
+        return Err(RddError::ValueEncoding {
+            field: field.name.clone(),
+            message: format!(
+                "string length {} exceeds field width {}",
+                text.len(),
+                field.length
+            ),
+        });
+    }
+
+    let mut bytes = vec![b' '; field.length as usize];
+    bytes[..text.len()].copy_from_slice(text.as_bytes());
+    Ok(bytes)
+}
+
+fn encode_numeric_field(field: &FieldDescriptor, value: &Value) -> Result<Vec<u8>, RddError> {
+    let text = match value {
+        Value::Nil => String::new(),
+        Value::Integer(number) if field.decimals == 0 => number.to_string(),
+        Value::Integer(number) => format!("{:.*}", field.decimals as usize, *number as f64),
+        Value::Float(number) => format!("{:.*}", field.decimals as usize, number),
+        other => {
+            return Err(RddError::type_mismatch(
+                field.name.clone(),
+                "Numeric/Integer/Float",
+                other.kind(),
+            ));
+        }
+    };
+
+    if text.len() > field.length as usize {
+        return Err(RddError::ValueEncoding {
+            field: field.name.clone(),
+            message: format!(
+                "numeric representation `{}` exceeds field width {}",
+                text, field.length
+            ),
+        });
+    }
+
+    let mut bytes = vec![b' '; field.length as usize];
+    let start = field.length as usize - text.len();
+    bytes[start..].copy_from_slice(text.as_bytes());
+    Ok(bytes)
+}
+
+fn encode_logical_field(field: &FieldDescriptor, value: &Value) -> Result<Vec<u8>, RddError> {
+    let byte = match value {
+        Value::Logical(true) => b'T',
+        Value::Logical(false) => b'F',
+        Value::Nil => b' ',
+        other => {
+            return Err(RddError::type_mismatch(
+                field.name.clone(),
+                "Logical",
+                other.kind(),
+            ));
+        }
+    };
+
+    Ok(vec![byte])
+}
+
+fn encode_date_field(field: &FieldDescriptor, value: &Value) -> Result<Vec<u8>, RddError> {
+    let text = match value {
+        Value::String(value) => value.as_str(),
+        Value::Nil => "",
+        other => {
+            return Err(RddError::type_mismatch(
+                field.name.clone(),
+                "Date/String",
+                other.kind(),
+            ));
+        }
+    };
+
+    if !text.is_empty() && (text.len() != 8 || !text.bytes().all(|byte| byte.is_ascii_digit())) {
+        return Err(RddError::ValueEncoding {
+            field: field.name.clone(),
+            message: "date values must use YYYYMMDD".to_owned(),
+        });
+    }
+
+    let mut bytes = vec![b' '; field.length as usize];
+    bytes[..text.len()].copy_from_slice(text.as_bytes());
+    Ok(bytes)
 }
 
 #[cfg(test)]

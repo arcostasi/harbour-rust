@@ -1,4 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use harbour_rust_rdd::{DbfSchema, DbfTable, FieldType, Rdd};
 use harbour_rust_runtime::Value;
@@ -12,6 +16,14 @@ fn workspace_path(path: &str) -> PathBuf {
 
 fn fixture(path: &str) -> PathBuf {
     workspace_path(path)
+}
+
+fn unique_temp_dir(label: &str) -> PathBuf {
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time")
+        .as_nanos();
+    env::temp_dir().join(format!("harbour-rust-rdd-{label}-{suffix}"))
 }
 
 #[test]
@@ -130,4 +142,81 @@ fn skip_tracks_bof_and_eof_boundaries() {
     assert!(!table.bof());
     assert!(table.eof());
     assert_eq!(table.recno(), 0);
+}
+
+#[test]
+fn appends_blank_and_persists_character_fields() {
+    let temp_dir = unique_temp_dir("users-write");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let temp_path = temp_dir.join("users.dbf");
+    fs::copy(
+        fixture("harbour-core/contrib/hbhttpd/tests/users.dbf"),
+        &temp_path,
+    )
+    .expect("copy users fixture");
+
+    let mut table = DbfTable::open(&temp_path).expect("open temp users");
+    table.append_blank().expect("append blank");
+    table
+        .field_put("USER", Value::from("admin"))
+        .expect("write user");
+    table
+        .field_put("PASSWORD", Value::from("secret"))
+        .expect("write password");
+    table
+        .field_put("NAME", Value::from("Administrator"))
+        .expect("write name");
+    table.close().expect("close table");
+
+    let mut reopened = DbfTable::open(&temp_path).expect("reopen temp users");
+    assert_eq!(reopened.rec_count(), 1);
+    reopened.go_to(1).expect("goto first");
+    assert_eq!(reopened.field_get("USER").expect("user"), Value::from("admin"));
+    assert_eq!(
+        reopened.field_get("PASSWORD").expect("password"),
+        Value::from("secret")
+    );
+    assert_eq!(
+        reopened.field_get("NAME").expect("name"),
+        Value::from("Administrator")
+    );
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn appends_blank_and_persists_numeric_fields() {
+    let temp_dir = unique_temp_dir("carts-write");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let temp_path = temp_dir.join("carts.dbf");
+    fs::copy(
+        fixture("harbour-core/contrib/hbhttpd/tests/carts.dbf"),
+        &temp_path,
+    )
+    .expect("copy carts fixture");
+
+    let mut table = DbfTable::open(&temp_path).expect("open temp carts");
+    table.append_blank().expect("append blank");
+    table
+        .field_put("USER", Value::from("alice"))
+        .expect("write user");
+    table
+        .field_put("CODE", Value::from("0001"))
+        .expect("write code");
+    table
+        .field_put("AMOUNT", Value::Integer(3))
+        .expect("write amount");
+    table
+        .field_put("TOTAL", Value::Float(80.01))
+        .expect("write total");
+
+    let mut reopened = DbfTable::open(&temp_path).expect("reopen temp carts");
+    assert_eq!(reopened.rec_count(), 1);
+    reopened.go_to(1).expect("goto first");
+    assert_eq!(reopened.field_get("USER").expect("user"), Value::from("alice"));
+    assert_eq!(reopened.field_get("CODE").expect("code"), Value::from("0001"));
+    assert_eq!(reopened.field_get("AMOUNT").expect("amount"), Value::Integer(3));
+    assert_eq!(reopened.field_get("TOTAL").expect("total"), Value::Float(80.01));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }

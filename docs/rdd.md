@@ -122,5 +122,6 @@ Fase 10 iniciada:
 - parser binário inicial de header e descritores de campo validado contra DBFs reais do `harbour-core`,
 - navegação inicial com `GOTO`, `SKIP`, `RECNO`, `RECCOUNT`, `BOF` e `EOF` implementada para DBF,
 - leitura inicial de campos `C`, `N`, `L` e `D` implementada em `field_get()` e `snapshot()`,
+- `APPEND BLANK` e `field_put()` já persistem em disco para campos `C`, `N`, `L` e `D`,
 - suporte atual focado em tabelas DBF dBASE III (`0x03`) com campos `C`, `N`, `L` e `D`,
-- escrita persistente (`REPLACE`, `APPEND BLANK`, `DELETE`, `RECALL`) ainda entra nos próximos slices da fase.
+- `DELETE` e `RECALL` ainda entram nos próximos slices da fase.
