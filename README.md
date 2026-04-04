@@ -50,7 +50,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8 e 9 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 e 10 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -84,9 +84,12 @@ As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8 e 9 estão concluídas:
 - `Eval()` com codeblocks não-capturantes e codeblocks lendo memvar executável no caminho `cli run`,
 - fixture de aceite da Fase 8 curado em `tests/fixtures/parser/phase8_acceptance.prg`,
 - `#command`, `#translate`, markers de lista/restrição/opcional/stringify e continuação por `;` atravessando `pp -> parser -> cli run`,
-- fixture de aceite da Fase 9 curado em `tests/fixtures/pp/phase9_acceptance.prg`.
+- fixture de aceite da Fase 9 curado em `tests/fixtures/pp/phase9_acceptance.prg`,
+- crate `harbour-rust-rdd` com trait `Rdd`, schema DBF, navegação, leitura de campos e mutação persistente básica,
+- leitura validada contra `harbour-core/contrib/hbhttpd/tests/users.dbf`, `carts.dbf`, `items.dbf` e `harbour-core/tests/test.dbf`,
+- escrita básica validada em roundtrip temporário para `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL`.
 
-O próximo passo técnico é iniciar a Fase 10 com a camada inicial de RDD/DBF.
+O próximo passo técnico é iniciar a Fase 11 com diagnósticos, CLI e experiência de uso.
 
 O baseline fim a fim atual oferece geração de C:
 

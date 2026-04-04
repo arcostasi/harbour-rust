@@ -216,6 +216,8 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/pp/phase9_acceptance.prg` -> `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo
 - `tests/fixtures/pp/phase9_preprocess_error.prg` -> erro explícito de preprocessamento no CLI para regra malformada
 - Fase 9 fechada no subset acima; compatibilidade completa com `ppcore.c` e corpus maior de `tests/hbpp` segue como expansão futura, não como bloqueio do aceite atual
+- `crates/harbour-rust-rdd/tests/schema.rs` -> leitura de schema e navegação sobre `users.dbf`, `carts.dbf`, `items.dbf` e `test.dbf` do `harbour-core`
+- `crates/harbour-rust-rdd/tests/schema.rs` -> roundtrip temporário de `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL` sobre cópias de DBFs reais do upstream
 
 ## Critérios por PR
 

@@ -112,6 +112,13 @@ O aceite da Fase 9 está fechado com o recorte avançado atual do pré-processad
 - `tests/fixtures/pp/phase9_preprocess_error.prg` fixa o erro explícito de preprocessamento para regra malformada no CLI,
 - a matriz acima continua registrando `#command` e `#translate` como `partial` por recurso, mas a fase fica fechada no subset executável e documentado.
 
+O aceite da Fase 10 está fechado com a camada inicial de DBF/RDD:
+
+- `harbour-rust-rdd` agora abre DBFs reais do `harbour-core`, navega com `GOTO`/`SKIP`, expõe `RECNO`/`RECCOUNT`/`BOF`/`EOF` e lê campos `C/N/L/D`,
+- `crates/harbour-rust-rdd/tests/schema.rs` ancora o baseline em `harbour-core/contrib/hbhttpd/tests/users.dbf`, `carts.dbf`, `items.dbf` e `harbour-core/tests/test.dbf`,
+- o mesmo harness valida roundtrip temporário para `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL` sem alterar os fixtures do upstream,
+- índices, memo, locking de rede e integração dos comandos xBase sobre o frontend continuam fora do recorte da fase e seguem registrados como evolução futura.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.
