@@ -2,6 +2,8 @@
 
 [![Quality](https://github.com/arcostasi/harbour-rust/actions/workflows/quality.yml/badge.svg)](https://github.com/arcostasi/harbour-rust/actions/workflows/quality.yml)
 [![Release](https://github.com/arcostasi/harbour-rust/actions/workflows/release.yml/badge.svg)](https://github.com/arcostasi/harbour-rust/actions/workflows/release.yml)
+[![Latest Pre-release](https://img.shields.io/github/v/release/arcostasi/harbour-rust?include_prereleases&label=latest%20pre-release)](https://github.com/arcostasi/harbour-rust/releases)
+[![Downloads](https://img.shields.io/github/downloads/arcostasi/harbour-rust/total)](https://github.com/arcostasi/harbour-rust/releases)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
 - [English](./README.md)
@@ -30,6 +32,17 @@ Current highlights:
 - procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected preprocessor features are available;
 - DBF/RDD groundwork is present;
 - CLI, regression harnesses, benchmarks, fuzz scaffolding, and release workflows are in place.
+
+## Releases
+
+- Latest pre-release: [0.4.0-alpha](https://github.com/arcostasi/harbour-rust/releases/tag/0.4.0-alpha)
+- All releases: [github.com/arcostasi/harbour-rust/releases](https://github.com/arcostasi/harbour-rust/releases)
+- Latest pre-release assets:
+  - [Linux x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-linux-x86_64.zip)
+  - [macOS aarch64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-macos-aarch64.zip)
+  - [Windows x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-windows-x86_64.zip)
+  - [SHA256SUMS.txt](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/SHA256SUMS.txt)
+  - [benchmark-report.md](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/benchmark-report.md)
 
 ## Documentation
 

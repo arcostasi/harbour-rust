@@ -2,6 +2,8 @@
 
 [![Quality](https://github.com/arcostasi/harbour-rust/actions/workflows/quality.yml/badge.svg)](https://github.com/arcostasi/harbour-rust/actions/workflows/quality.yml)
 [![Release](https://github.com/arcostasi/harbour-rust/actions/workflows/release.yml/badge.svg)](https://github.com/arcostasi/harbour-rust/actions/workflows/release.yml)
+[![Latest Pre-release](https://img.shields.io/github/v/release/arcostasi/harbour-rust?include_prereleases&label=latest%20pre-release)](https://github.com/arcostasi/harbour-rust/releases)
+[![Downloads](https://img.shields.io/github/downloads/arcostasi/harbour-rust/total)](https://github.com/arcostasi/harbour-rust/releases)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
 - [English](./README.md)
@@ -31,6 +33,17 @@ Destaques atuais:
 - base inicial de DBF/RDD presente;
 - CLI, harnesses de regressão, benchmarks, scaffold de fuzzing e workflows de release configurados.
 
+## Releases
+
+- Pre-release atual: [0.4.0-alpha](https://github.com/arcostasi/harbour-rust/releases/tag/0.4.0-alpha)
+- Todas as releases: [github.com/arcostasi/harbour-rust/releases](https://github.com/arcostasi/harbour-rust/releases)
+- Assets da pre-release atual:
+  - [Linux x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-linux-x86_64.zip)
+  - [macOS aarch64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-macos-aarch64.zip)
+  - [Windows x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-windows-x86_64.zip)
+  - [SHA256SUMS.txt](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/SHA256SUMS.txt)
+  - [benchmark-report.md](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/benchmark-report.md)
+
 ## Documentação
 
 Comece por aqui:
@@ -46,11 +59,11 @@ Comece por aqui:
 
 Guias técnicos:
 
-- [Technical Overview](./docs/en/technical/overview.md)
-- [Architecture](./docs/en/technical/architecture.md)
-- [Runtime](./docs/en/technical/runtime.md)
-- [CLI](./docs/en/technical/cli.md)
-- [Test Strategy](./docs/en/technical/test-strategy.md)
+- [Visão Geral Técnica](./docs/pt-BR/technical/overview.md)
+- [Arquitetura](./docs/pt-BR/technical/architecture.md)
+- [Runtime](./docs/pt-BR/technical/runtime.md)
+- [CLI](./docs/pt-BR/technical/cli.md)
+- [Estratégia de Testes](./docs/pt-BR/technical/test-strategy.md)
 
 ## Início Rápido
 
