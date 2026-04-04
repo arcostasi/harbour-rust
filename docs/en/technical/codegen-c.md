@@ -5,11 +5,11 @@
 
 ## Role
 
-The C backend emits readable C from the IR and relies on a host C compiler to produce executables.
+The C backend emits explicit C from the IR and relies on a host C compiler to produce executables.
 
 ## Design Priorities
 
-- readability over cleverness;
+- explicitness and debuggability over cleverness;
 - explicit runtime helper calls;
 - backend growth in small compatibility-backed slices;
 - clear diagnostics when IR constructs are not yet executable.

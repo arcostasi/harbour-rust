@@ -7,7 +7,7 @@
 
 ![Harbour Rust social preview](./docs/assets/harbour-rust-social-preview.png)
 
-Projeto de compilador em Rust para compatibilidade com CA-Clipper/Harbour, com backend C pragmático, CLI moderna e foco em modernização de sistemas xBase.
+Projeto de compilador em Rust para compatibilidade com CA-Clipper/Harbour, com backend C executável e pragmático, CLI moderna e foco em modernização de sistemas xBase.
 
 [English](./README.md) | [Português do Brasil](./README.pt-BR.md)
 
@@ -32,7 +32,7 @@ O repositório concluiu as fases 0 a 12 do roadmap inicial e está em preparaç�
 
 Destaques atuais:
 
-- pipelines de parser, HIR, sema, runtime, IR e geração de código C implementados;
+- pipelines de parser, HIR, sema, runtime, IR e backend C executável atual implementados;
 - compatibilidade procedural, arrays, `STATIC`, memvars, codeblocks e parte do pré-processador disponíveis;
 - base inicial de DBF/RDD presente;
 - CLI, harnesses de regressão, benchmarks, scaffold de fuzzing e workflows de release configurados.

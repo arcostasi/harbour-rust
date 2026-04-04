@@ -5,11 +5,11 @@
 
 ## Papel
 
-O backend C emite C legível a partir da IR e depende de um compilador C host para produzir executáveis.
+O backend C emite C explícito a partir da IR e depende de um compilador C host para produzir executáveis.
 
 ## Prioridades de Design
 
-- legibilidade acima de esperteza;
+- explicitude e depuração acima de esperteza;
 - chamadas explícitas para helpers de runtime;
 - crescimento do backend em slices pequenos apoiados por compatibilidade;
 - diagnósticos claros quando construções da IR ainda não são executáveis.

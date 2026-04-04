@@ -33,7 +33,7 @@ Harbour Rust does not begin by reproducing historical pcode or VM internals one-
 
 - a dedicated AST and HIR;
 - a simpler backend-oriented IR;
-- a readable C backend;
+- a practical executable C backend;
 - a Rust runtime model with explicit tests.
 
 This is an implementation strategy, not a rejection of upstream semantics.

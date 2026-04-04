@@ -33,7 +33,7 @@ Harbour Rust não começa reproduzindo pcode ou internas da VM histórica de for
 
 - AST e HIR dedicadas;
 - uma IR mais simples e voltada ao backend;
-- backend C legível;
+- backend C executável e pragmático;
 - modelo de runtime em Rust com testes explícitos.
 
 Isso é uma estratégia de implementação, não uma rejeição da semântica do upstream.
