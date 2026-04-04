@@ -115,4 +115,10 @@ O driver deve ler e escrever arquivos DBF criados pelo Clipper/Harbour original 
 
 ## Estado atual
 
-Fase 10 planejada — crate criado como placeholder estrutural.
+Fase 10 iniciada:
+
+- trait `Rdd` definida com a superfície mínima de navegação e mutação planejada,
+- modelos `DbfHeader`, `FieldDescriptor` e `DbfSchema` implementados,
+- parser binário inicial de header e descritores de campo validado contra DBFs reais do `harbour-core`,
+- suporte atual focado em tabelas DBF dBASE III (`0x03`) com campos `C`, `N`, `L` e `D`,
+- leitura de registros e escrita persistente ainda entram nos próximos slices da fase.

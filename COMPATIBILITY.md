@@ -66,7 +66,7 @@ Status:
 | macro operator | Harbour | partial | 8/9 | `src/vm/macro.c`, `tests/macro.prg` | parser + hir + ir + snapshot + cli run | macro read inicial `&name` e `&(expr)` já parseia em `tests/fixtures/parser/macro_read.prg`; HIR e IR preservam `Macro` explicitamente; o backend C agora já baixa a leitura dinâmica mínima para `harbour_macro_read(...)`, e `tests/fixtures/parser/macro_memvar.prg` e `tests/fixtures/parser/phase8_acceptance.prg` validam `&name`/`&(expr)` como lookup de memvar no caminho `cli run`; callable macro, macro assignment e forms mais amplas continuam pendentes |
 | `FOR EACH` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | extensão Harbour, não baseline |
 | `WITH OBJECT` | Harbour | deferred | pós-0.2 | `doc/clipper.txt` | compat | |
-| RDD/DBF | Clipper/Harbour | planned | 10 | `src/rdd`, `tests/rddtest` | integração | só após frontend estável |
+| RDD/DBF | Clipper/Harbour | partial | 10 | `src/rdd`, `tests/rddtest`, `contrib/hbhttpd/tests/*.dbf` | unit + integração | trait `Rdd`, schema DBF e parsing binário inicial de header/fields já cobertos contra DBFs reais do `harbour-core`; navegação, leitura de campos e escrita persistente entram nos próximos slices |
 
 ## Marco atual
 

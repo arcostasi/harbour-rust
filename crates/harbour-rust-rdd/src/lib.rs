@@ -1,6 +1,7 @@
 use std::{
     error::Error,
     fmt,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -100,6 +101,17 @@ pub struct DbfSchema {
 }
 
 impl DbfSchema {
+    pub fn read_from_path(path: &Path) -> Result<Self, RddError> {
+        let bytes = fs::read(path).map_err(|error| RddError::io(path, error))?;
+        Self::from_bytes(&bytes)
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, RddError> {
+        let header = parse_header(bytes)?;
+        let fields = parse_field_descriptors(bytes, &header)?;
+        Ok(Self { header, fields })
+    }
+
     pub fn field(&self, name: &str) -> Option<&FieldDescriptor> {
         self.fields
             .iter()
@@ -235,6 +247,7 @@ pub trait Rdd {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbfTable {
     path: PathBuf,
+    bytes: Vec<u8>,
     schema: DbfSchema,
     current_record: usize,
     bof: bool,
@@ -243,10 +256,22 @@ pub struct DbfTable {
 }
 
 impl DbfTable {
-    pub fn new(path: PathBuf, schema: DbfSchema) -> Self {
+    pub fn open(path: &Path) -> Result<Self, RddError> {
+        let bytes = fs::read(path).map_err(|error| RddError::io(path, error))?;
+        Self::from_bytes(path.to_path_buf(), bytes)
+    }
+
+    pub fn from_bytes(path: PathBuf, bytes: Vec<u8>) -> Result<Self, RddError> {
+        let schema = DbfSchema::from_bytes(&bytes)?;
+        validate_record_storage(&bytes, &schema.header)?;
+        Ok(Self::new(path, bytes, schema))
+    }
+
+    pub fn new(path: PathBuf, bytes: Vec<u8>, schema: DbfSchema) -> Self {
         let eof = schema.header.record_count == 0;
         Self {
             path,
+            bytes,
             schema,
             current_record: 0,
             bof: true,
@@ -259,13 +284,172 @@ impl DbfTable {
         &self.path
     }
 
+    pub fn raw_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
     pub fn schema(&self) -> &DbfSchema {
         &self.schema
+    }
+
+    pub fn bof(&self) -> bool {
+        self.bof
+    }
+
+    pub fn eof(&self) -> bool {
+        self.eof
+    }
+
+    pub fn recno(&self) -> usize {
+        self.current_record
+    }
+
+    pub fn rec_count(&self) -> usize {
+        self.schema.header.record_count as usize
     }
 
     pub fn is_closed(&self) -> bool {
         self.is_closed
     }
+}
+
+fn parse_header(bytes: &[u8]) -> Result<DbfHeader, RddError> {
+    if bytes.len() < DBF_HEADER_BASE_SIZE {
+        return Err(RddError::invalid_format(format!(
+            "header is shorter than {} bytes",
+            DBF_HEADER_BASE_SIZE
+        )));
+    }
+
+    let version = bytes[0];
+    if version != DBF_DBASE_III_VERSION {
+        return Err(RddError::invalid_format(format!(
+            "unsupported DBF version byte 0x{version:02X}"
+        )));
+    }
+
+    let last_update = DbfDate::new(1900 + bytes[1] as u16, bytes[2], bytes[3])?;
+    let record_count = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
+    let header_length = u16::from_le_bytes([bytes[8], bytes[9]]);
+    let record_length = u16::from_le_bytes([bytes[10], bytes[11]]);
+
+    if header_length as usize > bytes.len() {
+        return Err(RddError::invalid_format(format!(
+            "header length {} exceeds file size {}",
+            header_length,
+            bytes.len()
+        )));
+    }
+    if record_length == 0 {
+        return Err(RddError::invalid_format("record length cannot be zero"));
+    }
+    if header_length < DBF_HEADER_BASE_SIZE as u16 + 1 {
+        return Err(RddError::invalid_format(format!(
+            "header length {} is too small for field terminator",
+            header_length
+        )));
+    }
+
+    Ok(DbfHeader {
+        version,
+        last_update,
+        record_count,
+        header_length,
+        record_length,
+    })
+}
+
+fn parse_field_descriptors(
+    bytes: &[u8],
+    header: &DbfHeader,
+) -> Result<Vec<FieldDescriptor>, RddError> {
+    let header_length = header.header_length as usize;
+    let terminator_index = bytes[DBF_HEADER_BASE_SIZE..header_length]
+        .iter()
+        .position(|byte| *byte == DBF_HEADER_TERMINATOR)
+        .map(|relative| DBF_HEADER_BASE_SIZE + relative)
+        .ok_or_else(|| {
+            RddError::invalid_format("DBF header does not contain a field terminator byte")
+        })?;
+
+    let field_bytes = terminator_index
+        .checked_sub(DBF_HEADER_BASE_SIZE)
+        .ok_or_else(|| RddError::invalid_format("field descriptor area underflowed"))?;
+
+    if field_bytes % DBF_FIELD_DESCRIPTOR_SIZE != 0 {
+        return Err(RddError::invalid_format(format!(
+            "field descriptor section size {} is not aligned to {}",
+            field_bytes, DBF_FIELD_DESCRIPTOR_SIZE
+        )));
+    }
+
+    let mut fields = Vec::new();
+    let mut offset = 1u16;
+    for descriptor in bytes[DBF_HEADER_BASE_SIZE..terminator_index].chunks_exact(DBF_FIELD_DESCRIPTOR_SIZE)
+    {
+        let name = parse_field_name(&descriptor[..11])?;
+        let field_type = FieldType::from_code(descriptor[11])?;
+        let length = descriptor[16];
+        let decimals = descriptor[17];
+
+        if length == 0 {
+            return Err(RddError::invalid_format(format!(
+                "field `{}` has zero length",
+                name
+            )));
+        }
+
+        fields.push(FieldDescriptor {
+            name,
+            field_type,
+            length,
+            decimals,
+            offset,
+        });
+        offset = offset
+            .checked_add(length as u16)
+            .ok_or_else(|| RddError::invalid_format("field offsets overflowed u16"))?;
+    }
+
+    if fields.is_empty() {
+        return Err(RddError::invalid_format("DBF table must contain at least one field"));
+    }
+
+    let computed_record_length = offset;
+    if computed_record_length != header.record_length {
+        return Err(RddError::invalid_format(format!(
+            "record length mismatch: header says {}, computed {}",
+            header.record_length, computed_record_length
+        )));
+    }
+
+    Ok(fields)
+}
+
+fn validate_record_storage(bytes: &[u8], header: &DbfHeader) -> Result<(), RddError> {
+    let data_length = bytes.len().saturating_sub(header.header_length as usize);
+    let required_length = header.record_count as usize * header.record_length as usize;
+    if data_length < required_length {
+        return Err(RddError::invalid_format(format!(
+            "file does not contain all declared records: need {} bytes of record data, found {}",
+            required_length, data_length
+        )));
+    }
+
+    Ok(())
+}
+
+fn parse_field_name(raw: &[u8]) -> Result<String, RddError> {
+    let end = raw.iter().position(|byte| *byte == 0).unwrap_or(raw.len());
+    let name = std::str::from_utf8(&raw[..end])
+        .map_err(|_| RddError::invalid_format("field name is not valid ASCII/UTF-8"))?
+        .trim();
+
+    if name.is_empty() {
+        return Err(RddError::invalid_format("field name cannot be empty"));
+    }
+
+    Ok(name.to_owned())
 }
 
 #[cfg(test)]
