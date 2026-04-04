@@ -1,0 +1,48 @@
+name: "Compatibility report / Relato de compatibilidade"
+description: "Report a difference between Harbour Rust and CA-Clipper/Harbour behavior."
+title: "[Compat]: "
+labels:
+  - compatibility
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please keep this report grounded in observable behavior.
+        If possible, include both the Harbour Rust result and the upstream/oracle result.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Behavior under discussion / Comportamento em análise
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Minimal fixture / Fixture mínima
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Upstream or expected result / Resultado esperado ou do upstream
+      render: text
+  - type: textarea
+    id: actual
+    attributes:
+      label: Harbour Rust result / Resultado do Harbour Rust
+      render: text
+  - type: textarea
+    id: source
+    attributes:
+      label: Oracle/source reference / Referência do oráculo ou fonte
+      description: Point to `harbour-core`, docs, or another lawful reference.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks / Verificações
+      options:
+        - label: I included a minimal reproducible fixture. / Incluí uma fixture mínima reproduzível.
+          required: true
+        - label: I am not pasting copyrighted third-party text beyond what is legally necessary. / Não estou colando texto protegido de terceiros além do necessário legalmente.
+          required: true

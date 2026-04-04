@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Discussions / Discussões"
+    url: "https://github.com/arcostasi/harbour-rust/discussions"
+    about: "Use Discussions for questions, ideas, and broader design conversations."
+  - name: "Support / Suporte"
+    url: "https://github.com/arcostasi/harbour-rust/blob/main/SUPPORT.md"
+    about: "Read the support guidance before opening a new request."
+  - name: "Security / Segurança"
+    url: "https://github.com/arcostasi/harbour-rust/blob/main/SECURITY.md"
+    about: "Please do not open public issues for sensitive security reports."

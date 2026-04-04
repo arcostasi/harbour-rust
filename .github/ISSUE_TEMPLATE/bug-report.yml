@@ -1,0 +1,65 @@
+name: "Bug report / Relato de bug"
+description: "Report a reproducible defect in the compiler, runtime, CLI, or tooling."
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
+
+        You may write in English or Portuguese (Brazil).
+        Please keep the report concrete and reproducible.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary / Resumo
+      description: Describe the bug clearly.
+      placeholder: What happened? / O que aconteceu?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Passos para reproduzir
+      description: List the exact steps, commands, or files used.
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / Comportamento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / Comportamento atual
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Fixture or source / Fixture ou source
+      description: Paste a minimal `.prg` example when possible.
+      render: text
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / Ambiente
+      description: Include commit, OS, Rust version, and command used.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks / Verificações
+      options:
+        - label: I searched for existing issues first. / Pesquisei issues existentes antes.
+          required: true
+        - label: I am not pasting copyrighted third-party material without permission. / Não estou colando material protegido de terceiros sem permissão.
+          required: true

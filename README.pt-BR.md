@@ -1,5 +1,9 @@
 # Harbour Rust
 
+[![Quality](https://github.com/arcostasi/harbour-rust/actions/workflows/quality.yml/badge.svg)](https://github.com/arcostasi/harbour-rust/actions/workflows/quality.yml)
+[![Release](https://github.com/arcostasi/harbour-rust/actions/workflows/release.yml/badge.svg)](https://github.com/arcostasi/harbour-rust/actions/workflows/release.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
+
 - [English](./README.md)
 - [Português do Brasil](./README.pt-BR.md)
 
@@ -40,6 +44,14 @@ Comece por aqui:
 - [Política de Proveniência e Copyright](./PROVENANCE.pt-BR.md)
 - [Centro de Documentação](./docs/README.pt-BR.md)
 
+Guias técnicos:
+
+- [Technical Overview](./docs/en/technical/overview.md)
+- [Architecture](./docs/en/technical/architecture.md)
+- [Runtime](./docs/en/technical/runtime.md)
+- [CLI](./docs/en/technical/cli.md)
+- [Test Strategy](./docs/en/technical/test-strategy.md)
+
 ## Início Rápido
 
 ```text
@@ -60,6 +72,14 @@ Harbour Rust é:
 - pensado como uma contribuição técnica respeitosa para um ecossistema clássico.
 
 Contribuições são bem-vindas, mas todo material enviado precisa ser original ou legalmente reutilizável. Consulte [PROVENANCE.pt-BR.md](./PROVENANCE.pt-BR.md) para ver a política do repositório sobre originalidade, referências ao upstream, tradução e uso de material de terceiros.
+
+## Comunidade
+
+- Use GitHub Issues para bugs focados, problemas de compatibilidade e itens de trabalho com escopo claro.
+- Use GitHub Discussions para dúvidas, ideias e conversas de design mais amplas quando Discussions estiver habilitado no repositório.
+- Use pull requests para mudanças concretas e revisáveis, com testes e documentação sincronizada.
+
+Os templates em `.github/` foram pensados para atender contribuidores em Inglês e Português sem alterar a política canônica do projeto.
 
 ## Licença
 

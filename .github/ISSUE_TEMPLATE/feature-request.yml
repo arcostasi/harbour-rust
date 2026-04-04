@@ -1,0 +1,40 @@
+name: "Feature request / Solicitação de feature"
+description: "Propose a scoped improvement to the compiler, runtime, docs, or workflow."
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests should stay focused.
+        Please describe the user need, not only the implementation idea.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Problema
+      description: What gap or pain point are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change / Mudança proposta
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact / Impacto de compatibilidade
+      description: Explain whether this affects Clipper/Harbour compatibility.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / Alternativas consideradas
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks / Verificações
+      options:
+        - label: I searched for existing requests first. / Pesquisei solicitações existentes antes.
+          required: true
