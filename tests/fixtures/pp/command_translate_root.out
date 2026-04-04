@@ -1,0 +1,5 @@
+PROCEDURE Main()
+   LOCAL n := 3 + 3
+   ? n
+   ? 4 + 4
+RETURN

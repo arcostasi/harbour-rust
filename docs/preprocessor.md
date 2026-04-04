@@ -55,10 +55,23 @@ O PP opera antes do lexer principal. O handoff é:
 
 ### `#command` / `#translate` (Fase 9)
 
-- Parsing de regras com padrão e substituição
-- Expansão parametrizada
-- Corner cases documentados no upstream
-- **Não implementado ainda**
+Recorte atual já implementado:
+
+- `#command`, `#xcommand`, `#translate` e `#xtranslate`
+- parsing de padrão `... => ...`
+- marcador regular `<id>`
+- marcador de lista `<id,...>`
+- marcador restrito `<id:ON,OFF>`
+- cláusulas opcionais `[ ... ]` no padrão e no resultado
+- stringify `#<id>` no resultado
+- continuação de diretiva em múltiplas linhas com `;`
+
+Limitações ainda abertas nesta fase:
+
+- sem markers avançados como `<(id)>`, `<"id">`, `<{id}>` e `<.id.>`
+- sem macro markers `:<&>` e variantes mais complexas do upstream
+- sem nested optional/list expansion completa do `_pp_test.prg`
+- sem engine token-based fiel ao `ppcore.c`; o recorte atual continua tokenização leve sobre source textual
 
 ### Outras diretivas (futuras)
 
@@ -101,9 +114,10 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 
 ## Estado atual
 
-Fase 6 concluída:
+Fase 6 concluída e Fase 9 iniciada:
 
 - `#define` objeto com expansão recursiva e detecção de ciclo
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
-- Macros parametrizadas e `#command`/`#translate` pendentes para Fase 9
+- `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
+- markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes

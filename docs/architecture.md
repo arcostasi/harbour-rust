@@ -253,6 +253,19 @@ Na slice seguinte, o `harbour-rust-cli` ganha a primeira superfície de handoff 
 - o CLI materializa um `preprocess -> parse` explícito antes do restante do pipeline,
 - a integração continua mínima: options de PP no CLI, sem dialetos nem `#command`.
 
+Na primeira slice da Fase 9, o `harbour-rust-pp` ganha um modelo explícito de regras:
+
+- `#command` / `#xcommand` ancorados em statement line,
+- `#translate` / `#xtranslate` aplicados dentro da linha com passes limitados,
+- marcadores regulares, de lista, restritos e opcionais,
+- stringify `#<id>` e continuação de diretiva com `;`.
+
+O recorte continua propositalmente menor que o `ppcore.c`:
+
+- ainda não há markers/result markers avançados do upstream,
+- a engine continua textual com tokenização leve por linha,
+- a compatibilidade é medida por fixtures curados, não pelo corpus completo de `tests/hbpp`.
+
 ### 4. Compatibilidade incremental por dialeto
 
 - baseline inicial: subconjunto Clipper procedural,

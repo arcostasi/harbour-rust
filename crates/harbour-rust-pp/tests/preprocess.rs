@@ -149,3 +149,65 @@ fn resolves_angle_include_through_search_paths() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn preprocesses_command_and_translate_fixture() {
+    let root = fixture_path("command_translate_root.prg");
+    let expected = fs::read_to_string(fixture_path("command_translate_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 2);
+}
+
+#[test]
+fn preprocesses_optional_list_and_restricted_rule_fixture() {
+    let root = fixture_path("rule_markers_root.prg");
+    let expected = fs::read_to_string(fixture_path("rule_markers_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 3);
+}
+
+#[test]
+fn preprocesses_multiline_command_fixture() {
+    let root = fixture_path("multiline_command_root.prg");
+    let expected = fs::read_to_string(fixture_path("multiline_command_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 1);
+}
+
+#[test]
+fn reports_malformed_rule_fixture() {
+    let root = fixture_path("malformed_rule_root.prg");
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert_eq!(output.text, "PROCEDURE Main()\n   BAD 1\nRETURN\n");
+    assert_eq!(output.errors.len(), 1);
+    assert_eq!(
+        output.errors[0].message,
+        "unterminated rule marker in pattern"
+    );
+}

@@ -1,0 +1,7 @@
+PROCEDURE Main()
+   Emit()
+   Emit(n)
+   ? "a, b, c"
+   ? "ON"
+   SET MODE MAYBE
+RETURN

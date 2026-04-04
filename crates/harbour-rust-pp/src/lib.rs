@@ -92,6 +92,49 @@ pub struct DefineDirective {
     pub location: SourceLocation,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleKind {
+    Command,
+    Translate,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuleDirective {
+    pub kind: RuleKind,
+    pub pattern: Vec<PatternPart>,
+    pub replacement: Vec<ResultPart>,
+    pub source_path: PathBuf,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PatternPart {
+    Literal(String),
+    Marker(PatternMarker),
+    Optional(Vec<PatternPart>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatternMarker {
+    pub name: String,
+    pub kind: MarkerKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MarkerKind {
+    Regular,
+    List,
+    Restricted(Vec<String>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResultPart {
+    Literal(String),
+    Marker(String),
+    Stringify(String),
+    Optional(Vec<ResultPart>),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineOrigin {
     pub output_line: usize,
@@ -103,6 +146,7 @@ pub struct LineOrigin {
 pub struct PreprocessOutput {
     pub text: String,
     pub defines: Vec<DefineDirective>,
+    pub rules: Vec<RuleDirective>,
     pub line_origins: Vec<LineOrigin>,
     pub errors: Vec<PreprocessError>,
 }
@@ -244,12 +288,14 @@ pub fn preprocess(source: SourceFile) -> PreprocessOutput {
 enum Directive {
     Define(DefineDirective),
     Include(IncludeDirective),
+    Rule(RuleDirective),
 }
 
 struct PreprocessState<'a, R> {
     include_resolver: &'a R,
     output: String,
     defines: Vec<DefineDirective>,
+    rules: Vec<RuleDirective>,
     line_origins: Vec<LineOrigin>,
     errors: Vec<PreprocessError>,
     include_stack: Vec<PathBuf>,
@@ -261,6 +307,7 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
             include_resolver,
             output: String::new(),
             defines: Vec::new(),
+            rules: Vec::new(),
             line_origins: Vec::new(),
             errors: Vec::new(),
             include_stack: Vec::new(),
@@ -271,6 +318,7 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
         PreprocessOutput {
             text: self.output,
             defines: self.defines,
+            rules: self.rules,
             line_origins: self.line_origins,
             errors: self.errors,
         }
@@ -288,35 +336,53 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
 
         self.include_stack.push(source.path.clone());
 
-        for (index, raw_line) in split_lines(&source.text).enumerate() {
+        let lines = split_lines(&source.text).collect::<Vec<_>>();
+        let mut index = 0;
+        while index < lines.len() {
+            let raw_line = lines[index];
             let line_number = index + 1;
-            match parse_directive(&source.path, raw_line, line_number) {
-                None => {
-                    let (expanded_line, mut errors) = expand_object_like_defines(
-                        raw_line,
-                        &self.defines,
-                        &source.path,
-                        line_number,
-                    );
-                    self.errors.append(&mut errors);
-                    self.push_output_line(&source.path, line_number, &expanded_line);
-                }
-                Some(Ok(Directive::Define(define))) => self.defines.push(define),
-                Some(Ok(Directive::Include(include))) => {
-                    match self.include_resolver.resolve_include(&source, &include) {
-                        Ok(included_source) => self.process_source(included_source),
-                        Err(error) => self.errors.push(PreprocessError {
-                            message: format!(
-                                "failed to resolve include {:?}: {}",
-                                include.target, error
-                            ),
-                            path: include.source_path,
-                            location: include.location,
-                        }),
+
+            if is_directive_start(raw_line) {
+                let (logical_line, end_index) = collect_directive_line(&lines, index);
+                match parse_directive(&source.path, &logical_line, line_number) {
+                    None => {}
+                    Some(Ok(Directive::Define(define))) => self.defines.push(define),
+                    Some(Ok(Directive::Include(include))) => {
+                        match self.include_resolver.resolve_include(&source, &include) {
+                            Ok(included_source) => self.process_source(included_source),
+                            Err(error) => self.errors.push(PreprocessError {
+                                message: format!(
+                                    "failed to resolve include {:?}: {}",
+                                    include.target, error
+                                ),
+                                path: include.source_path,
+                                location: include.location,
+                            }),
+                        }
                     }
+                    Some(Ok(Directive::Rule(rule))) => self.rules.push(rule),
+                    Some(Err(error)) => self.errors.push(error),
                 }
-                Some(Err(error)) => self.errors.push(error),
+                index = end_index + 1;
+                continue;
             }
+
+            let line_content = trim_line_ending(raw_line);
+            let line_ending = &raw_line[line_content.len()..];
+            let (expanded_line, mut errors) = preprocess_normal_line(
+                line_content,
+                &self.defines,
+                &self.rules,
+                &source.path,
+                line_number,
+            );
+            self.errors.append(&mut errors);
+            self.push_output_line(
+                &source.path,
+                line_number,
+                &format!("{expanded_line}{line_ending}"),
+            );
+            index += 1;
         }
 
         self.include_stack.pop();
@@ -375,12 +441,74 @@ fn parse_directive(
         "include" => {
             parse_include(path, line_number, directive_column, rest).map(Directive::Include)
         }
+        "command" | "xcommand" => parse_rule(
+            path,
+            line_number,
+            directive_column,
+            rest,
+            RuleKind::Command,
+        )
+        .map(Directive::Rule),
+        "translate" | "xtranslate" => parse_rule(
+            path,
+            line_number,
+            directive_column,
+            rest,
+            RuleKind::Translate,
+        )
+        .map(Directive::Rule),
         _ => Err(directive_error(
             path,
             line_number,
             directive_column,
             format!("unsupported preprocessor directive '#{}'", keyword),
         )),
+    })
+}
+
+fn parse_rule(
+    path: &Path,
+    line_number: usize,
+    column: usize,
+    rest: &str,
+    kind: RuleKind,
+) -> Result<RuleDirective, PreprocessError> {
+    let rest = trim_line_ending(rest);
+    let Some((pattern_text, replacement_text)) = rest.split_once("=>") else {
+        return Err(directive_error(
+            path,
+            line_number,
+            column,
+            "expected '=>' in preprocessor rule",
+        ));
+    };
+
+    let pattern = parse_pattern(pattern_text.trim(), path, line_number, column)?;
+    if pattern.is_empty() {
+        return Err(directive_error(
+            path,
+            line_number,
+            column,
+            "expected non-empty preprocessor rule pattern",
+        ));
+    }
+
+    let replacement = parse_result(
+        trim_inline_whitespace(replacement_text),
+        path,
+        line_number,
+        column,
+    )?;
+
+    Ok(RuleDirective {
+        kind,
+        pattern,
+        replacement,
+        source_path: path.to_path_buf(),
+        location: SourceLocation {
+            line: line_number,
+            column,
+        },
     })
 }
 
@@ -546,6 +674,312 @@ fn parse_include(
     })
 }
 
+fn parse_pattern(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<Vec<PatternPart>, PreprocessError> {
+    parse_pattern_until(text, path, line_number, column, None).and_then(|(parts, consumed)| {
+        if consumed != text.len() {
+            Err(directive_error(
+                path,
+                line_number,
+                column,
+                "unexpected trailing tokens in pattern",
+            ))
+        } else {
+            Ok(parts)
+        }
+    })
+}
+
+fn parse_pattern_until(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+    until: Option<char>,
+) -> Result<(Vec<PatternPart>, usize), PreprocessError> {
+    let mut parts = Vec::new();
+    let mut cursor = 0;
+
+    while cursor < text.len() {
+        cursor = skip_inline_spaces(text, cursor);
+        if cursor >= text.len() {
+            break;
+        }
+
+        let ch = char_at(text, cursor);
+        if Some(ch) == until {
+            return Ok((parts, cursor + ch.len_utf8()));
+        }
+
+        match ch {
+            '[' => {
+                let (nested, consumed) = parse_pattern_until(
+                    &text[cursor + 1..],
+                    path,
+                    line_number,
+                    column,
+                    Some(']'),
+                )?;
+                parts.push(PatternPart::Optional(nested));
+                cursor += 1 + consumed;
+            }
+            '<' => {
+                let Some(close_offset) = text[cursor + 1..].find('>') else {
+                    return Err(directive_error(
+                        path,
+                        line_number,
+                        column,
+                        "unterminated rule marker in pattern",
+                    ));
+                };
+                let marker_text = &text[cursor + 1..cursor + 1 + close_offset];
+                parts.push(PatternPart::Marker(parse_marker(
+                    marker_text,
+                    path,
+                    line_number,
+                    column,
+                )?));
+                cursor += close_offset + 2;
+            }
+            _ => {
+                let (literal, next_cursor) = parse_literal_token(text, cursor);
+                parts.push(PatternPart::Literal(literal));
+                cursor = next_cursor;
+            }
+        }
+    }
+
+    if until.is_some() {
+        Err(directive_error(
+            path,
+            line_number,
+            column,
+            "unterminated optional clause in pattern",
+        ))
+    } else {
+        Ok((parts, cursor))
+    }
+}
+
+fn parse_marker(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<PatternMarker, PreprocessError> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(directive_error(
+            path,
+            line_number,
+            column,
+            "expected marker name inside '<...>'",
+        ));
+    }
+
+    if let Some(base_name) = text.strip_suffix(",...") {
+        return Ok(PatternMarker {
+            name: validate_marker_name(base_name, path, line_number, column)?,
+            kind: MarkerKind::List,
+        });
+    }
+
+    if let Some((name, restriction_text)) = text.split_once(':') {
+        let name = validate_marker_name(name, path, line_number, column)?;
+        let allowed = restriction_text
+            .split(',')
+            .map(str::trim)
+            .filter(|entry| !entry.is_empty())
+            .map(|entry| entry.to_owned())
+            .collect::<Vec<_>>();
+        if allowed.is_empty() {
+            return Err(directive_error(
+                path,
+                line_number,
+                column,
+                format!("expected at least one restriction for marker '{name}'"),
+            ));
+        }
+        return Ok(PatternMarker {
+            name,
+            kind: MarkerKind::Restricted(allowed),
+        });
+    }
+
+    Ok(PatternMarker {
+        name: validate_marker_name(text, path, line_number, column)?,
+        kind: MarkerKind::Regular,
+    })
+}
+
+fn validate_marker_name(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<String, PreprocessError> {
+    let name = text.trim();
+    if identifier_length(name) != name.len() {
+        return Err(directive_error(
+            path,
+            line_number,
+            column,
+            format!("expected valid marker name, got '{name}'"),
+        ));
+    }
+    Ok(name.to_owned())
+}
+
+fn parse_result(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<Vec<ResultPart>, PreprocessError> {
+    parse_result_until(text, path, line_number, column, None).and_then(|(parts, consumed)| {
+        if consumed != text.len() {
+            Err(directive_error(
+                path,
+                line_number,
+                column,
+                "unexpected trailing tokens in replacement",
+            ))
+        } else {
+            Ok(parts)
+        }
+    })
+}
+
+fn parse_result_until(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+    until: Option<char>,
+) -> Result<(Vec<ResultPart>, usize), PreprocessError> {
+    let mut parts = Vec::new();
+    let mut cursor = 0;
+    let mut literal = String::new();
+
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+        if Some(ch) == until {
+            if !literal.is_empty() {
+                parts.push(ResultPart::Literal(literal));
+            }
+            return Ok((parts, cursor + ch.len_utf8()));
+        }
+
+        if ch == '[' {
+            if !literal.is_empty() {
+                parts.push(ResultPart::Literal(std::mem::take(&mut literal)));
+            }
+            let (nested, consumed) =
+                parse_result_until(&text[cursor + 1..], path, line_number, column, Some(']'))?;
+            parts.push(ResultPart::Optional(nested));
+            cursor += 1 + consumed;
+            continue;
+        }
+
+        if ch == '#' && text[cursor + 1..].starts_with('<') {
+            if !literal.is_empty() {
+                parts.push(ResultPart::Literal(std::mem::take(&mut literal)));
+            }
+            let Some(close_offset) = text[cursor + 2..].find('>') else {
+                return Err(directive_error(
+                    path,
+                    line_number,
+                    column,
+                    "unterminated stringify marker in replacement",
+                ));
+            };
+            let marker = &text[cursor + 2..cursor + 2 + close_offset];
+            parts.push(ResultPart::Stringify(validate_marker_name(
+                marker, path, line_number, column,
+            )?));
+            cursor += close_offset + 3;
+            continue;
+        }
+
+        if ch == '<' {
+            if !literal.is_empty() {
+                parts.push(ResultPart::Literal(std::mem::take(&mut literal)));
+            }
+            let Some(close_offset) = text[cursor + 1..].find('>') else {
+                return Err(directive_error(
+                    path,
+                    line_number,
+                    column,
+                    "unterminated marker in replacement",
+                ));
+            };
+            let marker = &text[cursor + 1..cursor + 1 + close_offset];
+            parts.push(ResultPart::Marker(validate_marker_name(
+                marker, path, line_number, column,
+            )?));
+            cursor += close_offset + 2;
+            continue;
+        }
+
+        literal.push(ch);
+        cursor += ch.len_utf8();
+    }
+
+    if until.is_some() {
+        Err(directive_error(
+            path,
+            line_number,
+            column,
+            "unterminated optional clause in replacement",
+        ))
+    } else {
+        if !literal.is_empty() {
+            parts.push(ResultPart::Literal(literal));
+        }
+        Ok((parts, cursor))
+    }
+}
+
+fn skip_inline_spaces(text: &str, mut cursor: usize) -> usize {
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+        if !matches!(ch, ' ' | '\t') {
+            break;
+        }
+        cursor += ch.len_utf8();
+    }
+    cursor
+}
+
+fn parse_literal_token(text: &str, start: usize) -> (String, usize) {
+    let ch = char_at(text, start);
+    if is_string_delimiter(ch) {
+        let mut token = String::new();
+        let end = copy_string_literal(text, start, ch, &mut token);
+        return (token, end);
+    }
+
+    if is_symbol_like(ch) {
+        return (ch.to_string(), start + ch.len_utf8());
+    }
+
+    let mut cursor = start;
+    let mut token = String::new();
+    while cursor < text.len() {
+        let current = char_at(text, cursor);
+        if matches!(current, ' ' | '\t' | '[' | ']' | '<' | '>') || is_symbol_like(current) {
+            break;
+        }
+        token.push(current);
+        cursor += current.len_utf8();
+    }
+    (token, cursor)
+}
+
 fn identifier_length(text: &str) -> usize {
     let mut chars = text.chars();
     let Some(first) = chars.next() else {
@@ -598,6 +1032,495 @@ fn display_path(path: &Path) -> String {
     } else {
         path.display().to_string()
     }
+}
+
+fn is_directive_start(line: &str) -> bool {
+    trim_inline_whitespace(trim_line_ending(line)).starts_with('#')
+}
+
+fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize) {
+    let mut logical = trim_line_ending(lines[start_index]).to_owned();
+    let mut index = start_index;
+
+    while trim_inline_whitespace(logical.trim_end()).ends_with(';') && index + 1 < lines.len() {
+        logical = trim_inline_whitespace(logical.trim_end())
+            .trim_end_matches(';')
+            .trim_end()
+            .to_owned();
+        index += 1;
+        logical.push(' ');
+        logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
+    }
+
+    (logical, index)
+}
+
+fn preprocess_normal_line(
+    line: &str,
+    defines: &[DefineDirective],
+    rules: &[RuleDirective],
+    path: &Path,
+    line_number: usize,
+) -> (String, Vec<PreprocessError>) {
+    let (defined_once, mut errors) = expand_object_like_defines(line, defines, path, line_number);
+    let (rule_expanded, mut rule_errors) =
+        expand_rule_directives(&defined_once, rules, path, line_number);
+    errors.append(&mut rule_errors);
+    if rule_expanded == defined_once {
+        return (rule_expanded, errors);
+    }
+    let (defined_twice, mut final_errors) =
+        expand_object_like_defines(&rule_expanded, defines, path, line_number);
+    errors.append(&mut final_errors);
+    (defined_twice, errors)
+}
+
+fn expand_rule_directives(
+    line: &str,
+    rules: &[RuleDirective],
+    path: &Path,
+    line_number: usize,
+) -> (String, Vec<PreprocessError>) {
+    let mut current = line.to_owned();
+    let mut errors = Vec::new();
+    let mut passes = 0usize;
+
+    while passes < 16 {
+        passes += 1;
+        let mut changed = false;
+
+        if let Some(expanded) = apply_command_rules(&current, rules)
+            && expanded != current
+        {
+            current = expanded;
+            changed = true;
+        }
+
+        let (translated, translated_changed) = apply_translate_rules(&current, rules);
+        if translated_changed {
+            current = translated;
+            changed = true;
+        }
+
+        if !changed {
+            break;
+        }
+    }
+
+    if passes == 16 {
+        errors.push(directive_error(
+            path,
+            line_number,
+            1,
+            "rule expansion reached iteration limit",
+        ));
+    }
+
+    (current, errors)
+}
+
+fn apply_command_rules(line: &str, rules: &[RuleDirective]) -> Option<String> {
+    let content_start = line
+        .char_indices()
+        .find_map(|(index, ch)| (!matches!(ch, ' ' | '\t')).then_some(index))
+        .unwrap_or(0);
+    let content_end = line.trim_end_matches([' ', '\t']).len();
+    let leading = &line[..content_start];
+    let trailing = &line[content_end..];
+    let content = &line[content_start..content_end];
+    let tokens = tokenize_source_line(content);
+    if tokens.is_empty() {
+        return None;
+    }
+
+    for rule in rules.iter().rev().filter(|rule| rule.kind == RuleKind::Command) {
+        if let Some(captures) = match_pattern(&rule.pattern, &tokens, content, 0, true) {
+            let mut rendered = leading.to_owned();
+            rendered.push_str(&render_result(&rule.replacement, &captures));
+            rendered.push_str(trailing);
+            return Some(rendered);
+        }
+    }
+
+    None
+}
+
+fn apply_translate_rules(line: &str, rules: &[RuleDirective]) -> (String, bool) {
+    let mut current = line.to_owned();
+    let mut changed = false;
+
+    loop {
+        let tokens = tokenize_source_line(&current);
+        let mut replaced = None;
+
+        'outer: for start in 0..tokens.len() {
+            for rule in rules.iter().rev().filter(|rule| rule.kind == RuleKind::Translate) {
+                if let Some((end, captures)) =
+                    match_pattern_with_end(&rule.pattern, &tokens, &current, start)
+                {
+                    let start_offset = tokens[start].start;
+                    let end_offset = tokens[end - 1].end;
+                    let mut next = String::new();
+                    next.push_str(&current[..start_offset]);
+                    next.push_str(&render_result(&rule.replacement, &captures));
+                    next.push_str(&current[end_offset..]);
+                    replaced = Some(next);
+                    break 'outer;
+                }
+            }
+        }
+
+        if let Some(next) = replaced {
+            changed = true;
+            current = next;
+            continue;
+        }
+
+        break;
+    }
+
+    (current, changed)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SourceToken {
+    text: String,
+    start: usize,
+    end: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct MatchCaptures {
+    values: BTreeMap<String, CaptureValue>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CaptureValue {
+    raw: String,
+    list_items: Option<Vec<String>>,
+}
+
+fn tokenize_source_line(text: &str) -> Vec<SourceToken> {
+    let mut tokens = Vec::new();
+    let mut cursor = 0;
+
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+        if matches!(ch, ' ' | '\t' | '\r' | '\n') {
+            cursor += ch.len_utf8();
+            continue;
+        }
+
+        if is_string_delimiter(ch) {
+            let start = cursor;
+            let mut token = String::new();
+            cursor = copy_string_literal(text, cursor, ch, &mut token);
+            tokens.push(SourceToken {
+                text: token,
+                start,
+                end: cursor,
+            });
+            continue;
+        }
+
+        let start = cursor;
+        if is_symbol_like(ch) {
+            cursor += ch.len_utf8();
+        } else {
+            while cursor < text.len() {
+                let current = char_at(text, cursor);
+                if matches!(current, ' ' | '\t' | '\r' | '\n') || is_symbol_like(current) {
+                    break;
+                }
+                cursor += current.len_utf8();
+            }
+        }
+        tokens.push(SourceToken {
+            text: text[start..cursor].to_owned(),
+            start,
+            end: cursor,
+        });
+    }
+
+    tokens
+}
+
+fn is_symbol_like(ch: char) -> bool {
+    matches!(
+        ch,
+        '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | ':' | '+' | '-' | '*' | '/' | '='
+            | '<' | '>' | '#' | '&'
+    )
+}
+
+fn match_pattern(
+    pattern: &[PatternPart],
+    tokens: &[SourceToken],
+    source: &str,
+    start_index: usize,
+    require_full: bool,
+) -> Option<MatchCaptures> {
+    let (end, captures) =
+        match_pattern_recursive(pattern, 0, tokens, source, start_index, MatchCaptures::default())?;
+    if require_full && end != tokens.len() {
+        None
+    } else {
+        Some(captures)
+    }
+}
+
+fn match_pattern_with_end(
+    pattern: &[PatternPart],
+    tokens: &[SourceToken],
+    source: &str,
+    start_index: usize,
+) -> Option<(usize, MatchCaptures)> {
+    match_pattern_recursive(pattern, 0, tokens, source, start_index, MatchCaptures::default())
+}
+
+fn match_pattern_recursive(
+    pattern: &[PatternPart],
+    pattern_index: usize,
+    tokens: &[SourceToken],
+    source: &str,
+    token_index: usize,
+    captures: MatchCaptures,
+) -> Option<(usize, MatchCaptures)> {
+    if pattern_index == pattern.len() {
+        return Some((token_index, captures));
+    }
+
+    match &pattern[pattern_index] {
+        PatternPart::Literal(literal) => {
+            let token = tokens.get(token_index)?;
+            if token_matches_literal(token, literal) {
+                match_pattern_recursive(
+                    pattern,
+                    pattern_index + 1,
+                    tokens,
+                    source,
+                    token_index + 1,
+                    captures,
+                )
+            } else {
+                None
+            }
+        }
+        PatternPart::Optional(optional) => {
+            if let Some((next_index, next_captures)) = match_pattern_recursive(
+                optional,
+                0,
+                tokens,
+                source,
+                token_index,
+                captures.clone(),
+            ) && let Some(matched) = match_pattern_recursive(
+                pattern,
+                pattern_index + 1,
+                tokens,
+                source,
+                next_index,
+                next_captures,
+            ) {
+                return Some(matched);
+            }
+            match_pattern_recursive(
+                pattern,
+                pattern_index + 1,
+                tokens,
+                source,
+                token_index,
+                captures,
+            )
+        }
+        PatternPart::Marker(marker) => match marker.kind {
+            MarkerKind::Restricted(ref allowed) => {
+                let token = tokens.get(token_index)?;
+                if !allowed
+                    .iter()
+                    .any(|entry| token_matches_text(&token.text, entry))
+                {
+                    return None;
+                }
+                let capture = CaptureValue {
+                    raw: token.text.clone(),
+                    list_items: None,
+                };
+                let captures = merge_capture(captures, &marker.name, capture)?;
+                match_pattern_recursive(
+                    pattern,
+                    pattern_index + 1,
+                    tokens,
+                    source,
+                    token_index + 1,
+                    captures,
+                )
+            }
+            MarkerKind::Regular | MarkerKind::List => {
+                let minimum_end = token_index + 1;
+                for end in (minimum_end..=tokens.len()).rev() {
+                    let capture = match build_capture(
+                        &marker.kind,
+                        tokens,
+                        source,
+                        token_index,
+                        end,
+                    ) {
+                        Some(capture) => capture,
+                        None => continue,
+                    };
+                    let next_captures = merge_capture(captures.clone(), &marker.name, capture)?;
+                    if let Some(matched) = match_pattern_recursive(
+                        pattern,
+                        pattern_index + 1,
+                        tokens,
+                        source,
+                        end,
+                        next_captures,
+                    ) {
+                        return Some(matched);
+                    }
+                }
+                None
+            }
+        },
+    }
+}
+
+fn token_matches_literal(token: &SourceToken, literal: &str) -> bool {
+    token_matches_text(&token.text, literal)
+}
+
+fn token_matches_text(token_text: &str, literal: &str) -> bool {
+    if token_text
+        .chars()
+        .all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+        && literal
+            .chars()
+            .all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+    {
+        token_text.eq_ignore_ascii_case(literal)
+    } else {
+        token_text == literal
+    }
+}
+
+fn build_capture(
+    kind: &MarkerKind,
+    tokens: &[SourceToken],
+    source: &str,
+    start: usize,
+    end: usize,
+) -> Option<CaptureValue> {
+    if start >= end {
+        return None;
+    }
+    let raw = source[tokens[start].start..tokens[end - 1].end].to_owned();
+    match kind {
+        MarkerKind::Regular => Some(CaptureValue {
+            raw,
+            list_items: None,
+        }),
+        MarkerKind::List => split_list_capture(tokens, source, start, end).map(|entries| {
+            CaptureValue {
+                raw,
+                list_items: Some(entries),
+            }
+        }),
+        MarkerKind::Restricted(_) => None,
+    }
+}
+
+fn split_list_capture(
+    tokens: &[SourceToken],
+    source: &str,
+    start: usize,
+    end: usize,
+) -> Option<Vec<String>> {
+    let mut entries = Vec::new();
+    let mut depth = 0i32;
+    let mut entry_start = start;
+
+    for index in start..end {
+        match tokens[index].text.as_str() {
+            "(" | "[" | "{" => depth += 1,
+            ")" | "]" | "}" => depth -= 1,
+            "," if depth == 0 => {
+                if entry_start == index {
+                    return None;
+                }
+                entries.push(source[tokens[entry_start].start..tokens[index - 1].end].to_owned());
+                entry_start = index + 1;
+            }
+            _ => {}
+        }
+    }
+
+    if entry_start >= end {
+        return None;
+    }
+    entries.push(source[tokens[entry_start].start..tokens[end - 1].end].to_owned());
+    Some(entries)
+}
+
+fn merge_capture(
+    mut captures: MatchCaptures,
+    name: &str,
+    value: CaptureValue,
+) -> Option<MatchCaptures> {
+    if let Some(existing) = captures.values.get(name) {
+        if existing != &value {
+            return None;
+        }
+        return Some(captures);
+    }
+    captures.values.insert(name.to_owned(), value);
+    Some(captures)
+}
+
+fn render_result(parts: &[ResultPart], captures: &MatchCaptures) -> String {
+    let mut output = String::new();
+    for part in parts {
+        render_result_part(part, captures, &mut output);
+    }
+    output
+}
+
+fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut String) {
+    match part {
+        ResultPart::Literal(text) => output.push_str(text),
+        ResultPart::Marker(name) => {
+            if let Some(value) = captures.values.get(name) {
+                output.push_str(&value.raw);
+            }
+        }
+        ResultPart::Stringify(name) => {
+            if let Some(value) = captures.values.get(name) {
+                output.push('"');
+                output.push_str(&escape_string_literal(&value.raw));
+                output.push('"');
+            }
+        }
+        ResultPart::Optional(parts) => {
+            if result_parts_have_value(parts, captures) {
+                for nested in parts {
+                    render_result_part(nested, captures, output);
+                }
+            }
+        }
+    }
+}
+
+fn result_parts_have_value(parts: &[ResultPart], captures: &MatchCaptures) -> bool {
+    parts.iter().any(|part| match part {
+        ResultPart::Literal(_) => false,
+        ResultPart::Marker(name) | ResultPart::Stringify(name) => captures.values.contains_key(name),
+        ResultPart::Optional(parts) => result_parts_have_value(parts, captures),
+    })
+}
+
+fn escape_string_literal(text: &str) -> String {
+    text.chars().flat_map(char::escape_default).collect()
 }
 
 fn expand_object_like_defines(
@@ -939,5 +1862,31 @@ mod tests {
         );
         assert_eq!(output.errors[0].line(), 3);
         assert_eq!(output.errors[0].column(), 3);
+    }
+
+    #[test]
+    fn expands_translate_rule_inside_a_normal_source_line() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#translate DOUBLE(<value>) => <value> + <value>\nPROCEDURE Main()\n   LOCAL n := DOUBLE(3)\nRETURN\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty(), "unexpected errors: {:?}", output.errors);
+        assert_eq!(output.text, "PROCEDURE Main()\n   LOCAL n := 3 + 3\nRETURN\n");
+    }
+
+    #[test]
+    fn expands_command_rule_for_a_full_statement_line() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command EMIT <value> => ? <value>\nPROCEDURE Main()\n   EMIT n\nRETURN\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty(), "unexpected errors: {:?}", output.errors);
+        assert_eq!(output.text, "PROCEDURE Main()\n   ? n\nRETURN\n");
     }
 }

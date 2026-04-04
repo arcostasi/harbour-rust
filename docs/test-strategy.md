@@ -208,6 +208,10 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `tests/fixtures/pp/quoted_search_path_root.prg` -> `#include "..."` com fallback para search path
 - `tests/fixtures/pp/angle_search_path_root.prg` -> `#include <...>` resolvido por search path
 - `tests/fixtures/pp/angle_search_path_root.prg` -> `harbour-rust-cli build/run` com `-I/--include-dir`
+- `tests/fixtures/pp/command_translate_root.prg` -> golden de `#command` + `#translate`
+- `tests/fixtures/pp/rule_markers_root.prg` -> golden de opcionais, lista, restrição e stringify
+- `tests/fixtures/pp/multiline_command_root.prg` -> golden de diretiva multi-linha com `;`
+- `tests/fixtures/pp/malformed_rule_root.prg` -> erro explícito de regra malformada
 
 ## Critérios por PR
 
