@@ -123,5 +123,7 @@ Fase 10 iniciada:
 - navegação inicial com `GOTO`, `SKIP`, `RECNO`, `RECCOUNT`, `BOF` e `EOF` implementada para DBF,
 - leitura inicial de campos `C`, `N`, `L` e `D` implementada em `field_get()` e `snapshot()`,
 - `APPEND BLANK` e `field_put()` já persistem em disco para campos `C`, `N`, `L` e `D`,
+- `DELETE` e `RECALL` já persistem a flag de exclusão no arquivo DBF,
+- testes cobrem `users.dbf`, `carts.dbf`, `items.dbf` e `test.dbf` vindos do `harbour-core`,
 - suporte atual focado em tabelas DBF dBASE III (`0x03`) com campos `C`, `N`, `L` e `D`,
-- `DELETE` e `RECALL` ainda entram nos próximos slices da fase.
+- índices, memo, locking e integração com comandos xBase ainda ficam fora do recorte inicial da fase.

@@ -220,3 +220,82 @@ fn appends_blank_and_persists_numeric_fields() {
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
+
+#[test]
+fn reads_logical_and_date_fields_from_upstream_test_dbf() {
+    let mut table =
+        DbfTable::open(Path::new(&fixture("harbour-core/tests/test.dbf"))).expect("open test.dbf");
+
+    table.go_to(1).expect("goto first");
+    assert_eq!(table.field_get("FIRST").expect("first"), Value::from("Homer"));
+    assert_eq!(table.field_get("LAST").expect("last"), Value::from("Simpson"));
+    assert_eq!(
+        table.field_get("HIREDATE").expect("hiredate"),
+        Value::from("19920918")
+    );
+    assert_eq!(
+        table.field_get("MARRIED").expect("married"),
+        Value::Logical(true)
+    );
+}
+
+#[test]
+fn replaces_logical_and_date_fields_on_temp_test_dbf() {
+    let temp_dir = unique_temp_dir("test-write");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let temp_path = temp_dir.join("test.dbf");
+    fs::copy(fixture("harbour-core/tests/test.dbf"), &temp_path).expect("copy test fixture");
+
+    let mut table = DbfTable::open(&temp_path).expect("open temp test");
+    table.go_to(1).expect("goto first");
+    table
+        .field_put("HIREDATE", Value::from("20260403"))
+        .expect("write date");
+    table
+        .field_put("MARRIED", Value::Logical(false))
+        .expect("write logical");
+
+    let mut reopened = DbfTable::open(&temp_path).expect("reopen temp test");
+    reopened.go_to(1).expect("goto first");
+    assert_eq!(
+        reopened.field_get("HIREDATE").expect("hiredate"),
+        Value::from("20260403")
+    );
+    assert_eq!(
+        reopened.field_get("MARRIED").expect("married"),
+        Value::Logical(false)
+    );
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
+fn delete_and_recall_persist_record_flag() {
+    let temp_dir = unique_temp_dir("users-delete");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let temp_path = temp_dir.join("users.dbf");
+    fs::copy(
+        fixture("harbour-core/contrib/hbhttpd/tests/users.dbf"),
+        &temp_path,
+    )
+    .expect("copy users fixture");
+
+    let mut table = DbfTable::open(&temp_path).expect("open temp users");
+    table.append_blank().expect("append blank");
+    table
+        .field_put("USER", Value::from("admin"))
+        .expect("write user");
+    table.delete().expect("delete record");
+
+    let mut reopened = DbfTable::open(&temp_path).expect("reopen deleted users");
+    reopened.go_to(1).expect("goto first");
+    assert!(reopened.deleted().expect("deleted flag"));
+
+    reopened.recall().expect("recall record");
+    let mut recalled = DbfTable::open(&temp_path).expect("reopen recalled users");
+    recalled.go_to(1).expect("goto first");
+    assert!(!recalled.deleted().expect("deleted flag"));
+    assert_eq!(recalled.field_get("USER").expect("user"), Value::from("admin"));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}

@@ -525,11 +525,17 @@ impl Rdd for DbfTable {
     }
 
     fn delete(&mut self) -> Result<(), RddError> {
-        Err(RddError::UnsupportedOperation("delete"))
+        self.ensure_open()?;
+        let record = self.current_record_bytes_mut()?;
+        record[0] = DBF_DELETED_FLAG;
+        self.sync_to_disk()
     }
 
     fn recall(&mut self) -> Result<(), RddError> {
-        Err(RddError::UnsupportedOperation("recall"))
+        self.ensure_open()?;
+        let record = self.current_record_bytes_mut()?;
+        record[0] = DBF_ACTIVE_FLAG;
+        self.sync_to_disk()
     }
 
     fn snapshot(&self) -> Result<RecordSnapshot, RddError> {
