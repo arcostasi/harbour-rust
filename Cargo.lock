@@ -79,6 +79,9 @@ version = "0.1.0"
 [[package]]
 name = "harbour-rust-rdd"
 version = "0.1.0"
+dependencies = [
+ "harbour-rust-runtime",
+]
 
 [[package]]
 name = "harbour-rust-runtime"
