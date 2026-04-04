@@ -125,7 +125,7 @@ img {
   gap: 2.25rem;
   padding-top: 2rem;
   padding-bottom: 5rem;
-  align-items: center;
+  align-items: start;
 }
 
 .hero__content {
