@@ -41,6 +41,13 @@ Na Fase 6, o baseline de PP passa a validar também:
 - C gerado
 - stdout de fixtures
 
+Na Fase 12, golden tests passam a cobrir também um conjunto curado de programas executáveis completos:
+
+- `examples/hello.prg`
+- `tests/fixtures/parser/phase7_acceptance.prg`
+- `tests/fixtures/parser/phase8_acceptance.prg`
+- `tests/fixtures/pp/phase9_acceptance.prg`
+
 ### Compatibilidade
 
 Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e comparar:
@@ -220,6 +227,7 @@ Executar o mesmo fixture com `harbour-rust` e `harbour-core` quando aplicável e
 - `crates/harbour-rust-rdd/tests/schema.rs` -> leitura de schema e navegação sobre `users.dbf`, `carts.dbf`, `items.dbf` e `test.dbf` do `harbour-core`
 - `crates/harbour-rust-rdd/tests/schema.rs` -> roundtrip temporário de `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL` sobre cópias de DBFs reais do upstream
 - `crates/harbour-rust-cli/tests/commands.rs` -> `check` bem-sucedido para `examples/hello.prg`, erro de PP com exit code `1`, `transpile --to c` com geração de arquivo e erro de `codegen-c` com exit code `2`
+- `crates/harbour-rust-tests/tests/golden_cli.rs` -> golden snapshots de stdout para `hello`, `phase7_acceptance`, `phase8_acceptance` e `phase9_acceptance`
 
 ## Critérios por PR
 
