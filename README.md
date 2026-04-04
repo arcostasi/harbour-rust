@@ -95,7 +95,7 @@ As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 e 12 estão concluídas:
 - skeleton de `cargo fuzz` para lexer, parser e PP,
 - workflows de qualidade e release com preflight, benchmark smoke e artefatos de release.
 
-O próximo passo técnico é preparar a release `0.4.0-alpha` com o checklist de release da Fase 12 e, a partir daí, ampliar corpus, compatibilidade e performance sobre a base já estabilizada.
+O foco imediato do repositório é a preparação da release `0.4.0-alpha`, usando o checklist de `docs/release.md`, os workflows de qualidade/release e as notas em `docs/releases/0.4.0-alpha.md`. Depois disso, o próximo passo volta a ser ampliar corpus, compatibilidade e performance sobre a base já estabilizada.
 
 O baseline fim a fim atual oferece geração de C:
 

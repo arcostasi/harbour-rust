@@ -4,14 +4,14 @@ version = 4
 
 [[package]]
 name = "harbour-rust-ast"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-lexer",
 ]
 
 [[package]]
 name = "harbour-rust-cli"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-codegen-c",
  "harbour-rust-hir",
@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-codegen-c"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-hir",
  "harbour-rust-ir",
@@ -33,7 +33,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-compat"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-ast",
  "harbour-rust-lexer",
@@ -44,7 +44,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-hir"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-ast",
  "harbour-rust-lexer",
@@ -53,7 +53,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-ir"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-hir",
  "harbour-rust-lexer",
@@ -62,11 +62,11 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-lexer"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 
 [[package]]
 name = "harbour-rust-parser"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-ast",
  "harbour-rust-lexer",
@@ -74,22 +74,22 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-pp"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 
 [[package]]
 name = "harbour-rust-rdd"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-runtime",
 ]
 
 [[package]]
 name = "harbour-rust-runtime"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 
 [[package]]
 name = "harbour-rust-sema"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-hir",
  "harbour-rust-lexer",
@@ -98,7 +98,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-tests"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-cli",
 ]

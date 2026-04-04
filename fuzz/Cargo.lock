@@ -46,7 +46,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-ast"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-lexer",
 ]
@@ -63,11 +63,11 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-lexer"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 
 [[package]]
 name = "harbour-rust-parser"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 dependencies = [
  "harbour-rust-ast",
  "harbour-rust-lexer",
@@ -75,7 +75,7 @@ dependencies = [
 
 [[package]]
 name = "harbour-rust-pp"
-version = "0.1.0"
+version = "0.4.0-alpha.0"
 
 [[package]]
 name = "jobserver"
