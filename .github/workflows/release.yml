@@ -1,0 +1,46 @@
+name: release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run fmt
+        run: cargo fmt --all --check
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Check fuzz harness
+        run: cargo check --manifest-path fuzz/Cargo.toml
+
+      - name: Generate benchmark report
+        run: cargo run -p harbour-rust-tests --bin benchmark-suite -- --fixture examples/hello.prg --fixture tests/fixtures/parser/phase7_acceptance.prg --iterations 1 > benchmark-report.md
+
+      - name: Build release CLI
+        run: cargo build --release -p harbour-rust-cli
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: harbour-rust-release
+          path: |
+            target/release/harbour-rust-cli*
+            benchmark-report.md

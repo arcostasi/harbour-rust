@@ -1,0 +1,35 @@
+[package]
+name = "harbour-rust-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+harbour-rust-lexer = { path = "../crates/harbour-rust-lexer" }
+harbour-rust-parser = { path = "../crates/harbour-rust-parser" }
+harbour-rust-pp = { path = "../crates/harbour-rust-pp" }
+
+[[bin]]
+name = "lexer"
+path = "fuzz_targets/lexer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser"
+path = "fuzz_targets/parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pp"
+path = "fuzz_targets/pp.rs"
+test = false
+doc = false
+bench = false

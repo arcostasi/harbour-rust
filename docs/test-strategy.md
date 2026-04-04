@@ -69,6 +69,12 @@ Na Fase 12, isso passa a ter um comparador operacional inicial:
 - parser
 - pp
 
+Na Fase 12, o skeleton de fuzzing passa a viver em `fuzz/` com smoke check de compilação via:
+
+```text
+cargo check --manifest-path fuzz/Cargo.toml
+```
+
 ### Benchmarks
 
 - `check`

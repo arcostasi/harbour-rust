@@ -36,6 +36,27 @@ O runner mede:
 
 e emite um relatório markdown simples por fixture.
 
+### Fuzzing
+
+O skeleton inicial de fuzzing fica em `fuzz/` com targets para:
+
+- `lexer`
+- `parser`
+- `pp`
+
+Smoke check do harness:
+
+```text
+cargo check --manifest-path fuzz/Cargo.toml
+```
+
+### Release helper
+
+O preflight de release da Fase 12 fica documentado em `docs/release.md` e automatizado em:
+
+- `.github/workflows/quality.yml`
+- `.github/workflows/release.yml`
+
 ## Planejadas
 
 ### Comparador harbour-core

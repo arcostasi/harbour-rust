@@ -1,5 +1,6 @@
 # Build artifacts
 /target/
+/fuzz/target/
 
 # Local tool state
 /.idea/
