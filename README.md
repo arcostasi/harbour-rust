@@ -50,7 +50,7 @@ Este repositório começa pela governança e pelo plano de execução. O código
 
 ## Estado atual
 
-As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 e 11 estão concluídas:
+As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 e 12 estão concluídas:
 
 - workspace Cargo criado,
 - crates iniciais criados,
@@ -89,9 +89,13 @@ As Fases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 e 11 estão concluídas:
 - leitura validada contra `harbour-core/contrib/hbhttpd/tests/users.dbf`, `carts.dbf`, `items.dbf` e `harbour-core/tests/test.dbf`,
 - escrita básica validada em roundtrip temporário para `APPEND BLANK`, `REPLACE`, `DELETE` e `RECALL`,
 - CLI com help consistente por comando, `check`, `transpile --to c` e códigos de saída coerentes entre frontend, codegen e compilador C host,
-- cobertura de integração do CLI para help, `check`, `transpile` e falhas de `codegen-c`.
+- cobertura de integração do CLI para help, `check`, `transpile` e falhas de `codegen-c`,
+- crate `harbour-rust-tests` convertido em harness de golden tests executáveis e comparador com runner Harbour externo,
+- benchmark suite inicial em markdown para `check`, `transpile` e `run`,
+- skeleton de `cargo fuzz` para lexer, parser e PP,
+- workflows de qualidade e release com preflight, benchmark smoke e artefatos de release.
 
-O próximo passo técnico é iniciar a Fase 12 com qualidade industrial, regressão automatizada e preparação de release.
+O próximo passo técnico é preparar a release `0.4.0-alpha` com o checklist de release da Fase 12 e, a partir daí, ampliar corpus, compatibilidade e performance sobre a base já estabilizada.
 
 O baseline fim a fim atual oferece geração de C:
 
@@ -131,6 +135,23 @@ O modelo atual de saída é:
 - `2` para erro de `codegen-c`,
 - `3` para erro do compilador C host,
 - qualquer outro código para o exit status real do programa executado por `run`.
+
+Na Fase 12, a infraestrutura de qualidade mínima passa a incluir:
+
+```text
+cargo test -p harbour-rust-tests
+cargo run -p harbour-rust-tests --bin compare-harbour -- --fixture examples/hello.prg --harbour-runner /caminho/para/runner-harbour
+cargo run -p harbour-rust-tests --bin benchmark-suite -- --fixture examples/hello.prg --iterations 1
+cargo check --manifest-path fuzz/Cargo.toml
+```
+
+Esse recorte fecha:
+
+- golden tests de stdout para fixtures de aceite,
+- comparador operacional inicial contra runner Harbour externo,
+- benchmark smoke reproduzível em markdown,
+- skeleton de fuzzing para `lexer`, `parser` e `pp`,
+- workflow de release com build release e benchmark report.
 
 ## Desenvolvimento
 

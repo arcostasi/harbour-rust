@@ -127,6 +127,14 @@ O aceite da Fase 11 está fechado com CLI e diagnósticos utilizáveis:
 - o CLI agora diferencia exit code `1` para frontend, `2` para `codegen-c`, `3` para compilador C host e preserva o exit code real do programa executado,
 - `crates/harbour-rust-cli/tests/commands.rs` fixa esse baseline com casos felizes e de erro.
 
+O aceite da Fase 12 está fechado com infraestrutura mínima de qualidade industrial:
+
+- `crates/harbour-rust-tests/tests/golden_cli.rs` fixa golden snapshots executáveis para `hello`, `phase7_acceptance`, `phase8_acceptance` e `phase9_acceptance`,
+- `cargo run -p harbour-rust-tests --bin compare-harbour -- ...` fornece um comparador operacional inicial de `exit code` e `stdout` contra um runner Harbour externo,
+- `cargo run -p harbour-rust-tests --bin benchmark-suite -- ...` fornece benchmark smoke em markdown para `check`, `transpile` e `run`,
+- `cargo check --manifest-path fuzz/Cargo.toml` valida o skeleton de fuzzing para `lexer`, `parser` e `pp`,
+- `.github/workflows/quality.yml` e `.github/workflows/release.yml` automatizam preflight, benchmark smoke, verificação do harness de fuzz e build release do `harbour-rust-cli`.
+
 ## Regras
 
 - Nenhum recurso vai para `done` sem teste automatizado.

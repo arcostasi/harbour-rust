@@ -10,5 +10,5 @@ rust-version = "1.94"
 version = "0.1.0-alpha.0"
 
 [workspace.metadata.harbour-rust]
-phase = 0
-status = "bootstrap"
+phase = 12
+status = "quality"
