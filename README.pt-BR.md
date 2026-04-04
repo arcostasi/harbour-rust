@@ -5,9 +5,13 @@
 [![Latest Pre-release](https://img.shields.io/github/v/release/arcostasi/harbour-rust?include_prereleases&label=latest%20pre-release)](https://github.com/arcostasi/harbour-rust/releases)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
+![Harbour Rust social preview](./docs/assets/harbour-rust-social-preview.png)
+
 Projeto de compilador em Rust para compatibilidade com CA-Clipper/Harbour, com backend C pragmático, CLI moderna e foco em modernização de sistemas xBase.
 
 [English](./README.md) | [Português do Brasil](./README.pt-BR.md)
+
+[Release atual](https://github.com/arcostasi/harbour-rust/releases/tag/0.4.0-alpha) | [Todas as releases](https://github.com/arcostasi/harbour-rust/releases) | [Documentação](./docs/README.pt-BR.md) | [Contribuição](./CONTRIBUTING.pt-BR.md)
 
 Harbour Rust é um projeto de compilador open source, independente e orientado pela comunidade, escrito em Rust e voltado à compatibilidade com CA-Clipper e Harbour.
 
