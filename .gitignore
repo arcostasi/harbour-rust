@@ -1,6 +1,16 @@
 # Build artifacts
+/debug/
 /target/
 /fuzz/target/
+
+# Rust formatting backups
+**/*.rs.bk
+
+# Windows debug symbols
+*.pdb
+
+# Mutation testing data
+**/mutants.out*/
 
 # Local tool state
 /.idea/
