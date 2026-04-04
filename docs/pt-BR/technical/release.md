@@ -32,7 +32,9 @@ O workflow de release do repositório atualmente valida:
 - testes do workspace;
 - compilação do harness de fuzzing;
 - benchmark smoke;
-- build release de `harbour-rust-cli`.
+- build release de `harbour-rust-cli`;
+- empacotamento de assets da GitHub Release para Windows, Linux e macOS;
+- publicação de assets `.zip` mais `SHA256SUMS.txt` quando o workflow roda a partir de uma tag.
 
 ## Disciplina de Release
 

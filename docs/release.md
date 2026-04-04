@@ -33,10 +33,15 @@ O workflow `.github/workflows/release.yml` executa:
 - `cargo check --manifest-path fuzz/Cargo.toml`
 - geração de benchmark report
 - `cargo build --release -p harbour-rust-cli`
+- build matrix para Windows, Linux e macOS
+- empacotamento automático de assets `.zip`
+- geração de `SHA256SUMS.txt`
+- publicação automática dos assets na GitHub Release da tag
 
 ## Artefatos atuais
 
-- binário release de `harbour-rust-cli`
+- assets `.zip` do `harbour-rust-cli` para Windows, Linux e macOS
+- `SHA256SUMS.txt`
 - relatório markdown de benchmark
 
 ## Critérios mínimos
