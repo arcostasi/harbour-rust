@@ -20,6 +20,22 @@ O `runner-harbour` deve aceitar o caminho do `.prg` como primeiro argumento e re
 
 O comparador executa o mesmo fixture com `harbour-rust` e com esse runner externo, compara `exit code` e `stdout`, e pode comparar `stderr` com `--match-stderr`.
 
+### Benchmark runner
+
+O benchmark inicial da Fase 12 está disponível via:
+
+```text
+cargo run -p harbour-rust-tests --bin benchmark-suite -- --fixture examples/hello.prg --iterations 3
+```
+
+O runner mede:
+
+- `check`
+- `transpile`
+- `run`
+
+e emite um relatório markdown simples por fixture.
+
 ## Planejadas
 
 ### Comparador harbour-core

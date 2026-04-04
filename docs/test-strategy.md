@@ -69,6 +69,13 @@ Na Fase 12, isso passa a ter um comparador operacional inicial:
 - parser
 - pp
 
+### Benchmarks
+
+- `check`
+- `transpile`
+- `run`
+- baseline markdown curado por fixture
+
 ## Fontes do upstream
 
 - `harbour-core/tests/*.prg`
@@ -235,6 +242,7 @@ Na Fase 12, isso passa a ter um comparador operacional inicial:
 - `crates/harbour-rust-cli/tests/commands.rs` -> `check` bem-sucedido para `examples/hello.prg`, erro de PP com exit code `1`, `transpile --to c` com geração de arquivo e erro de `codegen-c` com exit code `2`
 - `crates/harbour-rust-tests/tests/golden_cli.rs` -> golden snapshots de stdout para `hello`, `phase7_acceptance`, `phase8_acceptance` e `phase9_acceptance`
 - `crates/harbour-rust-tests/tests/compare_harbour.rs` -> comparador operacional inicial com runner Harbour externo fake cobrindo caso feliz e mismatch
+- `crates/harbour-rust-tests/tests/benchmark_suite.rs` -> smoke test do benchmark runner com relatório markdown para `examples/hello.prg`
 
 ## Critérios por PR
 
