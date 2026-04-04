@@ -42,6 +42,7 @@ A CLI já cobre o fluxo alpha esperado pelo projeto:
 - `check` para após frontend e semântica;
 - `build` e `transpile` emitem C;
 - `run` compila o C gerado e propaga o exit code do programa;
+- `run` liga `libm` explicitamente em toolchains host Unix-like para que helpers matemáticos do runtime funcionem na CI e em builds locais;
 - diretórios de include são suportados com `-I` / `--include-dir`.
 
 ## Documentos Relacionados

@@ -2,6 +2,7 @@ use std::{
     env, fmt, fs,
     path::{Path, PathBuf},
     process::Command,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -124,6 +125,7 @@ impl std::error::Error for CliError {}
 
 const RUNTIME_SUPPORT_HEADER: &str = include_str!("../support/runtime_support.h");
 const RUNTIME_SUPPORT_C: &str = include_str!("../support/runtime_support.c");
+static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub fn run_cli<I>(args: I) -> Result<String, CliError>
 where
@@ -648,9 +650,13 @@ impl HostCompiler {
             .arg("-include")
             .arg(header_path)
             .arg(c_path)
-            .arg(runtime_c_path)
-            .arg("-o")
-            .arg(output_path);
+            .arg(runtime_c_path);
+        if !cfg!(windows) {
+            // `runtime_support.c` uses libm-backed functions such as `sqrt` and `log`.
+            // Linux toolchains require an explicit `-lm` during linking.
+            command.arg("-lm");
+        }
+        command.arg("-o").arg(output_path);
         command
     }
 }
@@ -694,7 +700,11 @@ fn unique_temp_dir(label: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("system time")
         .as_nanos();
-    env::temp_dir().join(format!("harbour-rust-cli-{label}-{suffix}"))
+    let process_id = std::process::id();
+    let counter = TEMP_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+    env::temp_dir().join(format!(
+        "harbour-rust-cli-{label}-{process_id}-{counter}-{suffix}"
+    ))
 }
 
 fn executable_name(stem: &str) -> String {
@@ -707,7 +717,7 @@ fn executable_name(stem: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     use crate::{
         BuildOptions, CheckOptions, TranspileOptions, TranspileTarget, build_help, check_help,
@@ -812,6 +822,39 @@ mod tests {
         } else {
             assert_eq!(executable, "harbour_program");
         }
+    }
+
+    #[test]
+    fn host_compiler_command_links_libm_on_non_windows() {
+        let compiler = super::HostCompiler {
+            executable: "gcc".to_owned(),
+        };
+        let command = compiler.to_command(
+            Path::new("program.c"),
+            Path::new("runtime_support.c"),
+            Path::new("runtime_support.h"),
+            Path::new("harbour_program"),
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        if cfg!(windows) {
+            assert!(!args.iter().any(|arg| arg == "-lm"));
+        } else {
+            assert!(args.iter().any(|arg| arg == "-lm"));
+        }
+    }
+
+    #[test]
+    fn unique_temp_dir_produces_distinct_paths() {
+        let first = super::unique_temp_dir("run");
+        let second = super::unique_temp_dir("run");
+
+        assert_ne!(first, second);
+        assert!(first.to_string_lossy().contains("harbour-rust-cli-run-"));
+        assert!(second.to_string_lossy().contains("harbour-rust-cli-run-"));
     }
 
     #[test]

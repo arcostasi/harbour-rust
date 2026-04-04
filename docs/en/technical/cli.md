@@ -42,6 +42,7 @@ The CLI already covers the alpha workflow expected by the project:
 - `check` stops after frontend and semantics;
 - `build` and `transpile` emit C;
 - `run` compiles generated C and propagates the program exit code;
+- `run` links `libm` explicitly on Unix-like host toolchains so math-backed runtime helpers work in CI and local builds;
 - include directories are supported through `-I` / `--include-dir`.
 
 ## Related Documents
