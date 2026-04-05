@@ -1443,8 +1443,18 @@ fn public_val_matches_the_current_string_to_numeric_runtime_baseline() {
     assert_eq!(val(Some(&Value::from("1.."))), Ok(Value::from(1.0_f64)));
     assert_eq!(val(Some(&Value::from("1..."))), Ok(Value::from(1.0_f64)));
     assert_eq!(val(Some(&Value::from(".."))), Ok(Value::from(0.0_f64)));
+    assert_eq!(val(Some(&Value::from("-+"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("+-"))), Ok(Value::from(0_i64)));
     assert_eq!(val(Some(&Value::from("-."))), Ok(Value::from(0_i64)));
     assert_eq!(val(Some(&Value::from("-.."))), Ok(Value::from(0.0_f64)));
+    assert_eq!(val(Some(&Value::from(" --1."))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from(" --.1"))), Ok(Value::from(0.0_f64)));
+    assert_eq!(val(Some(&Value::from("+++12"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("1E2"))), Ok(Value::from(1_i64)));
+    assert_eq!(val(Some(&Value::from("+INF"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("-INF"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("+NAN"))), Ok(Value::from(0_i64)));
+    assert_eq!(val(Some(&Value::from("-NAN"))), Ok(Value::from(0_i64)));
     assert_eq!(val(Some(&Value::from("13.1.9"))), Ok(Value::from(13.1_f64)));
 }
 

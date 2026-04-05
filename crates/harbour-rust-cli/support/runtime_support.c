@@ -2136,6 +2136,16 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
         cursor++;
     }
 
+    if (*cursor == '+' || *cursor == '-') {
+        while (*cursor == '+' || *cursor == '-') {
+            cursor++;
+        }
+        if (*cursor == '.') {
+            return harbour_value_from_float(0.0);
+        }
+        return harbour_value_from_integer(0);
+    }
+
     while (*cursor != '\0' && isdigit(*cursor)) {
         if (integer_length + 1 < sizeof(integer_buffer)) {
             integer_buffer[integer_length++] = (char) *cursor;

@@ -2363,6 +2363,14 @@ fn parse_val_string(text: &str) -> Value {
         _ => 1.0_f64,
     };
 
+    if matches!(chars.peek(), Some('+' | '-')) {
+        while chars.next_if(|ch| *ch == '+' || *ch == '-').is_some() {}
+        if matches!(chars.peek(), Some('.')) {
+            return Value::from(0.0_f64);
+        }
+        return Value::from(0_i64);
+    }
+
     let mut integer_part = String::new();
     while let Some(ch) = chars.next_if(|ch| ch.is_ascii_digit()) {
         integer_part.push(ch);
