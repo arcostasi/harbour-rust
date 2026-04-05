@@ -1,0 +1,7 @@
+Trim(" \0 UA  ") => " \0 UA"
+Trim(" \t UA  ") => " \t UA"
+LTrim(" \0 UA  ") => "\0 UA  "
+LTrim(" \tU\t") => "U\t"
+LTrim("\nU\n") => "U\n"
+RTrim("A\n") => "A\n"
+Trim("  \0ABC\0  ") => "  \0ABC\0"

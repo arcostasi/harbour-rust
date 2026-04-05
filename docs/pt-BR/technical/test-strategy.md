@@ -26,4 +26,4 @@ Compatibilidade não é presumida. Ela é medida.
 
 ## Estado Atual
 
-O repositório já possui uma matriz prática de testes cobrindo slices do compilador, comportamento de runtime, execução via CLI, snapshots golden, compare tooling, benchmark smoke e checks de compilação de fuzzing.
+O repositório já possui uma matriz prática de testes cobrindo slices do compilador, comportamento de runtime, execução via CLI, snapshots golden, compare tooling, benchmark smoke e checks de compilação de fuzzing. O corpus de compatibilidade também inclui fixtures focadas de strings para comportamento de trim com caracteres de controle, ancoradas no oráculo do upstream quando disponível.
