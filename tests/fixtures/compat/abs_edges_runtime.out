@@ -1,0 +1,5 @@
+Abs(0.1) => 0.1
+Abs(-10.578) => 10.578
+Abs(100000) => 100000
+Abs(-100000) => 100000
+Abs(NIL) => BASE 1089 Argument error (ABS)

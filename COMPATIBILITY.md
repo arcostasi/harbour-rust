@@ -14,7 +14,7 @@ Harbour Rust aims for practical compatibility with CA-Clipper and Harbour, start
 | Lexer | stable initial baseline | spans, positions, comments, strings, numbers, keywords |
 | Parser and AST | stable for current subset | procedural constructs, arrays, memvar syntax, codeblocks, macro reads |
 | HIR and semantics | stable for current subset | routine resolution, local/static bindings, memvars |
-| Runtime | broad alpha baseline | core values, arrays, selected string/math/conversion builtins, oracle-backed string edge-case coverage for trim, search, slicing, replication, `Val()` parsing, `Str()` formatting behavior, focused `Round()`/`Int()` numeric edge cases, focused `Mod()`/`ValType()`/`Empty()` compatibility edges, Clipper-style string overflow limits in `Replicate()`/`Space()`, and executable host-C preservation of embedded `Chr(0)` in selected string helpers |
+| Runtime | broad alpha baseline | core values, arrays, selected string/math/conversion builtins, oracle-backed string edge-case coverage for trim, search, slicing, replication, `Val()` parsing, `Str()` formatting behavior, focused `Round()`/`Int()` numeric edge cases, focused `Mod()`/`ValType()`/`Empty()` compatibility edges, focused `Max()`/`Min()` and `Abs()` edge cases, Clipper-style string overflow limits in `Replicate()`/`Space()`, and executable host-C preservation of embedded `Chr(0)` in selected string helpers |
 | Preprocessor | curated advanced subset | `#define`, `#include`, `#command`, `#translate` |
 | C backend | practical alpha backend | procedural flow, selected runtime helpers and dynamic features |
 | CLI | usable alpha interface | `help`, `check`, `build`, `run`, `transpile --to c` |
