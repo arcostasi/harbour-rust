@@ -48,13 +48,13 @@ The runtime already supports:
 - memvar context groundwork and codeblock evaluation;
 - compatibility-oriented diagnostics for selected array and numeric operations;
 - Clipper-style string overflow limits for `Replicate()` and `Space()`.
-- oracle-backed `SubStr()`/`Right()` leniency for the current non-`Chr(0)` executable subset.
+- oracle-backed `SubStr()`/`Right()` leniency and host-C preservation of embedded `Chr(0)` in selected executable string helpers.
 
 ## Known Limits
 
 - not all historical xBase value kinds exist yet;
 - some builtins only cover the currently tested subset of arguments;
-- the host C execution path still stores strings as C strings, so embedded `Chr(0)` preservation remains incomplete outside the Rust runtime surface;
+- source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the host-C runtime preserves them in selected helpers once present;
 - exact historical formatting still differs in selected edge cases.
 
 ## Related Documents

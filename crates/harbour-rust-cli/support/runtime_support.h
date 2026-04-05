@@ -22,7 +22,10 @@ struct harbour_runtime_Value {
         _Bool logical;
         long long integer;
         double floating;
-        const char *string;
+        struct {
+            const char *data;
+            size_t length;
+        } string;
         const char *error;
         struct {
             struct harbour_runtime_Value *items;
@@ -278,6 +281,10 @@ struct harbour_runtime_Value harbour_value_nil(void);
 struct harbour_runtime_Value harbour_value_from_logical(_Bool logical);
 struct harbour_runtime_Value harbour_value_from_integer(long long integer);
 struct harbour_runtime_Value harbour_value_from_float(double floating);
+struct harbour_runtime_Value harbour_value_from_string_parts(
+    const char *string,
+    size_t length
+);
 struct harbour_runtime_Value harbour_value_from_string_literal(const char *string);
 struct harbour_runtime_Value harbour_value_from_codeblock(
     harbour_runtime_CodeblockFunction function,

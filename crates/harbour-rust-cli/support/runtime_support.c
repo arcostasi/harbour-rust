@@ -33,11 +33,21 @@ static harbour_runtime_Value harbour_substr_from_bounds(
     size_t start,
     size_t count
 );
+static harbour_runtime_Value harbour_value_from_owned_string_buffer(
+    char *buffer,
+    size_t length
+);
+static const char *harbour_value_string_data(harbour_runtime_Value value);
+static size_t harbour_value_string_length(harbour_runtime_Value value);
 static harbour_runtime_Value harbour_ascii_case_transform(
     const char *text,
+    size_t length,
     int (*transform)(int)
 );
-static harbour_runtime_Value harbour_string_value_from_owned_buffer(const char *text);
+static harbour_runtime_Value harbour_string_value_from_owned_buffer(
+    const char *text,
+    size_t length
+);
 static _Bool harbour_try_str_integer_arg(
     harbour_runtime_Value value,
     long long *result
@@ -57,8 +67,12 @@ static _Bool harbour_try_truncated_repeat_count(
     harbour_runtime_Value value,
     long long *count
 );
-static _Bool harbour_string_is_empty(const char *text);
-static const char *harbour_type_trim_ascii(const char *text, size_t *length);
+static _Bool harbour_string_is_empty(const char *text, size_t length);
+static const char *harbour_type_trim_ascii(
+    const char *text,
+    size_t text_length,
+    size_t *length
+);
 static _Bool harbour_type_matches_ascii_case_insensitive(
     const char *text,
     size_t length,
@@ -78,7 +92,24 @@ static _Bool harbour_try_max_min_compare(
     harbour_runtime_Value right,
     int *comparison
 );
-static _Bool harbour_string_equals_exact_off(const char *left, const char *right);
+static _Bool harbour_string_equals_exact_off(
+    const char *left,
+    size_t left_length,
+    const char *right,
+    size_t right_length
+);
+static int harbour_string_compare(
+    const char *left,
+    size_t left_length,
+    const char *right,
+    size_t right_length
+);
+static const char *harbour_string_find(
+    const char *haystack,
+    size_t haystack_length,
+    const char *needle,
+    size_t needle_length
+);
 static char *harbour_copy_string(const char *text);
 static _Bool harbour_memvar_name_equals(const char *left, const char *right);
 static harbour_memvar_Entry *harbour_find_memvar_entry(
@@ -130,10 +161,31 @@ harbour_runtime_Value harbour_value_from_float(double floating) {
     return value;
 }
 
+harbour_runtime_Value harbour_value_from_string_parts(
+    const char *string,
+    size_t length
+) {
+    char *owned;
+
+    if (string == NULL || length == 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    owned = (char *) malloc(length + 1);
+    if (owned == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    memcpy(owned, string, length);
+    owned[length] = '\0';
+    return harbour_value_from_owned_string_buffer(owned, length);
+}
+
 harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_STRING;
-    value.as.string = string;
+    value.as.string.data = string == NULL ? "" : string;
+    value.as.string.length = string == NULL ? 0 : strlen(string);
     return value;
 }
 
@@ -154,6 +206,33 @@ harbour_runtime_Value harbour_value_error_literal(const char *error) {
     value.kind = HARBOUR_VALUE_ERROR;
     value.as.error = error;
     return value;
+}
+
+static harbour_runtime_Value harbour_value_from_owned_string_buffer(
+    char *buffer,
+    size_t length
+) {
+    harbour_runtime_Value value;
+    value.kind = HARBOUR_VALUE_STRING;
+    value.as.string.data = buffer == NULL ? "" : buffer;
+    value.as.string.length = buffer == NULL ? 0 : length;
+    return value;
+}
+
+static const char *harbour_value_string_data(harbour_runtime_Value value) {
+    if (value.kind != HARBOUR_VALUE_STRING || value.as.string.data == NULL) {
+        return "";
+    }
+
+    return value.as.string.data;
+}
+
+static size_t harbour_value_string_length(harbour_runtime_Value value) {
+    if (value.kind != HARBOUR_VALUE_STRING) {
+        return 0;
+    }
+
+    return value.as.string.length;
 }
 
 void harbour_memvar_push_private_frame(void) {
@@ -275,7 +354,7 @@ harbour_runtime_Value harbour_macro_read(harbour_runtime_Value name_value) {
         return harbour_value_nil();
     }
 
-    return harbour_memvar_get(name_value.as.string);
+    return harbour_memvar_get(name_value.as.string.data);
 }
 
 harbour_runtime_Value harbour_value_from_array_items(
@@ -405,16 +484,17 @@ harbour_runtime_Value harbour_value_add(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        left_length = strlen(left.as.string);
-        right_length = strlen(right.as.string);
+        left_length = harbour_value_string_length(left);
+        right_length = harbour_value_string_length(right);
         buffer = (char *) malloc(left_length + right_length + 1);
         if (buffer == NULL) {
             return harbour_value_from_string_literal("");
         }
 
-        memcpy(buffer, left.as.string, left_length);
-        memcpy(buffer + left_length, right.as.string, right_length + 1);
-        return harbour_value_from_string_literal(buffer);
+        memcpy(buffer, harbour_value_string_data(left), left_length);
+        memcpy(buffer + left_length, harbour_value_string_data(right), right_length);
+        buffer[left_length + right_length] = '\0';
+        return harbour_value_from_owned_string_buffer(buffer, left_length + right_length);
     }
 
     return harbour_value_nil();
@@ -511,7 +591,12 @@ harbour_runtime_Value harbour_value_equals(
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
         return harbour_value_from_logical(
-            harbour_string_equals_exact_off(left.as.string, right.as.string)
+            harbour_string_equals_exact_off(
+                harbour_value_string_data(left),
+                harbour_value_string_length(left),
+                harbour_value_string_data(right),
+                harbour_value_string_length(right)
+            )
         );
     }
 
@@ -542,7 +627,14 @@ harbour_runtime_Value harbour_value_exact_equals(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) == 0);
+        return harbour_value_from_logical(
+            harbour_value_string_length(left) == harbour_value_string_length(right) &&
+            memcmp(
+                harbour_value_string_data(left),
+                harbour_value_string_data(right),
+                harbour_value_string_length(left)
+            ) == 0
+        );
     }
 
     if (left.kind == HARBOUR_VALUE_CODEBLOCK && right.kind == HARBOUR_VALUE_CODEBLOCK) {
@@ -590,7 +682,7 @@ _Bool harbour_value_is_true(harbour_runtime_Value value) {
     case HARBOUR_VALUE_FLOAT:
         return value.as.floating != 0.0;
     case HARBOUR_VALUE_STRING:
-        return value.as.string != NULL && value.as.string[0] != '\0';
+        return value.as.string.length != 0;
     case HARBOUR_VALUE_ARRAY:
         return value.as.array.length != 0;
     case HARBOUR_VALUE_CODEBLOCK:
@@ -616,7 +708,14 @@ harbour_runtime_Value harbour_value_less_than(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) < 0);
+        return harbour_value_from_logical(
+            harbour_string_compare(
+                harbour_value_string_data(left),
+                harbour_value_string_length(left),
+                harbour_value_string_data(right),
+                harbour_value_string_length(right)
+            ) < 0
+        );
     }
 
     if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
@@ -642,7 +741,14 @@ harbour_runtime_Value harbour_value_less_than_or_equal(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) <= 0);
+        return harbour_value_from_logical(
+            harbour_string_compare(
+                harbour_value_string_data(left),
+                harbour_value_string_length(left),
+                harbour_value_string_data(right),
+                harbour_value_string_length(right)
+            ) <= 0
+        );
     }
 
     if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
@@ -668,7 +774,14 @@ harbour_runtime_Value harbour_value_greater_than(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) > 0);
+        return harbour_value_from_logical(
+            harbour_string_compare(
+                harbour_value_string_data(left),
+                harbour_value_string_length(left),
+                harbour_value_string_data(right),
+                harbour_value_string_length(right)
+            ) > 0
+        );
     }
 
     if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
@@ -694,7 +807,14 @@ harbour_runtime_Value harbour_value_greater_than_or_equal(
     }
 
     if (left.kind == HARBOUR_VALUE_STRING && right.kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_logical(strcmp(left.as.string, right.as.string) >= 0);
+        return harbour_value_from_logical(
+            harbour_string_compare(
+                harbour_value_string_data(left),
+                harbour_value_string_length(left),
+                harbour_value_string_data(right),
+                harbour_value_string_length(right)
+            ) >= 0
+        );
     }
 
     if (left.kind == HARBOUR_VALUE_ARRAY || right.kind == HARBOUR_VALUE_ARRAY) {
@@ -731,7 +851,7 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
         fprintf(stdout, "%g", value->as.floating);
         break;
     case HARBOUR_VALUE_STRING:
-        fputs(value->as.string, stdout);
+        fwrite(value->as.string.data, 1, value->as.string.length, stdout);
         break;
     case HARBOUR_VALUE_CODEBLOCK:
         fputs(value->as.codeblock.repr, stdout);
@@ -1121,7 +1241,7 @@ struct harbour_runtime_Value harbour_builtin_len(
     }
 
     if (arguments[0].kind == HARBOUR_VALUE_STRING) {
-        return harbour_value_from_integer((long long) strlen(arguments[0].as.string));
+        return harbour_value_from_integer((long long) arguments[0].as.string.length);
     }
 
     if (arguments[0].kind == HARBOUR_VALUE_ARRAY) {
@@ -1206,7 +1326,7 @@ struct harbour_runtime_Value harbour_builtin_val(
         return harbour_value_error_literal("BASE 1098 Argument error (VAL)");
     }
 
-    return harbour_val_parse_string(arguments[0].as.string);
+    return harbour_val_parse_string(arguments[0].as.string.data);
 }
 
 struct harbour_runtime_Value harbour_builtin_substr(
@@ -1230,8 +1350,8 @@ struct harbour_runtime_Value harbour_builtin_substr(
         return harbour_value_error_literal("BASE 1110 Argument error (SUBSTR)");
     }
 
-    text = arguments[0].as.string;
-    text_length = strlen(text);
+    text = arguments[0].as.string.data;
+    text_length = arguments[0].as.string.length;
     start = arguments[1].as.integer;
     count = argument_count < 3 ? (long long) text_length : arguments[2].as.integer;
 
@@ -1284,8 +1404,8 @@ struct harbour_runtime_Value harbour_builtin_left(
         return harbour_value_error_literal("BASE 1124 Argument error (LEFT)");
     }
 
-    text = arguments[0].as.string;
-    text_length = strlen(text);
+    text = arguments[0].as.string.data;
+    text_length = arguments[0].as.string.length;
     count = arguments[1].as.integer;
 
     if (count <= 0) {
@@ -1316,8 +1436,8 @@ struct harbour_runtime_Value harbour_builtin_right(
         return harbour_value_from_string_literal("");
     }
 
-    text = arguments[0].as.string;
-    text_length = strlen(text);
+    text = arguments[0].as.string.data;
+    text_length = arguments[0].as.string.length;
     count = arguments[1].as.integer;
 
     if (count <= 0) {
@@ -1348,7 +1468,11 @@ struct harbour_runtime_Value harbour_builtin_upper(
         return harbour_value_error_literal("BASE 1102 Argument error (UPPER)");
     }
 
-    return harbour_ascii_case_transform(arguments[0].as.string, toupper);
+    return harbour_ascii_case_transform(
+        arguments[0].as.string.data,
+        arguments[0].as.string.length,
+        toupper
+    );
 }
 
 struct harbour_runtime_Value harbour_builtin_lower(
@@ -1363,7 +1487,11 @@ struct harbour_runtime_Value harbour_builtin_lower(
         return harbour_value_error_literal("BASE 1103 Argument error (LOWER)");
     }
 
-    return harbour_ascii_case_transform(arguments[0].as.string, tolower);
+    return harbour_ascii_case_transform(
+        arguments[0].as.string.data,
+        arguments[0].as.string.length,
+        tolower
+    );
 }
 
 struct harbour_runtime_Value harbour_builtin_trim(
@@ -1388,12 +1516,12 @@ struct harbour_runtime_Value harbour_builtin_ltrim(
         return harbour_value_error_literal("BASE 1101 Argument error (LTRIM)");
     }
 
-    text = arguments[0].as.string;
-    while (*text != '\0' && isspace((unsigned char) *text)) {
+    text = arguments[0].as.string.data;
+    length = arguments[0].as.string.length;
+    while (length > 0 && isspace((unsigned char) *text)) {
         text++;
+        length--;
     }
-
-    length = strlen(text);
     return harbour_substr_from_bounds(text, length, 0, length);
 }
 
@@ -1412,14 +1540,14 @@ struct harbour_runtime_Value harbour_builtin_rtrim(
         return harbour_value_error_literal("BASE 1100 Argument error (TRIM)");
     }
 
-    text = arguments[0].as.string;
-    length = strlen(text);
+    text = arguments[0].as.string.data;
+    length = arguments[0].as.string.length;
 
     while (length > 0 && text[length - 1] == ' ') {
         length--;
     }
 
-    return harbour_substr_from_bounds(text, strlen(text), 0, length);
+    return harbour_substr_from_bounds(text, arguments[0].as.string.length, 0, length);
 }
 
 struct harbour_runtime_Value harbour_builtin_at(
@@ -1439,13 +1567,18 @@ struct harbour_runtime_Value harbour_builtin_at(
         return harbour_value_error_literal("BASE 1108 Argument error (AT)");
     }
 
-    needle = arguments[0].as.string;
-    haystack = arguments[1].as.string;
-    if (needle[0] == '\0' || haystack[0] == '\0') {
+    needle = arguments[0].as.string.data;
+    haystack = arguments[1].as.string.data;
+    if (arguments[0].as.string.length == 0 || arguments[1].as.string.length == 0) {
         return harbour_value_from_integer(0);
     }
 
-    found = strstr(haystack, needle);
+    found = harbour_string_find(
+        haystack,
+        arguments[1].as.string.length,
+        needle,
+        arguments[0].as.string.length
+    );
     if (found == NULL) {
         return harbour_value_from_integer(0);
     }
@@ -1478,8 +1611,8 @@ struct harbour_runtime_Value harbour_builtin_replicate(
         return harbour_value_from_string_literal("");
     }
 
-    text = arguments[0].as.string;
-    unit_length = strlen(text);
+    text = arguments[0].as.string.data;
+    unit_length = arguments[0].as.string.length;
     if (unit_length == 0) {
         return harbour_value_from_string_literal("");
     }
@@ -1503,7 +1636,7 @@ struct harbour_runtime_Value harbour_builtin_replicate(
     }
     buffer[total_length] = '\0';
 
-    return harbour_value_from_string_literal(buffer);
+    return harbour_value_from_owned_string_buffer(buffer, total_length);
 }
 
 struct harbour_runtime_Value harbour_builtin_space(
@@ -1537,7 +1670,7 @@ struct harbour_runtime_Value harbour_builtin_space(
 
     memset(buffer, ' ', (size_t) repeat_count);
     buffer[repeat_count] = '\0';
-    return harbour_value_from_string_literal(buffer);
+    return harbour_value_from_owned_string_buffer(buffer, (size_t) repeat_count);
 }
 
 struct harbour_runtime_Value harbour_builtin_aclone(
@@ -1817,7 +1950,7 @@ static harbour_runtime_Value harbour_substr_from_bounds(
     }
 
     if (start == 0 && count == length) {
-        return harbour_value_from_string_literal(text);
+        return harbour_value_from_string_parts(text, length);
     }
 
     slice = (char *) malloc(count + 1);
@@ -1827,25 +1960,27 @@ static harbour_runtime_Value harbour_substr_from_bounds(
 
     memcpy(slice, text + start, count);
     slice[count] = '\0';
-    return harbour_value_from_string_literal(slice);
+    return harbour_value_from_owned_string_buffer(slice, count);
 }
 
-static harbour_runtime_Value harbour_string_value_from_owned_buffer(const char *text) {
-    size_t length;
+static harbour_runtime_Value harbour_string_value_from_owned_buffer(
+    const char *text,
+    size_t length
+) {
     char *owned;
 
     if (text == NULL) {
         return harbour_value_from_string_literal("");
     }
 
-    length = strlen(text);
     owned = (char *) malloc(length + 1);
     if (owned == NULL) {
         return harbour_value_from_string_literal("");
     }
 
-    memcpy(owned, text, length + 1);
-    return harbour_value_from_string_literal(owned);
+    memcpy(owned, text, length);
+    owned[length] = '\0';
+    return harbour_value_from_owned_string_buffer(owned, length);
 }
 
 static _Bool harbour_try_str_integer_arg(
@@ -1886,10 +2021,10 @@ static harbour_runtime_Value harbour_str_apply_width(
     if (!explicit_width) {
         target_width = 10;
         if (length >= target_width) {
-            return harbour_string_value_from_owned_buffer(formatted);
+            return harbour_string_value_from_owned_buffer(formatted, length);
         }
     } else if (width <= 0) {
-        return harbour_string_value_from_owned_buffer(formatted);
+        return harbour_string_value_from_owned_buffer(formatted, length);
     } else {
         target_width = (size_t) width;
         if (length > target_width) {
@@ -1900,7 +2035,7 @@ static harbour_runtime_Value harbour_str_apply_width(
 
             memset(buffer, '*', target_width);
             buffer[target_width] = '\0';
-            return harbour_value_from_string_literal(buffer);
+            return harbour_value_from_owned_string_buffer(buffer, target_width);
         }
     }
 
@@ -1912,7 +2047,7 @@ static harbour_runtime_Value harbour_str_apply_width(
     memset(buffer, ' ', target_width);
     memcpy(buffer + (target_width - length), formatted, length);
     buffer[target_width] = '\0';
-    return harbour_value_from_string_literal(buffer);
+    return harbour_value_from_owned_string_buffer(buffer, target_width);
 }
 
 static harbour_runtime_Value harbour_str_non_finite_placeholder(
@@ -1937,7 +2072,7 @@ static harbour_runtime_Value harbour_str_non_finite_placeholder(
 
     memset(buffer, '*', target_width);
     buffer[target_width] = '\0';
-    return harbour_value_from_string_literal(buffer);
+    return harbour_value_from_owned_string_buffer(buffer, target_width);
 }
 
 static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value) {
@@ -2085,7 +2220,11 @@ struct harbour_runtime_Value harbour_builtin_type(
         return harbour_value_error_literal("BASE 1121 Argument error (TYPE)");
     }
 
-    source = harbour_type_trim_ascii(arguments[0].as.string, &source_length);
+    source = harbour_type_trim_ascii(
+        arguments[0].as.string.data,
+        arguments[0].as.string.length,
+        &source_length
+    );
     if (source_length == 0) {
         return harbour_value_from_string_literal("U");
     }
@@ -2138,7 +2277,9 @@ struct harbour_runtime_Value harbour_builtin_empty(
         case HARBOUR_VALUE_FLOAT:
             return harbour_value_from_logical(value.as.floating == 0.0);
         case HARBOUR_VALUE_STRING:
-            return harbour_value_from_logical(harbour_string_is_empty(value.as.string));
+            return harbour_value_from_logical(
+                harbour_string_is_empty(value.as.string.data, value.as.string.length)
+            );
         case HARBOUR_VALUE_ARRAY:
             return harbour_value_from_logical(value.as.array.length == 0);
         case HARBOUR_VALUE_CODEBLOCK:
@@ -2150,27 +2291,29 @@ struct harbour_runtime_Value harbour_builtin_empty(
     return harbour_value_from_logical(1);
 }
 
-static _Bool harbour_string_is_empty(const char *text) {
-    const unsigned char *current;
+static _Bool harbour_string_is_empty(const char *text, size_t length) {
+    size_t index;
 
-    if (text == NULL) {
+    if (text == NULL || length == 0) {
         return 1;
     }
 
-    current = (const unsigned char *) text;
-    while (*current != '\0') {
-        if (!isspace(*current)) {
+    for (index = 0; index < length; ++index) {
+        if (!isspace((unsigned char) text[index])) {
             return 0;
         }
-        ++current;
     }
 
     return 1;
 }
 
-static const char *harbour_type_trim_ascii(const char *text, size_t *length) {
+static const char *harbour_type_trim_ascii(
+    const char *text,
+    size_t text_length,
+    size_t *length
+) {
     const char *start = text;
-    const char *end;
+    const char *end = text + text_length;
 
     if (text == NULL) {
         if (length != NULL) {
@@ -2179,11 +2322,10 @@ static const char *harbour_type_trim_ascii(const char *text, size_t *length) {
         return "";
     }
 
-    while (*start != '\0' && isspace((unsigned char) *start)) {
+    while (start < end && isspace((unsigned char) *start)) {
         ++start;
     }
 
-    end = start + strlen(start);
     while (end > start && isspace((unsigned char) end[-1])) {
         --end;
     }
@@ -2463,7 +2605,12 @@ static _Bool harbour_array_scan_matches(
         candidate.kind == HARBOUR_VALUE_STRING &&
         search.kind == HARBOUR_VALUE_STRING
     ) {
-        return harbour_string_equals_exact_off(candidate.as.string, search.as.string);
+        return harbour_string_equals_exact_off(
+            candidate.as.string.data,
+            candidate.as.string.length,
+            search.as.string.data,
+            search.as.string.length
+        );
     }
     if (harbour_try_numeric_pair(candidate, search, &left_number, &right_number)) {
         return left_number == right_number;
@@ -2472,9 +2619,75 @@ static _Bool harbour_array_scan_matches(
     return 0;
 }
 
-static _Bool harbour_string_equals_exact_off(const char *left, const char *right) {
-    size_t right_length = strlen(right);
-    return strncmp(left, right, right_length) == 0;
+static _Bool harbour_string_equals_exact_off(
+    const char *left,
+    size_t left_length,
+    const char *right,
+    size_t right_length
+) {
+    if (right_length > left_length) {
+        return 0;
+    }
+
+    if (right_length == 0) {
+        return 1;
+    }
+
+    return memcmp(left, right, right_length) == 0;
+}
+
+static int harbour_string_compare(
+    const char *left,
+    size_t left_length,
+    const char *right,
+    size_t right_length
+) {
+    size_t shared_length = left_length < right_length ? left_length : right_length;
+    int prefix = 0;
+
+    if (shared_length > 0) {
+        prefix = memcmp(left, right, shared_length);
+    }
+
+    if (prefix != 0) {
+        return prefix;
+    }
+
+    if (left_length < right_length) {
+        return -1;
+    }
+
+    if (left_length > right_length) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static const char *harbour_string_find(
+    const char *haystack,
+    size_t haystack_length,
+    const char *needle,
+    size_t needle_length
+) {
+    size_t index;
+
+    if (
+        haystack == NULL ||
+        needle == NULL ||
+        needle_length == 0 ||
+        needle_length > haystack_length
+    ) {
+        return NULL;
+    }
+
+    for (index = 0; index + needle_length <= haystack_length; ++index) {
+        if (memcmp(haystack + index, needle, needle_length) == 0) {
+            return haystack + index;
+        }
+    }
+
+    return NULL;
 }
 
 static harbour_runtime_Value harbour_unsupported_comparison(void) {
@@ -2486,14 +2699,13 @@ static harbour_runtime_Value harbour_array_comparison_error(const char *message)
 }
 static harbour_runtime_Value harbour_ascii_case_transform(
     const char *text,
+    size_t length,
     int (*transform)(int)
 ) {
     size_t index;
-    size_t length;
     char *buffer;
 
-    length = strlen(text);
-    if (length == 0) {
+    if (text == NULL || length == 0) {
         return harbour_value_from_string_literal("");
     }
 
@@ -2507,7 +2719,7 @@ static harbour_runtime_Value harbour_ascii_case_transform(
     }
     buffer[length] = '\0';
 
-    return harbour_value_from_string_literal(buffer);
+    return harbour_value_from_owned_string_buffer(buffer, length);
 }
 
 static _Bool harbour_try_truncated_repeat_count(

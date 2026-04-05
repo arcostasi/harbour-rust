@@ -48,13 +48,13 @@ O runtime já suporta:
 - base de contexto de memvar e avaliação de codeblocks;
 - diagnósticos orientados à compatibilidade para operações selecionadas de arrays e números;
 - limites de overflow de string ao estilo Clipper para `Replicate()` e `Space()`.
-- leniência guiada por oráculo em `SubStr()`/`Right()` para o subconjunto executável atual sem `Chr(0)`.
+- leniência guiada por oráculo em `SubStr()`/`Right()` e preservação de `Chr(0)` embutido em helpers selecionados do runtime executável em C.
 
 ## Limites Conhecidos
 
 - ainda não existem todos os tipos históricos de valor de xBase;
 - alguns builtins cobrem apenas o subconjunto de argumentos já testado;
-- o caminho de execução em C do host ainda armazena strings como C strings, então a preservação de `Chr(0)` embutido segue incompleta fora da surface do runtime em Rust;
+- a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime host C já preservando esses bytes em helpers selecionados quando eles existem;
 - a formatação histórica exata ainda diverge em alguns edge cases.
 
 ## Documentos Relacionados
