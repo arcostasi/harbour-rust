@@ -37,6 +37,14 @@ fn runtime_int_baseline() -> String {
         result_text(int(Some(&Value::from(-10_i64))))
     ));
     out.push_str(&format!(
+        "Int(100000) => {}\n",
+        result_text(int(Some(&Value::from(100000_i64))))
+    ));
+    out.push_str(&format!(
+        "Int(-100000) => {}\n",
+        result_text(int(Some(&Value::from(-100000_i64))))
+    ));
+    out.push_str(&format!(
         "Int(10.5) => {}\n",
         result_text(int(Some(&Value::from(10.5_f64))))
     ));
@@ -51,6 +59,14 @@ fn runtime_int_baseline() -> String {
     out.push_str(&format!(
         "Int(-5000000000.9) => {}\n",
         result_text(int(Some(&Value::from(-5_000_000_000.9_f64))))
+    ));
+    out.push_str(&format!(
+        "Int(5000000000) => {}\n",
+        result_text(int(Some(&Value::from(5_000_000_000_i64))))
+    ));
+    out.push_str(&format!(
+        "Int(-5000000000) => {}\n",
+        result_text(int(Some(&Value::from(-5_000_000_000_i64))))
     ));
     out
 }
@@ -88,6 +104,10 @@ fn int_runtime_matches_upstream_oracle_snapshot() {
     assert!(upstream_math.contains("HBTEST Int( NIL )"));
     assert!(upstream_math.contains("HBTEST Int( 10.5 )"));
     assert!(upstream_math.contains("HBTEST Int( -10.5 )"));
+    assert!(upstream_math.contains("HBTEST Int( 100000 )"));
+    assert!(upstream_math.contains("HBTEST Int( -100000 )"));
+    assert!(upstream_math.contains("HBTEST Int( 5000000000 )"));
+    assert!(upstream_math.contains("HBTEST Int( -5000000000 )"));
     assert!(upstream_math.contains("BASE 1090 Argument error (INT)"));
 
     assert_eq!(runtime_int_baseline(), expected);
