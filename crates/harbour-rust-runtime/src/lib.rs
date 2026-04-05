@@ -2453,6 +2453,8 @@ fn numeric_string_count(
     overflow_error: fn() -> RuntimeError,
     unit_len: usize,
 ) -> Result<usize, RuntimeError> {
+    const XBASE_MAX_STRING_LEN: usize = 65_535;
+
     let Some(value) = value else {
         return Err(argument_error(None));
     };
@@ -2468,7 +2470,10 @@ fn numeric_string_count(
     }
 
     let count = count as usize;
-    if unit_len > 0 && count.checked_mul(unit_len).is_none() {
+    let Some(total_len) = unit_len.checked_mul(count) else {
+        return Err(overflow_error());
+    };
+    if total_len > XBASE_MAX_STRING_LEN {
         return Err(overflow_error());
     }
 

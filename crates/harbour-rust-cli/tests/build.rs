@@ -1726,7 +1726,7 @@ fn run_command_executes_replicate_space_builtin_invalid_fixture_with_expected_ou
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(
         stdout,
-        "BASE 1106 Argument error (REPLICATE)\nBASE 1105 Argument error (SPACE)\n"
+        "BASE 1106 Argument error (REPLICATE)\nBASE 1234 String overflow (REPLICATE)\nBASE 1105 Argument error (SPACE)\n"
     );
 }
 

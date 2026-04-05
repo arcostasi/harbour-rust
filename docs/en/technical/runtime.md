@@ -46,7 +46,8 @@ The runtime already supports:
 - arrays with one-based indexing;
 - `STATIC`-related executable behavior through the backend path;
 - memvar context groundwork and codeblock evaluation;
-- compatibility-oriented diagnostics for selected array and numeric operations.
+- compatibility-oriented diagnostics for selected array and numeric operations;
+- Clipper-style string overflow limits for `Replicate()` and `Space()`.
 
 ## Known Limits
 

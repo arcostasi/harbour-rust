@@ -10,6 +10,8 @@ typedef struct harbour_runtime_Value harbour_runtime_Value;
 typedef struct harbour_memvar_Entry harbour_memvar_Entry;
 typedef struct harbour_private_Frame harbour_private_Frame;
 
+#define HARBOUR_XBASE_MAX_STRING_LEN ((size_t) 65535)
+
 struct harbour_memvar_Entry {
     char *name;
     harbour_runtime_Value value;
@@ -1487,6 +1489,9 @@ struct harbour_runtime_Value harbour_builtin_replicate(
     }
 
     total_length = (size_t) repeat_count * unit_length;
+    if (total_length > HARBOUR_XBASE_MAX_STRING_LEN) {
+        return harbour_value_error_literal("BASE 1234 String overflow (REPLICATE)");
+    }
     buffer = (char *) malloc(total_length + 1);
     if (buffer == NULL) {
         return harbour_value_error_literal("BASE 1234 String overflow (REPLICATE)");
@@ -1520,7 +1525,8 @@ struct harbour_runtime_Value harbour_builtin_space(
         return harbour_value_from_string_literal("");
     }
 
-    if ((size_t) repeat_count == (size_t) -1) {
+    if ((size_t) repeat_count == (size_t) -1 ||
+        (size_t) repeat_count > HARBOUR_XBASE_MAX_STRING_LEN) {
         return harbour_value_error_literal("BASE 1234 String overflow (SPACE)");
     }
 

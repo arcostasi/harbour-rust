@@ -1200,6 +1200,14 @@ fn public_replicate_and_space_report_xbase_style_argument_errors() {
         })
     );
     assert_eq!(
+        replicate(Some(&Value::from("XXX")), Some(&Value::from(30_000_i64))),
+        Err(RuntimeError {
+            message: "BASE 1234 String overflow (REPLICATE)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
         space(Some(&Value::from("A"))),
         Err(RuntimeError {
             message: "BASE 1105 Argument error (SPACE)".to_owned(),

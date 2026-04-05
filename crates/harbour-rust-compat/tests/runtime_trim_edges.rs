@@ -94,9 +94,7 @@ fn trim_edges_runtime_matches_upstream_oracle_snapshot() {
     assert!(upstream.contains("HBTEST LTrim( \" \" + Chr( 9 ) + \"U\" + Chr( 9 ) )"));
     assert!(upstream.contains("HBTEST LTrim( Chr( 10 ) + \"U\" + Chr( 10 ) )"));
     assert!(upstream.contains("HBTEST RTrim( \"A\" + Chr( 10 ) )"));
-    assert!(upstream.contains(
-        "HBTEST Trim( \"  \" + Chr( 0 ) + \"ABC\" + Chr( 0 ) + \"  \" )"
-    ));
+    assert!(upstream.contains("HBTEST Trim( \"  \" + Chr( 0 ) + \"ABC\" + Chr( 0 ) + \"  \" )"));
 
     assert_eq!(runtime_trim_edges_baseline(), expected);
 }

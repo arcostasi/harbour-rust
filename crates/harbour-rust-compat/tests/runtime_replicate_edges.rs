@@ -10,10 +10,7 @@ fn runtime_replicate_edges_baseline() -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "Replicate(\"\", 0) => {}\n",
-        escaped_result(replicate(
-            Some(&Value::from("")),
-            Some(&Value::from(0_i64)),
-        ))
+        escaped_result(replicate(Some(&Value::from("")), Some(&Value::from(0_i64)),))
     ));
     out.push_str(&format!(
         "Replicate(\"HE\", 3.1) => {}\n",
@@ -31,10 +28,10 @@ fn runtime_replicate_edges_baseline() -> String {
         ))
     ));
     out.push_str(&format!(
-        "Replicate(\"XXX\", 9000000000000000000) => {}\n",
+        "Replicate(\"XXX\", 30000) => {}\n",
         escaped_result(replicate(
             Some(&Value::from("XXX")),
-            Some(&Value::from(9_000_000_000_000_000_000_i64)),
+            Some(&Value::from(30_000_i64)),
         ))
     ));
     out
@@ -92,9 +89,7 @@ fn replicate_edges_runtime_matches_upstream_oracle_snapshot() {
     assert!(upstream.contains("HBTEST Replicate( \"\"   , 0 )"));
     assert!(upstream.contains("HBTEST Replicate( \"HE\", 3.1 )"));
     assert!(upstream.contains("HBTEST Replicate( \"H\" + Chr( 0 ), 2 )"));
-    assert!(upstream.contains(
-        "HBTEST Replicate( \"XXX\", 9000000000000000000 )"
-    ));
+    assert!(upstream.contains("HBTEST Replicate( \"XXX\", 30000)"));
     assert!(upstream.contains("BASE 1234 String overflow (REPLICATE)"));
 
     assert_eq!(runtime_replicate_edges_baseline(), expected);
