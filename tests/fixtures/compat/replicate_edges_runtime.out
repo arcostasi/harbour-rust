@@ -1,0 +1,4 @@
+Replicate("", 0) => ""
+Replicate("HE", 3.1) => "HEHEHE"
+Replicate("H\0", 2) => "H\0H\0"
+Replicate("XXX", 9000000000000000000) => BASE 1234 String overflow (REPLICATE)

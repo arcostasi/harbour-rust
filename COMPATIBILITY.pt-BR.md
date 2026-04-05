@@ -14,7 +14,7 @@ Harbour Rust busca compatibilidade prática com CA-Clipper e Harbour, começando
 | Lexer | baseline inicial estável | spans, posições, comentários, strings, números, keywords |
 | Parser e AST | estável para o subconjunto atual | construções procedurais, arrays, sintaxe de memvar, codeblocks, macro reads |
 | HIR e semântica | estável para o subconjunto atual | resolução de rotinas, bindings locais/`STATIC`, memvars |
-| Runtime | baseline alpha amplo | valores centrais, arrays, builtins selecionados de string/matemática/conversão e cobertura crescente de edge cases de strings guiada por oráculo |
+| Runtime | baseline alpha amplo | valores centrais, arrays, builtins selecionados de string/matemática/conversão e cobertura crescente de edge cases de strings guiada por oráculo para trim, busca e replicação |
 | Pré-processador | subconjunto avançado curado | `#define`, `#include`, `#command`, `#translate` |
 | Backend C | backend alpha prático | fluxo procedural, helpers de runtime selecionados e recursos dinâmicos |
 | CLI | interface alpha utilizável | `help`, `check`, `build`, `run`, `transpile --to c` |
