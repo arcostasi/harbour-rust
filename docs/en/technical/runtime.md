@@ -55,6 +55,7 @@ The runtime already supports:
 
 - not all historical xBase value kinds exist yet;
 - some builtins only cover the currently tested subset of arguments;
+- `Val()` now follows the oracle for trailing-dot continuations such as `1..`, `1...`, `..`, and `-..`, but mixed-punctuation decimal scale and exponent-like input still diverge in selected historical edge cases;
 - source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the host-C runtime preserves them in selected helpers once present;
 - exact historical formatting still differs in selected edge cases.
 

@@ -55,6 +55,7 @@ O runtime já suporta:
 
 - ainda não existem todos os tipos históricos de valor de xBase;
 - alguns builtins cobrem apenas o subconjunto de argumentos já testado;
+- `Val()` agora segue o oráculo em continuações com ponto final como `1..`, `1...`, `..` e `-..`, mas a escala decimal histórica em pontuação mista e entradas parecidas com expoente ainda divergem em alguns edge cases;
 - a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime host C já preservando esses bytes em helpers selecionados quando eles existem;
 - a formatação histórica exata ainda diverge em alguns edge cases.
 

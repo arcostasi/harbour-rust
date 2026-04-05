@@ -17,8 +17,24 @@ fn runtime_val_edges_baseline() -> String {
         result_text(str_value_from_val("1.."))
     ));
     out.push_str(&format!(
+        "Str(Val(\"1...\")) => {}\n",
+        result_text(str_value_from_val("1..."))
+    ));
+    out.push_str(&format!(
         "Str(Val(\"-.1\")) => {}\n",
         result_text(str_value_from_val("-.1"))
+    ));
+    out.push_str(&format!(
+        "Str(Val(\"..\")) => {}\n",
+        result_text(str_value_from_val(".."))
+    ));
+    out.push_str(&format!(
+        "Str(Val(\"-.\")) => {}\n",
+        result_text(str_value_from_val("-."))
+    ));
+    out.push_str(&format!(
+        "Str(Val(\"-..\")) => {}\n",
+        result_text(str_value_from_val("-.."))
     ));
     out.push_str(&format!(
         "Str(Val(\" --12\")) => {}\n",
@@ -76,7 +92,11 @@ fn val_edges_runtime_matches_upstream_oracle_snapshot() {
 
     assert!(upstream_str.contains("HBTEST Str( Val( \"1.\" ) )"));
     assert!(upstream_str.contains("HBTEST Str( Val( \"1..\" ) )"));
+    assert!(upstream_str.contains("HBTEST Str( Val( \"1...\" ) )"));
     assert!(upstream_str.contains("HBTEST Str( Val( \"-.1\" ) )"));
+    assert!(upstream_str.contains("HBTEST Str( Val( \"..\" ) )"));
+    assert!(upstream_str.contains("HBTEST Str( Val( \"-.\" ) )"));
+    assert!(upstream_str.contains("HBTEST Str( Val( \"-..\" ) )"));
     assert!(upstream_str.contains("HBTEST Str( Val( \" --12\" ) )"));
     assert!(upstream_str.contains("HBTEST Str( Val( \" 13.1.9\" ) )"));
     assert!(upstream_str.contains("HBTEST Str( Val( \"1E2\" ) )"));

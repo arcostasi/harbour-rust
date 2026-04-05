@@ -6,4 +6,7 @@ PROCEDURE Main()
    ? Val( "15.001 " )
    ? Val( "1HELLO." )
    ? Val( "0x10" )
+   ? Str( Val( "1.." ) )
+   ? Str( Val( ".." ) )
+   ? Str( Val( "-.." ) )
 RETURN

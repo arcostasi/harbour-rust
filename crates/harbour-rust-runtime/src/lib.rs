@@ -2357,20 +2357,30 @@ fn parse_val_string(text: &str) -> Value {
     }
 
     let mut fractional_part = String::new();
-    let mut saw_fraction = false;
+    let mut saw_fraction_marker = false;
+    let mut degraded_fraction = false;
     if matches!(chars.peek(), Some('.')) {
+        saw_fraction_marker = true;
         chars.next();
-        while let Some(ch) = chars.next_if(|ch| ch.is_ascii_digit()) {
-            saw_fraction = true;
-            fractional_part.push(ch);
+        while let Some(ch) = chars.peek().copied() {
+            if ch.is_ascii_digit() {
+                fractional_part.push(if degraded_fraction { '0' } else { ch });
+                chars.next();
+            } else if ch == '.' {
+                degraded_fraction = true;
+                fractional_part.push('0');
+                chars.next();
+            } else {
+                break;
+            }
         }
     }
 
-    if integer_part.is_empty() && !saw_fraction {
+    if integer_part.is_empty() && !saw_fraction_marker {
         return Value::from(0_i64);
     }
 
-    if saw_fraction {
+    if !fractional_part.is_empty() {
         let mut numeric = String::new();
         if integer_part.is_empty() {
             numeric.push('0');

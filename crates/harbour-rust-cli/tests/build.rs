@@ -1419,7 +1419,10 @@ fn run_command_executes_val_builtin_fixture_with_expected_output() {
     assert!(output.status.success(), "expected successful run status");
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert_eq!(stdout, "0\n0\n10\n-12\n15.001\n1\n0\n");
+    assert_eq!(
+        stdout,
+        "0\n0\n10\n-12\n15.001\n1\n0\n       1.0\n       0.0\n       0.0\n"
+    );
 }
 
 #[test]

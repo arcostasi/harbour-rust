@@ -2108,7 +2108,8 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
     char fraction_buffer[128];
     size_t integer_length = 0;
     size_t fraction_length = 0;
-    _Bool saw_fraction = 0;
+    _Bool saw_fraction_marker = 0;
+    _Bool degraded_fraction = 0;
     char numeric_buffer[260];
     double parsed;
 
@@ -2132,22 +2133,38 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
     integer_buffer[integer_length] = '\0';
 
     if (*cursor == '.') {
+        saw_fraction_marker = 1;
         cursor++;
-        while (*cursor != '\0' && isdigit(*cursor)) {
-            saw_fraction = 1;
-            if (fraction_length + 1 < sizeof(fraction_buffer)) {
-                fraction_buffer[fraction_length++] = (char) *cursor;
+        while (*cursor != '\0') {
+            if (isdigit(*cursor)) {
+                if (fraction_length + 1 < sizeof(fraction_buffer)) {
+                    fraction_buffer[fraction_length++] = degraded_fraction
+                        ? '0'
+                        : (char) *cursor;
+                }
+                cursor++;
+                continue;
             }
-            cursor++;
+
+            if (*cursor == '.') {
+                degraded_fraction = 1;
+                if (fraction_length + 1 < sizeof(fraction_buffer)) {
+                    fraction_buffer[fraction_length++] = '0';
+                }
+                cursor++;
+                continue;
+            }
+
+            break;
         }
     }
     fraction_buffer[fraction_length] = '\0';
 
-    if (integer_length == 0 && !saw_fraction) {
+    if (integer_length == 0 && !saw_fraction_marker) {
         return harbour_value_from_integer(0);
     }
 
-    if (saw_fraction) {
+    if (fraction_length > 0) {
         if (integer_length == 0) {
             snprintf(
                 numeric_buffer,
