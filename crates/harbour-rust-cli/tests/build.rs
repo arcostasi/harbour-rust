@@ -1317,7 +1317,10 @@ fn run_command_executes_round_builtin_fixture_with_expected_output() {
     assert!(output.status.success(), "expected successful run status");
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert_eq!(stdout, "1\n0.6\n0.56\n100\n-0.6\n");
+    assert_eq!(
+        stdout,
+        "0\n1\n0\n0.6\n0.56\n100\n11\n5000000000.13\n0\n-0.6\n"
+    );
 }
 
 #[test]

@@ -17,10 +17,24 @@ fn runtime_round_baseline() -> String {
         result_text(round_value(Some(&Value::from(0_i64)), Some(&Value::Nil)))
     ));
     out.push_str(&format!(
+        "Round(0, 2) => {}\n",
+        result_text(round_value(
+            Some(&Value::from(0_i64)),
+            Some(&Value::from(2_i64))
+        ))
+    ));
+    out.push_str(&format!(
         "Round(0.5, 0) => {}\n",
         result_text(round_value(
             Some(&Value::from(0.5_f64)),
             Some(&Value::from(0_i64))
+        ))
+    ));
+    out.push_str(&format!(
+        "Round(0.5, -1) => {}\n",
+        result_text(round_value(
+            Some(&Value::from(0.5_f64)),
+            Some(&Value::from(-1_i64))
         ))
     ));
     out.push_str(&format!(
@@ -45,9 +59,30 @@ fn runtime_round_baseline() -> String {
         ))
     ));
     out.push_str(&format!(
+        "Round(10.5, 0) => {}\n",
+        result_text(round_value(
+            Some(&Value::from(10.5_f64)),
+            Some(&Value::from(0_i64))
+        ))
+    ));
+    out.push_str(&format!(
         "Round(10.5, -1) => {}\n",
         result_text(round_value(
             Some(&Value::from(10.5_f64)),
+            Some(&Value::from(-1_i64))
+        ))
+    ));
+    out.push_str(&format!(
+        "Round(5000000000.129, 2) => {}\n",
+        result_text(round_value(
+            Some(&Value::from(5_000_000_000.129_f64)),
+            Some(&Value::from(2_i64))
+        ))
+    ));
+    out.push_str(&format!(
+        "Round(-0.5, -1) => {}\n",
+        result_text(round_value(
+            Some(&Value::from(-0.5_f64)),
             Some(&Value::from(-1_i64))
         ))
     ));
@@ -106,9 +141,13 @@ fn round_runtime_matches_upstream_oracle_snapshot() {
         .expect("fixture snapshot");
 
     assert!(upstream_math.contains("HBTEST Round( NIL, 0 )"));
+    assert!(upstream_math.contains("HBTEST Round( 0, 2 )"));
     assert!(upstream_math.contains("HBTEST Round( 0.55, 1 )"));
     assert!(upstream_math.contains("HBTEST Round( 50, -2 )"));
+    assert!(upstream_math.contains("HBTEST Round( 10.50, 0 )"));
     assert!(upstream_math.contains("HBTEST Round( 10.50, -1 )"));
+    assert!(upstream_math.contains("HBTEST Round( 5000000000.129, 2 )"));
+    assert!(upstream_math.contains("HBTEST Round( -0.5, -1 )"));
     assert!(upstream_math.contains("HBTEST Round( -10.50, 0 )"));
     assert!(upstream_math.contains("HBTEST Round( -50, -2 )"));
     assert!(upstream_math.contains("BASE 1094 Argument error (ROUND)"));

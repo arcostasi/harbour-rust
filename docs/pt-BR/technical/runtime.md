@@ -50,6 +50,7 @@ O runtime já suporta:
 - limites de overflow de string ao estilo Clipper para `Replicate()` e `Space()`.
 - leniência guiada por oráculo em `SubStr()`/`Right()` e preservação de `Chr(0)` embutido em helpers selecionados do runtime executável em C.
 - padding em campo padrão para `Str()` com largura negativa explícita, e arredondamento de `Str()` guiado por largura agora alinhado ao oráculo com comportamento half-away-from-zero.
+- saída executável de `Round()` com floats grandes agora preservada em decimal simples, sem colapsar para notação científica no caminho host C.
 
 ## Limites Conhecidos
 

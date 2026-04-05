@@ -50,6 +50,7 @@ The runtime already supports:
 - Clipper-style string overflow limits for `Replicate()` and `Space()`.
 - oracle-backed `SubStr()`/`Right()` leniency and host-C preservation of embedded `Chr(0)` in selected executable string helpers.
 - default-width padding for explicit negative-width `Str()` formatting, and width-driven `Str()` rounding now aligned with the oracle through half-away-from-zero behavior.
+- executable `Round()` output for large floats now stays in plain decimal form instead of collapsing into scientific notation in the host-C path.
 
 ## Known Limits
 

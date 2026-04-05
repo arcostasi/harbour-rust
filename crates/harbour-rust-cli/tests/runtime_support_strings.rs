@@ -64,6 +64,51 @@ fn runtime_support_preserves_embedded_nul_bytes_in_string_helpers() {
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
 
+#[test]
+fn runtime_support_prints_large_rounded_floats_without_scientific_notation() {
+    let compiler = detect_host_compiler().expect("host compiler");
+    let temp_dir = unique_temp_dir("runtime-support-floats");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+
+    let harness_path = temp_dir.join("runtime_support_floats.c");
+    let output_path = temp_dir.join(executable_name("runtime_support_floats"));
+    let support_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("support");
+    let support_c_path = support_dir.join("runtime_support.c");
+
+    fs::write(&harness_path, runtime_support_float_harness_source()).expect("write harness");
+
+    let compile_output = compiler_command(
+        &compiler,
+        &support_dir,
+        &harness_path,
+        &support_c_path,
+        &output_path,
+    )
+    .output()
+    .expect("invoke compiler");
+
+    assert!(
+        compile_output.status.success(),
+        "expected successful host C compilation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&compile_output.stdout),
+        String::from_utf8_lossy(&compile_output.stderr)
+    );
+
+    let run_output = Command::new(&output_path).output().expect("run harness");
+    assert!(
+        run_output.status.success(),
+        "expected successful harness status\nstderr:\n{}",
+        String::from_utf8_lossy(&run_output.stderr)
+    );
+
+    let stdout = String::from_utf8(run_output.stdout)
+        .expect("stdout utf8")
+        .replace("\r\n", "\n");
+    assert_eq!(stdout, "5000000000.13\n0\n-0.6\n");
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
 fn runtime_support_harness_source() -> &'static str {
     r#"#include <stdio.h>
 #include "runtime_support.h"
@@ -124,6 +169,52 @@ int main(void) {
     return 0;
 }
 "#
+}
+
+fn runtime_support_float_harness_source() -> &'static str {
+    r##"#include <stdio.h>
+#include "runtime_support.h"
+
+int main(void) {
+    harbour_builtin_qout(
+        (struct harbour_runtime_Value[]) {
+            harbour_builtin_round(
+                (struct harbour_runtime_Value[]) {
+                    harbour_value_from_float(5000000000.129),
+                    harbour_value_from_integer(2)
+                },
+                2
+            )
+        },
+        1
+    );
+    harbour_builtin_qout(
+        (struct harbour_runtime_Value[]) {
+            harbour_builtin_round(
+                (struct harbour_runtime_Value[]) {
+                    harbour_value_from_float(0.5),
+                    harbour_value_from_integer(-1)
+                },
+                2
+            )
+        },
+        1
+    );
+    harbour_builtin_qout(
+        (struct harbour_runtime_Value[]) {
+            harbour_builtin_round(
+                (struct harbour_runtime_Value[]) {
+                    harbour_value_from_float(-0.55),
+                    harbour_value_from_integer(1)
+                },
+                2
+            )
+        },
+        1
+    );
+    return 0;
+}
+"##
 }
 
 fn detect_host_compiler() -> Option<String> {

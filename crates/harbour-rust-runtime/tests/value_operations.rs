@@ -605,6 +605,13 @@ fn public_round_matches_the_current_numeric_runtime_baseline() {
         round_value(Some(&Value::from(-0.55_f64)), Some(&Value::from(1_i64))),
         Ok(Value::from(-0.6_f64))
     );
+    assert_eq!(
+        round_value(
+            Some(&Value::from(5_000_000_000.129_f64)),
+            Some(&Value::from(2_i64))
+        ),
+        Ok(Value::from(5_000_000_000.13_f64))
+    );
 }
 
 #[test]

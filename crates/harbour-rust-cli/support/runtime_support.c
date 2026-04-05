@@ -126,6 +126,7 @@ static _Bool harbour_array_scan_matches(
     harbour_runtime_Value candidate,
     harbour_runtime_Value search
 );
+static void harbour_print_float(double value);
 static harbour_runtime_Value harbour_unsupported_comparison(void);
 static harbour_runtime_Value harbour_array_comparison_error(const char *message);
 
@@ -848,7 +849,7 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
         fprintf(stdout, "%lld", value->as.integer);
         break;
     case HARBOUR_VALUE_FLOAT:
-        fprintf(stdout, "%g", value->as.floating);
+        harbour_print_float(value->as.floating);
         break;
     case HARBOUR_VALUE_STRING:
         fwrite(value->as.string.data, 1, value->as.string.length, stdout);
@@ -866,6 +867,13 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
         fputs("<invalid>", stdout);
         break;
     }
+}
+
+static void harbour_print_float(double value) {
+    char buffer[128];
+
+    snprintf(buffer, sizeof(buffer), "%.15g", value);
+    fputs(buffer, stdout);
 }
 
 harbour_runtime_Value harbour_builtin_qout(

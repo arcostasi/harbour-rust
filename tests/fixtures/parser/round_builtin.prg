@@ -1,7 +1,12 @@
 PROCEDURE Main()
+   ? Round( 0, 2 )
    ? Round( 0.5, 0 )
+   ? Round( 0.5, Val( "-1" ) )
    ? Round( 0.55, 1 )
    ? Round( 0.557, 2 )
    ? Round( 50, Val( "-2" ) )
+   ? Round( 10.5, 0 )
+   ? Round( 5000000000.129, 2 )
+   ? Round( Val( "-0.5" ), Val( "-1" ) )
    ? Round( Val( "-0.55" ), 1 )
 RETURN
