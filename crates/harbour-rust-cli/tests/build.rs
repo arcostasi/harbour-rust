@@ -1385,7 +1385,7 @@ fn run_command_executes_str_builtin_fixture_with_expected_output() {
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(
         stdout,
-        "        10\n         0\n      10.5\n   10\n        10\n   11\n        10\n       -10\n 2.00\n    3.12\n    100000\n*****\n"
+        "        10\n         0\n      10.5\n   10\n        10\n   11\n        11\n       -11\n       -10\n 2.00\n   11\n  -11\n    3.12\n    100000\n*****\n"
     );
 }
 

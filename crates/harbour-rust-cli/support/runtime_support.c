@@ -1294,22 +1294,26 @@ struct harbour_runtime_Value harbour_builtin_str(
         return harbour_str_non_finite_placeholder(width, explicit_width);
     }
 
-    if (explicit_decimals) {
-        double numeric = number.kind == HARBOUR_VALUE_INTEGER
-            ? (double) number.as.integer
-            : number.as.floating;
-        snprintf(buffer, sizeof(buffer), "%.*f", (int) decimals, numeric);
-        return harbour_str_apply_width(buffer, width, 1);
-    }
+      if (explicit_decimals) {
+          double numeric = number.kind == HARBOUR_VALUE_INTEGER
+              ? (double) number.as.integer
+              : number.as.floating;
+          if (decimals == 0) {
+              snprintf(buffer, sizeof(buffer), "%.0f", round(numeric));
+          } else {
+              snprintf(buffer, sizeof(buffer), "%.*f", (int) decimals, numeric);
+          }
+          return harbour_str_apply_width(buffer, width, 1);
+      }
 
-    if (explicit_width) {
-        if (number.kind == HARBOUR_VALUE_INTEGER) {
-            snprintf(buffer, sizeof(buffer), "%lld", number.as.integer);
-        } else {
-            snprintf(buffer, sizeof(buffer), "%.0f", number.as.floating);
-        }
-        return harbour_str_apply_width(buffer, width, 1);
-    }
+      if (explicit_width) {
+          if (number.kind == HARBOUR_VALUE_INTEGER) {
+              snprintf(buffer, sizeof(buffer), "%lld", number.as.integer);
+          } else {
+              snprintf(buffer, sizeof(buffer), "%.0f", round(number.as.floating));
+          }
+          return harbour_str_apply_width(buffer, width, 1);
+      }
 
     return harbour_str_default_numeric(number);
 }

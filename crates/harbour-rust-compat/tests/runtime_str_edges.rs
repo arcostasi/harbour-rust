@@ -25,6 +25,14 @@ fn runtime_str_edges_baseline() -> String {
         ))
     ));
     out.push_str(&format!(
+        "Str(-10.5, -5) => {}\n",
+        result_text(str_value(
+            Some(&Value::from(-10.5_f64)),
+            Some(&Value::from(-5_i64)),
+            None,
+        ))
+    ));
+    out.push_str(&format!(
         "Str(-10, -5) => {}\n",
         result_text(str_value(
             Some(&Value::from(-10_i64)),
@@ -54,6 +62,22 @@ fn runtime_str_edges_baseline() -> String {
             Some(&Value::from(100_i64)),
             Some(&Value::Nil),
             Some(&Value::Nil),
+        ))
+    ));
+    out.push_str(&format!(
+        "Str(10.5, 5, 0) => {}\n",
+        result_text(str_value(
+            Some(&Value::from(10.5_f64)),
+            Some(&Value::from(5_i64)),
+            Some(&Value::from(0_i64)),
+        ))
+    ));
+    out.push_str(&format!(
+        "Str(-10.5, 5, 0) => {}\n",
+        result_text(str_value(
+            Some(&Value::from(-10.5_f64)),
+            Some(&Value::from(5_i64)),
+            Some(&Value::from(0_i64)),
         ))
     ));
     out
@@ -95,10 +119,13 @@ fn str_edges_runtime_matches_upstream_oracle_snapshot() {
 
     assert!(upstream_stra.contains("HBTEST Str( 10, -5 )"));
     assert!(upstream_stra.contains("HBTEST Str( 10.50, -5 )"));
+    assert!(upstream_stra.contains("HBTEST Str( -10.50, -5 )"));
     assert!(upstream_stra.contains("HBTEST Str( -10, -5 )"));
     assert!(upstream_stra.contains("HBTEST Str( 100000, -8 )"));
     assert!(upstream_stra.contains("HBTEST Str( 100, 10, NIL )"));
     assert!(upstream_stra.contains("HBTEST Str( 100, NIL, NIL )"));
+    assert!(upstream_stra.contains("HBTEST Str( 10.50, 5, 0 )"));
+    assert!(upstream_stra.contains("HBTEST Str( -10.50, 5, 0 )"));
 
     assert_eq!(runtime_str_edges_baseline(), expected);
 }

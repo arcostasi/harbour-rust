@@ -49,7 +49,7 @@ The runtime already supports:
 - compatibility-oriented diagnostics for selected array and numeric operations;
 - Clipper-style string overflow limits for `Replicate()` and `Space()`.
 - oracle-backed `SubStr()`/`Right()` leniency and host-C preservation of embedded `Chr(0)` in selected executable string helpers.
-- default-width padding for explicit negative-width `Str()` formatting, with width-driven rounding differences still documented separately.
+- default-width padding for explicit negative-width `Str()` formatting, and width-driven `Str()` rounding now aligned with the oracle through half-away-from-zero behavior.
 
 ## Known Limits
 

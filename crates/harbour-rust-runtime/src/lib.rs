@@ -2306,14 +2306,26 @@ fn format_str_default(number: StrNumeric) -> String {
 fn format_str_rounded(number: StrNumeric) -> String {
     match number {
         StrNumeric::Integer(value) => value.to_string(),
-        StrNumeric::Float(value) => format!("{:.0}", value),
+        StrNumeric::Float(value) => round_with_decimals(value, 0).to_string(),
     }
 }
 
 fn format_str_fixed(number: StrNumeric, decimals: usize) -> String {
     match number {
-        StrNumeric::Integer(value) => format!("{:.*}", decimals, value as f64),
-        StrNumeric::Float(value) => format!("{:.*}", decimals, value),
+        StrNumeric::Integer(value) => {
+            if decimals == 0 {
+                value.to_string()
+            } else {
+                format!("{:.*}", decimals, value as f64)
+            }
+        }
+        StrNumeric::Float(value) => {
+            if decimals == 0 {
+                round_with_decimals(value, 0).to_string()
+            } else {
+                format!("{:.*}", decimals, value)
+            }
+        }
     }
 }
 

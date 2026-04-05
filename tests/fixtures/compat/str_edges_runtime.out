@@ -1,6 +1,9 @@
 Str(10, -5) =>         10
-Str(10.5, -5) =>         10
+Str(10.5, -5) =>         11
+Str(-10.5, -5) =>        -11
 Str(-10, -5) =>        -10
 Str(100000, -8) =>     100000
 Str(100, 10, NIL) => BASE 1099 Argument error (STR)
 Str(100, NIL, NIL) => BASE 1099 Argument error (STR)
+Str(10.5, 5, 0) =>    11
+Str(-10.5, 5, 0) =>   -11
