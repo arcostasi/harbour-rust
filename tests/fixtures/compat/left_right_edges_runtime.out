@@ -1,0 +1,5 @@
+Left("abcdef", 0) => ""
+Left("ab\0def", 5) => "ab\0de"
+Right("abcdef", 0) => ""
+Right("ab\0def", 5) => "b\0def"
+Right("abcdef", -10) => ""

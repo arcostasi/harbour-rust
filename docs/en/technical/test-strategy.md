@@ -26,4 +26,4 @@ Compatibility is not assumed. It is measured.
 
 ## Current Status
 
-The repository already has a practical test matrix covering compiler slices, runtime behavior, CLI execution, golden snapshots, compare tooling, benchmark smoke, and fuzz compilation checks. The compatibility corpus also includes focused runtime string fixtures for control-character trim behavior, `At()` edge cases, and `Replicate()` overflow/preservation behavior anchored to the upstream oracle when available.
+The repository already has a practical test matrix covering compiler slices, runtime behavior, CLI execution, golden snapshots, compare tooling, benchmark smoke, and fuzz compilation checks. The compatibility corpus also includes focused runtime string fixtures for control-character trim behavior, `At()` edge cases, `SubStr()`/`Left()`/`Right()` slicing behavior, and `Replicate()` overflow/preservation behavior anchored to the upstream oracle when available.

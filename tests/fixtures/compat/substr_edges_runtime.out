@@ -1,0 +1,7 @@
+SubStr("abcdef", 0) => "abcdef"
+SubStr("abcdef", -10, 1) => "a"
+SubStr("abcdef", -10, 15) => "abcdef"
+SubStr("abcdef", 2, 0) => ""
+SubStr("ab\0def", 2, 3) => "b\0d"
+SubStr("abc\0def", 4, 1) => "\0"
+SubStr("abcdef", 1, "a") => BASE 1110 Argument error (SUBSTR)
