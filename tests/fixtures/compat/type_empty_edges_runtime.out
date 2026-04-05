@@ -1,0 +1,8 @@
+ValType(.F.) => L
+ValType("") => C
+ValType({}) => A
+Empty(" \\r\\t") => .T.
+Empty("  A") => .F.
+Empty(" \\0") => .F.
+Empty({}) => .T.
+Empty({0}) => .F.
