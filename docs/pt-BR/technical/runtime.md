@@ -49,6 +49,7 @@ O runtime já suporta:
 - diagnósticos orientados à compatibilidade para operações selecionadas de arrays e números;
 - limites de overflow de string ao estilo Clipper para `Replicate()` e `Space()`.
 - leniência guiada por oráculo em `SubStr()`/`Right()` e preservação de `Chr(0)` embutido em helpers selecionados do runtime executável em C.
+- padding em campo padrão para `Str()` com largura negativa explícita, com diferenças remanescentes de arredondamento guiado por largura documentadas separadamente.
 
 ## Limites Conhecidos
 

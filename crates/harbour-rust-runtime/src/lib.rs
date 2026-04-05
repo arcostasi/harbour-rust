@@ -2396,24 +2396,18 @@ fn parse_val_string(text: &str) -> Value {
 }
 
 fn apply_str_width(formatted: String, width: Option<i64>) -> String {
-    match width {
-        None => {
-            let width = 10usize;
-            if formatted.len() >= width {
-                formatted
-            } else {
-                format!("{formatted:>width$}")
-            }
-        }
-        Some(width) if width <= 0 => formatted,
-        Some(width) => {
-            let width = width as usize;
-            if formatted.len() > width {
-                "*".repeat(width)
-            } else {
-                format!("{formatted:>width$}")
-            }
-        }
+    let width = match width {
+        None => 10usize,
+        Some(width) if width <= 0 => 10usize,
+        Some(width) => width as usize,
+    };
+
+    if formatted.len() > width {
+        "*".repeat(width)
+    } else if formatted.len() >= width {
+        formatted
+    } else {
+        format!("{formatted:>width$}")
     }
 }
 

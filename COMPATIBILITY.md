@@ -30,7 +30,7 @@ The project is still alpha software. Known limits include:
 - no native backend yet; C is the primary executable backend;
 - compatibility gaps remain in advanced macro behavior, broader runtime fidelity, and extended RDD coverage;
 - `Val()` still has documented parsing gaps versus the historical oracle in areas such as trailing dots, repeated punctuation/sign handling, and exponent-like input;
-- `Str()` still has documented compatibility gaps around negative-width formatting, including default-width padding and width-driven rounding behavior versus the historical oracle;
+- `Str()` still has documented compatibility gaps around width-driven rounding behavior versus the historical oracle, even though negative-width padding now follows the default-width baseline;
 - source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the executable host-C runtime now preserves them in selected helpers once present;
 - historical edge cases must be treated as unsupported until tested and documented.
 

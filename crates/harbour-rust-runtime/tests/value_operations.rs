@@ -1281,6 +1281,10 @@ fn public_str_matches_the_current_numeric_runtime_baseline() {
         Ok(Value::from("   10"))
     );
     assert_eq!(
+        str_value(Some(&Value::from(10_i64)), Some(&Value::from(-5_i64)), None),
+        Ok(Value::from("        10"))
+    );
+    assert_eq!(
         str_value(
             Some(&Value::from(10.6_f64)),
             Some(&Value::from(5_i64)),
@@ -1290,11 +1294,35 @@ fn public_str_matches_the_current_numeric_runtime_baseline() {
     );
     assert_eq!(
         str_value(
+            Some(&Value::from(10.5_f64)),
+            Some(&Value::from(-5_i64)),
+            None,
+        ),
+        Ok(Value::from("        10"))
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from(-10_i64)),
+            Some(&Value::from(-5_i64)),
+            None,
+        ),
+        Ok(Value::from("       -10"))
+    );
+    assert_eq!(
+        str_value(
             Some(&Value::from(2_i64)),
             Some(&Value::from(5_i64)),
             Some(&Value::from(2_i64)),
         ),
         Ok(Value::from(" 2.00"))
+    );
+    assert_eq!(
+        str_value(
+            Some(&Value::from(100000_i64)),
+            Some(&Value::from(-8_i64)),
+            None,
+        ),
+        Ok(Value::from("    100000"))
     );
     assert_eq!(
         str_value(

@@ -2018,25 +2018,25 @@ static harbour_runtime_Value harbour_str_apply_width(
     }
 
     length = strlen(formatted);
-    if (!explicit_width) {
+    if (!explicit_width || width <= 0) {
         target_width = 10;
-        if (length >= target_width) {
-            return harbour_string_value_from_owned_buffer(formatted, length);
-        }
-    } else if (width <= 0) {
-        return harbour_string_value_from_owned_buffer(formatted, length);
     } else {
         target_width = (size_t) width;
-        if (length > target_width) {
-            buffer = (char *) malloc(target_width + 1);
-            if (buffer == NULL) {
-                return harbour_value_from_string_literal("");
-            }
+    }
 
-            memset(buffer, '*', target_width);
-            buffer[target_width] = '\0';
-            return harbour_value_from_owned_string_buffer(buffer, target_width);
+    if (length > target_width) {
+        buffer = (char *) malloc(target_width + 1);
+        if (buffer == NULL) {
+            return harbour_value_from_string_literal("");
         }
+
+        memset(buffer, '*', target_width);
+        buffer[target_width] = '\0';
+        return harbour_value_from_owned_string_buffer(buffer, target_width);
+    }
+
+    if (length >= target_width) {
+        return harbour_string_value_from_owned_buffer(formatted, length);
     }
 
     buffer = (char *) malloc(target_width + 1);

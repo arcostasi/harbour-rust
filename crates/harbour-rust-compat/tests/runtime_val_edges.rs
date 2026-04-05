@@ -49,9 +49,10 @@ fn result_text(result: Result<Value, RuntimeError>) -> String {
 
 #[test]
 fn val_edges_fixture_parses_without_errors() {
-    let source =
-        fs::read_to_string(workspace_fixture("tests/fixtures/compat/val_edges_runtime.prg"))
-            .expect("fixture source");
+    let source = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/compat/val_edges_runtime.prg",
+    ))
+    .expect("fixture source");
     let parsed = parse(&source);
 
     assert!(
@@ -68,9 +69,10 @@ fn val_edges_runtime_matches_upstream_oracle_snapshot() {
     else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/compat/val_edges_runtime.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/compat/val_edges_runtime.out",
+    ))
+    .expect("fixture snapshot");
 
     assert!(upstream_str.contains("HBTEST Str( Val( \"1.\" ) )"));
     assert!(upstream_str.contains("HBTEST Str( Val( \"1..\" ) )"));
