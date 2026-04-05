@@ -1,0 +1,5 @@
+Type("  NIL  ") => U
+Type("  .F.  ") => L
+Type("{}") => A
+Type(" { } ") => A
+Type("  mxNotHere  ") => U
