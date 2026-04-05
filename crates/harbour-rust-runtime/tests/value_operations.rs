@@ -855,10 +855,26 @@ fn public_substr_matches_the_current_ascii_runtime_baseline() {
     assert_eq!(
         substr(
             Some(&Value::from("abcdef")),
+            Some(&Value::from(-10_i64)),
+            Some(&Value::from(15_i64)),
+        ),
+        Ok(Value::from("abcdef"))
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
             Some(&Value::from(-2_i64)),
             None,
         ),
         Ok(Value::from("ef"))
+    );
+    assert_eq!(
+        substr(
+            Some(&Value::from("abcdef")),
+            Some(&Value::from(0_i64)),
+            None
+        ),
+        Ok(Value::from("abcdef"))
     );
     assert_eq!(
         substr(
@@ -1004,6 +1020,10 @@ fn public_right_matches_the_current_lenient_runtime_baseline() {
     assert_eq!(
         right(Some(&Value::from("abcdef")), Some(&Value::from(10_i64))),
         Ok(Value::from("abcdef"))
+    );
+    assert_eq!(
+        right(Some(&Value::from("abcdef")), Some(&Value::from(0_i64))),
+        Ok(Value::from(""))
     );
 }
 

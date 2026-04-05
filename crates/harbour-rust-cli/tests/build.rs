@@ -1546,7 +1546,7 @@ fn run_command_executes_substr_builtin_fixture_with_expected_output() {
     assert!(output.status.success(), "expected successful run status");
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert_eq!(stdout, "a\nbcdef\n\n");
+    assert_eq!(stdout, "a\nbcdef\nabcdef\nabcdef\n\n");
 }
 
 #[test]
@@ -1578,7 +1578,7 @@ fn run_command_executes_left_right_builtin_fixture_with_expected_output() {
     assert!(output.status.success(), "expected successful run status");
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert_eq!(stdout, "ab\nabcdef\nef\nabcdef\n");
+    assert_eq!(stdout, "ab\nabcdef\nef\nabcdef\n\n\n");
 }
 
 #[test]

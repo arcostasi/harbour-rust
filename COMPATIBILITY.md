@@ -14,7 +14,7 @@ Harbour Rust aims for practical compatibility with CA-Clipper and Harbour, start
 | Lexer | stable initial baseline | spans, positions, comments, strings, numbers, keywords |
 | Parser and AST | stable for current subset | procedural constructs, arrays, memvar syntax, codeblocks, macro reads |
 | HIR and semantics | stable for current subset | routine resolution, local/static bindings, memvars |
-| Runtime | broad alpha baseline | core values, arrays, selected string/math/conversion builtins, oracle-backed string edge-case coverage for trim, search, slicing, and replication behavior, and Clipper-style string overflow limits in `Replicate()`/`Space()` |
+| Runtime | broad alpha baseline | core values, arrays, selected string/math/conversion builtins, oracle-backed string edge-case coverage for trim, search, slicing, and replication behavior, Clipper-style string overflow limits in `Replicate()`/`Space()`, and executable `SubStr()`/`Right()` coverage for the current non-`Chr(0)` subset |
 | Preprocessor | curated advanced subset | `#define`, `#include`, `#command`, `#translate` |
 | C backend | practical alpha backend | procedural flow, selected runtime helpers and dynamic features |
 | CLI | usable alpha interface | `help`, `check`, `build`, `run`, `transpile --to c` |
@@ -29,6 +29,7 @@ The project is still alpha software. Known limits include:
 - selected builtins implemented only for the currently tested subset of value kinds;
 - no native backend yet; C is the primary executable backend;
 - compatibility gaps remain in advanced macro behavior, broader runtime fidelity, and extended RDD coverage;
+- the executable C path still treats strings as C strings, so embedded `Chr(0)` preservation remains a documented limitation outside the Rust runtime surface;
 - historical edge cases must be treated as unsupported until tested and documented.
 
 ## Oracle Policy
