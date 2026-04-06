@@ -1,0 +1,7 @@
+PROCEDURE Main()
+   QOUT(  )
+   QOUT(  a\  )
+   dm( "a" )
+   MyFunction( {MYCLAUSE 321 "HELLO"}  )
+   MyFunction( {"HELLO","all" MYCLAUSE 321}  )
+RETURN

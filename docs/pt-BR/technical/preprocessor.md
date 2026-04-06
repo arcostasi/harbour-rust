@@ -26,4 +26,4 @@ As áreas implementadas incluem:
 
 ## Estado Atual
 
-O pré-processador já suporta o baseline alpha atual do projeto, mas formas avançadas de markers e fidelidade com corpus maior continuam como trabalho futuro.
+O pré-processador já suporta o baseline alpha atual do projeto. Fixtures focadas de compatibilidade agora também acompanham gaps conhecidos em combinações de marcadores opcionais e stringify vindas do corpus hbpp do upstream, mas replacements opcionais com colchetes escapados e capturas reordenadas de cláusulas opcionais ainda ficam como trabalho futuro.

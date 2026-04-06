@@ -26,4 +26,4 @@ Implemented areas include:
 
 ## Current Status
 
-The preprocessor already supports the project's current alpha baseline, but advanced marker forms and broader corpus fidelity remain future work.
+The preprocessor already supports the project's current alpha baseline. Focused compatibility fixtures now also track known gaps in optional-marker and stringify combinations drawn from the upstream hbpp corpus, but escaped-bracket optional replacements and reordered optional captures still remain future work.

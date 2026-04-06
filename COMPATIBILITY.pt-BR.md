@@ -15,7 +15,7 @@ Harbour Rust busca compatibilidade prática com CA-Clipper e Harbour, começando
 | Parser e AST | estável para o subconjunto atual | construções procedurais, arrays, sintaxe de memvar, codeblocks, macro reads |
 | HIR e semântica | estável para o subconjunto atual | resolução de rotinas, bindings locais/`STATIC`, memvars |
 | Runtime | baseline alpha amplo | valores centrais, arrays, builtins selecionados de string/matemática/conversão, cobertura de edge cases de strings guiada por oráculo para trim, busca, recorte, replicação, parsing de `Val()`, formatação de `Str()`, edge cases numéricos focados de `Round()`/`Int()`, saída executável de `Round()` com floats grandes alinhada para evitar notação científica, edge cases focados de compatibilidade em `Mod()`/`ValType()`/`Empty()` incluindo codeblocks e valores de erro no host C, edge cases focados de `Max()`/`Min()` e `Abs()`, edge cases focados de `Type()`/`Len()`, limites de overflow de string ao estilo Clipper em `Replicate()`/`Space()` e preservação executável de `Chr(0)` embutido em helpers selecionados do runtime host C |
-| Pré-processador | subconjunto avançado curado | `#define`, `#include`, `#command`, `#translate` |
+| Pré-processador | subconjunto avançado curado | `#define`, `#include`, `#command`, `#translate`, além de baselines de gap ancoradas no oráculo para regras edge de marcadores opcionais e stringify |
 | Backend C | backend alpha prático | fluxo procedural, helpers de runtime selecionados e recursos dinâmicos |
 | CLI | interface alpha utilizável | `help`, `check`, `build`, `run`, `transpile --to c` |
 | RDD/DBF | baseline inicial utilizável | parsing de schema, navegação, leitura, append/update/delete/recall |
@@ -29,6 +29,7 @@ O projeto ainda está em alpha. Limites conhecidos incluem:
 - builtins selecionados implementados apenas para o subconjunto de tipos atualmente testado;
 - ainda não existe backend nativo; C é o backend executável principal;
 - ainda há lacunas de compatibilidade em comportamento avançado de macro, fidelidade mais ampla de runtime e cobertura estendida de RDD;
+- casos avançados de pré-processador com replacements opcionais usando colchetes escapados, combinações com dumb-stringify e captura reordenada de cláusulas opcionais agora têm fixtures focadas ancoradas no oráculo, mas ainda divergem do baseline do upstream;
 - `Val()` agora segue o subconjunto ASCII atual guiado por oráculo para continuações com ponto final, sinais repetidos, paradas estilo expoente, pontuação mista e fragmentos separados por espaço após o separador decimal; a divergência remanescente ficou ligada à construção de `Chr(0)` embutido a partir do código-fonte no caminho atual de frontend/codegen;
 - `Str()` agora segue o baseline atual guiado por oráculo para arredondamento half-away-from-zero guiado por largura, padding com largura negativa, números positivos grandes em largura default e preservação da escala visual de literais float no caminho executável em C; a lacuna documentada remanescente está na formatação em largura default de alguns números negativos grandes produzidos por expressão;
 - a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime executável em C já preservando esses bytes em helpers selecionados quando eles existem;
