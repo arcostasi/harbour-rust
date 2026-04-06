@@ -1455,7 +1455,32 @@ fn public_val_matches_the_current_string_to_numeric_runtime_baseline() {
     assert_eq!(val(Some(&Value::from("-INF"))), Ok(Value::from(0_i64)));
     assert_eq!(val(Some(&Value::from("+NAN"))), Ok(Value::from(0_i64)));
     assert_eq!(val(Some(&Value::from("-NAN"))), Ok(Value::from(0_i64)));
-    assert_eq!(val(Some(&Value::from("13.1.9"))), Ok(Value::from(13.1_f64)));
+    assert_eq!(
+        str_value(val(Some(&Value::from("13.1.9"))).ok().as_ref(), None, None),
+        Ok(Value::from("    13.100"))
+    );
+    assert_eq!(
+        str_value(val(Some(&Value::from("12. 0"))).ok().as_ref(), None, None),
+        Ok(Value::from("     12.00"))
+    );
+    assert_eq!(
+        str_value(val(Some(&Value::from("12 .0"))).ok().as_ref(), None, None),
+        Ok(Value::from("      12.0"))
+    );
+    assert_eq!(
+        str_value(val(Some(&Value::from("12. 10"))).ok().as_ref(), None, None),
+        Ok(Value::from("    12.000"))
+    );
+    assert_eq!(
+        str_value(val(Some(&Value::from("12 .10"))).ok().as_ref(), None, None),
+        Ok(Value::from("     12.00"))
+    );
+    assert_eq!(
+        val(Some(&Value::from("13.1.9")))
+            .expect("parsed val")
+            .float_display_scale(),
+        Some(3)
+    );
 }
 
 #[test]

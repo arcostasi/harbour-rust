@@ -29,7 +29,7 @@ The project is still alpha software. Known limits include:
 - selected builtins implemented only for the currently tested subset of value kinds;
 - no native backend yet; C is the primary executable backend;
 - compatibility gaps remain in advanced macro behavior, broader runtime fidelity, and extended RDD coverage;
-- `Val()` still has documented parsing gaps versus the historical oracle in historical decimal-scale preservation for mixed punctuation and space-separated fragments after the decimal separator;
+- `Val()` now follows the current oracle-backed ASCII subset for trailing-dot continuations, repeated signs, exponent-like stop conditions, mixed punctuation, and space-separated fragments after the decimal separator; the remaining divergence is tied to source-level embedded `Chr(0)` construction in the current frontend/codegen path;
 - `Str()` still has documented compatibility gaps in selected historical formatting details, but width-driven half-away-from-zero rounding and negative-width padding now follow the current oracle-backed baseline;
 - source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the executable host-C runtime now preserves them in selected helpers once present;
 - historical edge cases must be treated as unsupported until tested and documented.

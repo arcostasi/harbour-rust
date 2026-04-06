@@ -126,9 +126,13 @@ static _Bool harbour_array_scan_matches(
     harbour_runtime_Value candidate,
     harbour_runtime_Value search
 );
-static void harbour_print_float(double value);
+static void harbour_print_float(harbour_runtime_Value value);
 static harbour_runtime_Value harbour_unsupported_comparison(void);
 static harbour_runtime_Value harbour_array_comparison_error(const char *message);
+static harbour_runtime_Value harbour_value_from_float_with_scale(
+    double floating,
+    unsigned int display_scale
+);
 
 static unsigned long long harbour_array_identity_seed = 1;
 static unsigned long long harbour_codeblock_identity_seed = 1;
@@ -138,12 +142,16 @@ static harbour_memvar_Entry *harbour_public_memvars = NULL;
 harbour_runtime_Value harbour_value_nil(void) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_NIL;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     return value;
 }
 
 harbour_runtime_Value harbour_value_from_logical(_Bool logical) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_LOGICAL;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.as.logical = logical;
     return value;
 }
@@ -151,13 +159,24 @@ harbour_runtime_Value harbour_value_from_logical(_Bool logical) {
 harbour_runtime_Value harbour_value_from_integer(long long integer) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_INTEGER;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.as.integer = integer;
     return value;
 }
 
 harbour_runtime_Value harbour_value_from_float(double floating) {
+    return harbour_value_from_float_with_scale(floating, 0);
+}
+
+static harbour_runtime_Value harbour_value_from_float_with_scale(
+    double floating,
+    unsigned int display_scale
+) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_FLOAT;
+    value.has_display_scale = display_scale > 0;
+    value.display_scale = display_scale;
     value.as.floating = floating;
     return value;
 }
@@ -185,6 +204,8 @@ harbour_runtime_Value harbour_value_from_string_parts(
 harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_STRING;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.as.string.data = string == NULL ? "" : string;
     value.as.string.length = string == NULL ? 0 : strlen(string);
     return value;
@@ -196,6 +217,8 @@ harbour_runtime_Value harbour_value_from_codeblock(
 ) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_CODEBLOCK;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.codeblock_function = function;
     value.as.codeblock.identity = harbour_allocate_codeblock_identity();
     value.as.codeblock.repr = repr;
@@ -205,6 +228,8 @@ harbour_runtime_Value harbour_value_from_codeblock(
 harbour_runtime_Value harbour_value_error_literal(const char *error) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_ERROR;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.as.error = error;
     return value;
 }
@@ -215,6 +240,8 @@ static harbour_runtime_Value harbour_value_from_owned_string_buffer(
 ) {
     harbour_runtime_Value value;
     value.kind = HARBOUR_VALUE_STRING;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.as.string.data = buffer == NULL ? "" : buffer;
     value.as.string.length = buffer == NULL ? 0 : length;
     return value;
@@ -366,6 +393,8 @@ harbour_runtime_Value harbour_value_from_array_items(
     size_t index;
 
     value.kind = HARBOUR_VALUE_ARRAY;
+    value.has_display_scale = 0;
+    value.display_scale = 0;
     value.as.array.length = length;
     value.as.array.items = NULL;
     value.as.array.identity = harbour_allocate_array_identity();
@@ -379,6 +408,8 @@ harbour_runtime_Value harbour_value_from_array_items(
     );
     if (value.as.array.items == NULL) {
         value.kind = HARBOUR_VALUE_NIL;
+        value.has_display_scale = 0;
+        value.display_scale = 0;
         value.as.array.length = 0;
         value.as.array.identity = 0;
         return value;
@@ -849,7 +880,7 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
         fprintf(stdout, "%lld", value->as.integer);
         break;
     case HARBOUR_VALUE_FLOAT:
-        harbour_print_float(value->as.floating);
+        harbour_print_float(*value);
         break;
     case HARBOUR_VALUE_STRING:
         fwrite(value->as.string.data, 1, value->as.string.length, stdout);
@@ -869,10 +900,20 @@ static void harbour_print_value(const harbour_runtime_Value *value) {
     }
 }
 
-static void harbour_print_float(double value) {
+static void harbour_print_float(harbour_runtime_Value value) {
     char buffer[128];
 
-    snprintf(buffer, sizeof(buffer), "%.15g", value);
+    if (value.has_display_scale) {
+        snprintf(
+            buffer,
+            sizeof(buffer),
+            "%.*f",
+            (int) value.display_scale,
+            value.as.floating
+        );
+    } else {
+        snprintf(buffer, sizeof(buffer), "%.15g", value.as.floating);
+    }
     fputs(buffer, stdout);
 }
 
@@ -2098,6 +2139,17 @@ static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value v
     if (value.kind == HARBOUR_VALUE_FLOAT) {
         size_t length;
 
+        if (value.has_display_scale) {
+            snprintf(
+                buffer,
+                sizeof(buffer),
+                "%.*f",
+                (int) value.display_scale,
+                value.as.floating
+            );
+            return harbour_str_apply_width(buffer, 10, 0);
+        }
+
         snprintf(buffer, sizeof(buffer), "%.15f", value.as.floating);
         length = strlen(buffer);
         while (length > 0 && buffer[length - 1] == '0') {
@@ -2115,6 +2167,7 @@ static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value v
 
 static harbour_runtime_Value harbour_val_parse_string(const char *text) {
     const unsigned char *cursor = (const unsigned char *) text;
+    const unsigned char *probe;
     double sign = 1.0;
     char integer_buffer[128];
     char fraction_buffer[128];
@@ -2122,6 +2175,8 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
     size_t fraction_length = 0;
     _Bool saw_fraction_marker = 0;
     _Bool degraded_fraction = 0;
+    _Bool spaced_before_fraction_marker = 0;
+    _Bool last_fraction_was_digit = 0;
     char numeric_buffer[260];
     double parsed;
 
@@ -2154,9 +2209,16 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
     }
     integer_buffer[integer_length] = '\0';
 
-    if (*cursor == '.') {
+    probe = cursor;
+    while (*probe != '\0' && isspace(*probe)) {
+        spaced_before_fraction_marker = 1;
+        probe++;
+    }
+
+    if (*probe == '.') {
         saw_fraction_marker = 1;
-        cursor++;
+        degraded_fraction = spaced_before_fraction_marker;
+        cursor = probe + 1;
         while (*cursor != '\0') {
             if (isdigit(*cursor)) {
                 if (fraction_length + 1 < sizeof(fraction_buffer)) {
@@ -2164,15 +2226,34 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
                         ? '0'
                         : (char) *cursor;
                 }
+                last_fraction_was_digit = 1;
                 cursor++;
                 continue;
             }
 
             if (*cursor == '.') {
                 degraded_fraction = 1;
-                if (fraction_length + 1 < sizeof(fraction_buffer)) {
+                if (
+                    (fraction_length == 0 || last_fraction_was_digit) &&
+                    fraction_length + 1 < sizeof(fraction_buffer)
+                ) {
                     fraction_buffer[fraction_length++] = '0';
                 }
+                last_fraction_was_digit = 0;
+                cursor++;
+                continue;
+            }
+
+            if (isspace(*cursor)) {
+                degraded_fraction = 1;
+                if (
+                    isdigit(*(cursor + 1)) &&
+                    (fraction_length == 0 || last_fraction_was_digit) &&
+                    fraction_length + 1 < sizeof(fraction_buffer)
+                ) {
+                    fraction_buffer[fraction_length++] = '0';
+                }
+                last_fraction_was_digit = 0;
                 cursor++;
                 continue;
             }
@@ -2206,9 +2287,12 @@ static harbour_runtime_Value harbour_val_parse_string(const char *text) {
 
         parsed = strtod(numeric_buffer, NULL) * sign;
         if (parsed == 0.0) {
-            return harbour_value_from_float(0.0);
+            return harbour_value_from_float_with_scale(0.0, (unsigned int) fraction_length);
         }
-        return harbour_value_from_float(parsed);
+        return harbour_value_from_float_with_scale(
+            parsed,
+            (unsigned int) fraction_length
+        );
     }
 
     parsed = strtod(integer_buffer, NULL);

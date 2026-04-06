@@ -726,7 +726,7 @@ fn parse_numeric_field(field: &FieldDescriptor, raw: &[u8]) -> Result<Value, Rdd
 
     trimmed
         .parse::<f64>()
-        .map(Value::Float)
+        .map(Value::from)
         .map_err(|_| RddError::NumericParse {
             field: field.name.clone(),
             raw: trimmed.to_owned(),
@@ -804,7 +804,7 @@ fn encode_numeric_field(field: &FieldDescriptor, value: &Value) -> Result<Vec<u8
         Value::Nil => String::new(),
         Value::Integer(number) if field.decimals == 0 => number.to_string(),
         Value::Integer(number) => format!("{:.*}", field.decimals as usize, *number as f64),
-        Value::Float(number) => format!("{:.*}", field.decimals as usize, number),
+        Value::Float(number) => format!("{:.*}", field.decimals as usize, number.raw()),
         other => {
             return Err(RddError::type_mismatch(
                 field.name.clone(),

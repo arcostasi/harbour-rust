@@ -56,7 +56,7 @@ O runtime já suporta:
 
 - ainda não existem todos os tipos históricos de valor de xBase;
 - alguns builtins cobrem apenas o subconjunto de argumentos já testado;
-- `Val()` agora segue o oráculo em continuações com ponto final como `1..`, `1...`, `..` e `-..`, e o subconjunto atual também já bate em sinais repetidos e paradas estilo expoente; a divergência remanescente está na preservação histórica da escala decimal em pontuação mista e fragmentos separados por espaço após o separador decimal;
+- `Val()` agora segue o oráculo em continuações com ponto final como `1..`, `1...`, `..` e `-..`; o subconjunto ASCII atual também já bate em sinais repetidos, paradas estilo expoente, pontuação mista como `13.1.9` e fragmentos separados por espaço após o separador decimal como `12. 0` e `12 .10`; a divergência remanescente ficou ligada à construção de `Chr(0)` embutido a partir do código-fonte no caminho atual de frontend/codegen;
 - a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime host C já preservando esses bytes em helpers selecionados quando eles existem;
 - a formatação histórica exata ainda diverge em alguns edge cases.
 

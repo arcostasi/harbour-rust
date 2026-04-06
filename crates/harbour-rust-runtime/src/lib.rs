@@ -88,13 +88,49 @@ impl PartialEq for CodeblockValue {
 
 impl Eq for CodeblockValue {}
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FloatValue {
+    value: f64,
+    display_scale: Option<usize>,
+}
+
+impl FloatValue {
+    pub fn new(value: f64) -> Self {
+        Self {
+            value,
+            display_scale: None,
+        }
+    }
+
+    pub fn with_display_scale(value: f64, display_scale: usize) -> Self {
+        Self {
+            value,
+            display_scale: Some(display_scale),
+        }
+    }
+
+    pub fn raw(self) -> f64 {
+        self.value
+    }
+
+    pub fn display_scale(self) -> Option<usize> {
+        self.display_scale
+    }
+}
+
+impl PartialEq for FloatValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Value {
     #[default]
     Nil,
     Logical(bool),
     Integer(i64),
-    Float(f64),
+    Float(FloatValue),
     String(String),
     Array(Vec<Value>),
     Codeblock(CodeblockValue),
@@ -144,7 +180,7 @@ impl Value {
     pub fn as_float(&self) -> Result<f64, RuntimeError> {
         match self {
             Self::Integer(value) => Ok(*value as f64),
-            Self::Float(value) => Ok(*value),
+            Self::Float(value) => Ok(value.raw()),
             _ => Err(RuntimeError::type_mismatch(
                 "convert value to float",
                 self.kind(),
@@ -317,10 +353,21 @@ impl Value {
             Self::Logical(true) => ".T.".to_owned(),
             Self::Logical(false) => ".F.".to_owned(),
             Self::Integer(value) => value.to_string(),
-            Self::Float(value) => value.to_string(),
+            Self::Float(value) => format_float_output(*value),
             Self::String(value) => value.clone(),
             Self::Array(values) => format!("{{ Array({}) }}", values.len()),
             Self::Codeblock(value) => value.repr().to_owned(),
+        }
+    }
+
+    pub fn float_with_scale(value: f64, display_scale: usize) -> Self {
+        Self::Float(FloatValue::with_display_scale(value, display_scale))
+    }
+
+    pub fn float_display_scale(&self) -> Option<usize> {
+        match self {
+            Self::Float(value) => value.display_scale(),
+            _ => None,
         }
     }
 
@@ -337,7 +384,7 @@ impl Value {
             }
             _ => match self.numeric_pair(rhs, "add")? {
                 NumericPair::Integers(left, right) => Ok(Self::Integer(left + right)),
-                NumericPair::Floats(left, right) => Ok(Self::Float(left + right)),
+                NumericPair::Floats(left, right) => Ok(Self::from(left + right)),
             },
         }
     }
@@ -345,14 +392,14 @@ impl Value {
     pub fn subtract(&self, rhs: &Self) -> Result<Self, RuntimeError> {
         match self.numeric_pair(rhs, "subtract")? {
             NumericPair::Integers(left, right) => Ok(Self::Integer(left - right)),
-            NumericPair::Floats(left, right) => Ok(Self::Float(left - right)),
+            NumericPair::Floats(left, right) => Ok(Self::from(left - right)),
         }
     }
 
     pub fn multiply(&self, rhs: &Self) -> Result<Self, RuntimeError> {
         match self.numeric_pair(rhs, "multiply")? {
             NumericPair::Integers(left, right) => Ok(Self::Integer(left * right)),
-            NumericPair::Floats(left, right) => Ok(Self::Float(left * right)),
+            NumericPair::Floats(left, right) => Ok(Self::from(left * right)),
         }
     }
 
@@ -362,7 +409,7 @@ impl Value {
             return Err(RuntimeError::division_by_zero());
         }
 
-        Ok(Self::Float(left / right))
+        Ok(Self::from(left / right))
     }
 
     pub fn equals(&self, rhs: &Self) -> Result<Self, RuntimeError> {
@@ -474,9 +521,9 @@ impl Value {
     ) -> Result<(f64, f64), RuntimeError> {
         match (self, rhs) {
             (Self::Integer(left), Self::Integer(right)) => Ok((*left as f64, *right as f64)),
-            (Self::Integer(left), Self::Float(right)) => Ok((*left as f64, *right)),
-            (Self::Float(left), Self::Integer(right)) => Ok((*left, *right as f64)),
-            (Self::Float(left), Self::Float(right)) => Ok((*left, *right)),
+            (Self::Integer(left), Self::Float(right)) => Ok((*left as f64, right.raw())),
+            (Self::Float(left), Self::Integer(right)) => Ok((left.raw(), *right as f64)),
+            (Self::Float(left), Self::Float(right)) => Ok((left.raw(), right.raw())),
             _ => Err(RuntimeError::binary_operator_mismatch(
                 operation,
                 self.kind(),
@@ -791,7 +838,7 @@ pub fn abs(value: Option<&Value>) -> Result<Value, RuntimeError> {
                 Ok(Value::from((*number as i128).abs() as f64))
             }
         }
-        Value::Float(number) => Ok(Value::from(number.abs())),
+        Value::Float(number) => Ok(Value::from(number.raw().abs())),
         other => Err(RuntimeError::abs_argument_error(Some(other.kind()))),
     }
 }
@@ -803,7 +850,7 @@ pub fn sqrt_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
 
     let number = match value {
         Value::Integer(number) => *number as f64,
-        Value::Float(number) => *number,
+        Value::Float(number) => number.raw(),
         other => return Err(RuntimeError::sqrt_argument_error(Some(other.kind()))),
     };
 
@@ -821,7 +868,7 @@ pub fn sin_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
 
     let number = match value {
         Value::Integer(number) => *number as f64,
-        Value::Float(number) => *number,
+        Value::Float(number) => number.raw(),
         other => return Err(RuntimeError::sin_argument_error(Some(other.kind()))),
     };
 
@@ -835,7 +882,7 @@ pub fn cos_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
 
     let number = match value {
         Value::Integer(number) => *number as f64,
-        Value::Float(number) => *number,
+        Value::Float(number) => number.raw(),
         other => return Err(RuntimeError::cos_argument_error(Some(other.kind()))),
     };
 
@@ -849,7 +896,7 @@ pub fn tan_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
 
     let number = match value {
         Value::Integer(number) => *number as f64,
-        Value::Float(number) => *number,
+        Value::Float(number) => number.raw(),
         other => return Err(RuntimeError::tan_argument_error(Some(other.kind()))),
     };
 
@@ -863,7 +910,7 @@ pub fn exp_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
 
     let number = match value {
         Value::Integer(number) => *number as f64,
-        Value::Float(number) => *number,
+        Value::Float(number) => number.raw(),
         other => return Err(RuntimeError::exp_argument_error(Some(other.kind()))),
     };
 
@@ -877,7 +924,7 @@ pub fn log_value(value: Option<&Value>) -> Result<Value, RuntimeError> {
 
     let number = match value {
         Value::Integer(number) => *number as f64,
-        Value::Float(number) => *number,
+        Value::Float(number) => number.raw(),
         other => return Err(RuntimeError::log_argument_error(Some(other.kind()))),
     };
 
@@ -896,7 +943,7 @@ pub fn int(value: Option<&Value>) -> Result<Value, RuntimeError> {
     match value {
         Value::Integer(number) => Ok(Value::from(*number)),
         Value::Float(number) => {
-            let truncated = number.trunc();
+            let truncated = number.raw().trunc();
             if truncated >= i64::MIN as f64 && truncated <= i64::MAX as f64 {
                 Ok(Value::from(truncated as i64))
             } else {
@@ -917,7 +964,7 @@ pub fn round_value(
 
     let value = match number {
         Value::Integer(value) => *value as f64,
-        Value::Float(value) => *value,
+        Value::Float(value) => value.raw(),
         other => return Err(RuntimeError::round_argument_error(Some(other.kind()))),
     };
 
@@ -945,12 +992,12 @@ pub fn mod_value(number: Option<&Value>, divisor: Option<&Value>) -> Result<Valu
 
     let number = match number {
         Value::Integer(value) => *value as f64,
-        Value::Float(value) => *value,
+        Value::Float(value) => value.raw(),
         other => return Err(RuntimeError::mod_argument_error(Some(other.kind()))),
     };
     let divisor = match divisor {
         Value::Integer(value) => *value as f64,
-        Value::Float(value) => *value,
+        Value::Float(value) => value.raw(),
         other => return Err(RuntimeError::mod_argument_error(Some(other.kind()))),
     };
 
@@ -1008,7 +1055,7 @@ pub fn str_value(
     let width = numeric_optional_i64(width, RuntimeError::str_argument_error)?;
     let decimals = numeric_optional_i64(decimals, RuntimeError::str_argument_error)?;
 
-    if matches!(numeric, StrNumeric::Float(value) if !value.is_finite()) {
+    if matches!(numeric, StrNumeric::Float(value) if !value.raw().is_finite()) {
         return Ok(Value::from(format_non_finite_str(width)));
     }
 
@@ -1063,7 +1110,7 @@ pub fn empty(value: Option<&Value>) -> Result<Value, RuntimeError> {
         Value::Nil => true,
         Value::Logical(value) => !value,
         Value::Integer(value) => *value == 0,
-        Value::Float(value) => *value == 0.0,
+        Value::Float(value) => value.raw() == 0.0,
         Value::String(text) => harbour_string_is_empty(text),
         Value::Array(values) => values.is_empty(),
         Value::Codeblock(_) => false,
@@ -1564,8 +1611,8 @@ fn array_scan_matches(candidate: &Value, search: &Value) -> bool {
         (Value::Nil, Value::Nil) => true,
         (Value::Logical(left), Value::Logical(right)) => left == right,
         (Value::Integer(left), Value::Integer(right)) => left == right,
-        (Value::Integer(left), Value::Float(right)) => (*left as f64) == *right,
-        (Value::Float(left), Value::Integer(right)) => *left == (*right as f64),
+        (Value::Integer(left), Value::Float(right)) => (*left as f64) == right.raw(),
+        (Value::Float(left), Value::Integer(right)) => left.raw() == (*right as f64),
         (Value::Float(left), Value::Float(right)) => left == right,
         (Value::String(left), Value::String(right)) => string_equals_exact_off(left, right),
         _ => false,
@@ -1600,7 +1647,7 @@ impl From<i64> for Value {
 
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
-        Self::Float(value)
+        Self::Float(FloatValue::new(value))
     }
 }
 
@@ -2187,9 +2234,9 @@ fn extremum_value(
 fn compare_extremum_values(left: &Value, right: &Value) -> Option<Ordering> {
     match (left, right) {
         (Value::Integer(left), Value::Integer(right)) => Some(left.cmp(right)),
-        (Value::Integer(left), Value::Float(right)) => (*left as f64).partial_cmp(right),
-        (Value::Float(left), Value::Integer(right)) => left.partial_cmp(&(*right as f64)),
-        (Value::Float(left), Value::Float(right)) => left.partial_cmp(right),
+        (Value::Integer(left), Value::Float(right)) => (*left as f64).partial_cmp(&right.raw()),
+        (Value::Float(left), Value::Integer(right)) => left.raw().partial_cmp(&(*right as f64)),
+        (Value::Float(left), Value::Float(right)) => left.raw().partial_cmp(&right.raw()),
         (Value::Logical(left), Value::Logical(right)) => Some(left.cmp(right)),
         _ => None,
     }
@@ -2293,20 +2340,26 @@ fn is_type_array_literal_text(text: &str) -> bool {
 #[derive(Clone, Copy)]
 enum StrNumeric {
     Integer(i64),
-    Float(f64),
+    Float(FloatValue),
 }
 
 fn format_str_default(number: StrNumeric) -> String {
     match number {
         StrNumeric::Integer(value) => value.to_string(),
-        StrNumeric::Float(value) => trim_default_float(format!("{value:.15}")),
+        StrNumeric::Float(value) => {
+            if let Some(display_scale) = value.display_scale() {
+                format!("{:.*}", display_scale, value.raw())
+            } else {
+                trim_default_float(format!("{:.15}", value.raw()))
+            }
+        }
     }
 }
 
 fn format_str_rounded(number: StrNumeric) -> String {
     match number {
         StrNumeric::Integer(value) => value.to_string(),
-        StrNumeric::Float(value) => round_with_decimals(value, 0).to_string(),
+        StrNumeric::Float(value) => round_with_decimals(value.raw(), 0).to_string(),
     }
 }
 
@@ -2321,9 +2374,9 @@ fn format_str_fixed(number: StrNumeric, decimals: usize) -> String {
         }
         StrNumeric::Float(value) => {
             if decimals == 0 {
-                round_with_decimals(value, 0).to_string()
+                round_with_decimals(value.raw(), 0).to_string()
             } else {
-                format!("{:.*}", decimals, value)
+                format!("{:.*}", decimals, value.raw())
             }
         }
     }
@@ -2347,49 +2400,89 @@ fn trim_default_float(mut text: String) -> String {
     text
 }
 
-fn parse_val_string(text: &str) -> Value {
-    let mut chars = text.chars().peekable();
-    while chars.next_if(|ch| ch.is_ascii_whitespace()).is_some() {}
+fn format_float_output(value: FloatValue) -> String {
+    if let Some(display_scale) = value.display_scale() {
+        format!("{:.*}", display_scale, value.raw())
+    } else {
+        value.raw().to_string()
+    }
+}
 
-    let sign = match chars.peek().copied() {
-        Some('-') => {
-            chars.next();
+fn parse_val_string(text: &str) -> Value {
+    let bytes = text.as_bytes();
+    let mut cursor = 0usize;
+
+    while matches!(bytes.get(cursor), Some(byte) if byte.is_ascii_whitespace()) {
+        cursor += 1;
+    }
+
+    let sign = match bytes.get(cursor).copied() {
+        Some(b'-') => {
+            cursor += 1;
             -1.0_f64
         }
-        Some('+') => {
-            chars.next();
+        Some(b'+') => {
+            cursor += 1;
             1.0_f64
         }
         _ => 1.0_f64,
     };
 
-    if matches!(chars.peek(), Some('+' | '-')) {
-        while chars.next_if(|ch| *ch == '+' || *ch == '-').is_some() {}
-        if matches!(chars.peek(), Some('.')) {
+    if matches!(bytes.get(cursor), Some(b'+' | b'-')) {
+        while matches!(bytes.get(cursor), Some(b'+' | b'-')) {
+            cursor += 1;
+        }
+        if matches!(bytes.get(cursor), Some(b'.')) {
             return Value::from(0.0_f64);
         }
         return Value::from(0_i64);
     }
 
     let mut integer_part = String::new();
-    while let Some(ch) = chars.next_if(|ch| ch.is_ascii_digit()) {
-        integer_part.push(ch);
+    while let Some(byte) = bytes.get(cursor).copied() {
+        if byte.is_ascii_digit() {
+            integer_part.push(byte as char);
+            cursor += 1;
+        } else {
+            break;
+        }
+    }
+
+    let mut probe = cursor;
+    let mut spaced_before_fraction_marker = false;
+    while matches!(bytes.get(probe), Some(byte) if byte.is_ascii_whitespace()) {
+        spaced_before_fraction_marker = true;
+        probe += 1;
     }
 
     let mut fractional_part = String::new();
     let mut saw_fraction_marker = false;
-    let mut degraded_fraction = false;
-    if matches!(chars.peek(), Some('.')) {
+    let mut degraded_fraction = spaced_before_fraction_marker;
+    let mut last_fraction_was_digit = false;
+    if matches!(bytes.get(probe), Some(b'.')) {
         saw_fraction_marker = true;
-        chars.next();
-        while let Some(ch) = chars.peek().copied() {
-            if ch.is_ascii_digit() {
-                fractional_part.push(if degraded_fraction { '0' } else { ch });
-                chars.next();
-            } else if ch == '.' {
+        cursor = probe + 1;
+        while let Some(byte) = bytes.get(cursor).copied() {
+            if byte.is_ascii_digit() {
+                fractional_part.push(if degraded_fraction { '0' } else { byte as char });
+                last_fraction_was_digit = true;
+                cursor += 1;
+            } else if byte == b'.' {
                 degraded_fraction = true;
-                fractional_part.push('0');
-                chars.next();
+                if fractional_part.is_empty() || last_fraction_was_digit {
+                    fractional_part.push('0');
+                }
+                last_fraction_was_digit = false;
+                cursor += 1;
+            } else if byte.is_ascii_whitespace() {
+                degraded_fraction = true;
+                if matches!(bytes.get(cursor + 1), Some(next) if next.is_ascii_digit())
+                    && (fractional_part.is_empty() || last_fraction_was_digit)
+                {
+                    fractional_part.push('0');
+                }
+                last_fraction_was_digit = false;
+                cursor += 1;
             } else {
                 break;
             }
@@ -2412,9 +2505,9 @@ fn parse_val_string(text: &str) -> Value {
 
         let parsed = numeric.parse::<f64>().unwrap_or(0.0) * sign;
         if parsed == 0.0 {
-            return Value::from(0.0_f64);
+            return Value::float_with_scale(0.0_f64, fractional_part.len());
         }
-        return Value::from(parsed);
+        return Value::float_with_scale(parsed, fractional_part.len());
     }
 
     let parsed = integer_part.parse::<i64>().unwrap_or(0);
@@ -2451,7 +2544,7 @@ fn numeric_optional_i64(
 
     match value {
         Value::Integer(value) => Ok(Some(*value)),
-        Value::Float(value) => Ok(Some(value.trunc() as i64)),
+        Value::Float(value) => Ok(Some(value.raw().trunc() as i64)),
         other => Err(argument_error(Some(other.kind()))),
     }
 }
@@ -2466,7 +2559,7 @@ fn numeric_required_i64(
 
     match value {
         Value::Integer(value) => Ok(*value),
-        Value::Float(value) => Ok(value.trunc() as i64),
+        Value::Float(value) => Ok(value.raw().trunc() as i64),
         other => Err(argument_error(Some(other.kind()))),
     }
 }
@@ -2485,7 +2578,7 @@ fn numeric_string_count(
 
     let count = match value {
         Value::Integer(value) => *value,
-        Value::Float(value) => value.trunc() as i64,
+        Value::Float(value) => value.raw().trunc() as i64,
         other => return Err(argument_error(Some(other.kind()))),
     };
 

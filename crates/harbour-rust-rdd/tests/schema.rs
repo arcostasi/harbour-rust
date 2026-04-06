@@ -139,7 +139,7 @@ fn navigates_items_records_and_reads_fields() {
     );
     assert_eq!(
         table.field_get("PRICE").expect("price"),
-        Value::Float(26.67)
+        Value::from(26.67_f64)
     );
     assert!(!table.deleted().expect("deleted flag"));
 
@@ -152,7 +152,7 @@ fn navigates_items_records_and_reads_fields() {
     );
     assert_eq!(
         table.field_get("PRICE").expect("price"),
-        Value::Float(26.39)
+        Value::from(26.39_f64)
     );
 }
 
@@ -253,7 +253,7 @@ fn appends_blank_and_persists_numeric_fields() {
         .field_put("AMOUNT", Value::Integer(3))
         .expect("write amount");
     table
-        .field_put("TOTAL", Value::Float(80.01))
+        .field_put("TOTAL", Value::from(80.01_f64))
         .expect("write total");
 
     let mut reopened = DbfTable::open(&temp_path).expect("reopen temp carts");
@@ -273,7 +273,7 @@ fn appends_blank_and_persists_numeric_fields() {
     );
     assert_eq!(
         reopened.field_get("TOTAL").expect("total"),
-        Value::Float(80.01)
+        Value::from(80.01_f64)
     );
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");

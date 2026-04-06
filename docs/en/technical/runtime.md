@@ -56,7 +56,7 @@ The runtime already supports:
 
 - not all historical xBase value kinds exist yet;
 - some builtins only cover the currently tested subset of arguments;
-- `Val()` now follows the oracle for trailing-dot continuations such as `1..`, `1...`, `..`, and `-..`, and the current subset also matches repeated-sign and exponent-like stop conditions; the remaining divergence is historical decimal-scale preservation for mixed punctuation and space-separated fragments after the decimal separator;
+- `Val()` now follows the oracle for trailing-dot continuations such as `1..`, `1...`, `..`, and `-..`; the current ASCII subset also matches repeated-sign and exponent-like stop conditions, mixed punctuation such as `13.1.9`, and space-separated fragments after the decimal separator such as `12. 0` and `12 .10`; the remaining divergence is tied to source-level embedded `Chr(0)` construction in the current frontend/codegen path;
 - source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the host-C runtime preserves them in selected helpers once present;
 - exact historical formatting still differs in selected edge cases.
 

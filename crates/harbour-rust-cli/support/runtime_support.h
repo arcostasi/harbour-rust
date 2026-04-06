@@ -14,6 +14,8 @@ struct harbour_runtime_Value {
         HARBOUR_VALUE_CODEBLOCK = 6,
         HARBOUR_VALUE_ERROR = 7
     } kind;
+    _Bool has_display_scale;
+    unsigned int display_scale;
     struct harbour_runtime_Value (*codeblock_function)(
         const struct harbour_runtime_Value *arguments,
         size_t argument_count
