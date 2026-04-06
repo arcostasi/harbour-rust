@@ -76,3 +76,39 @@ fn phase13_optional_and_stringify_fixture_matches_curated_upstream_subset() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn phase13_logical_result_marker_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/logical_marker_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(
+        upstream_hbpptest
+            .contains("#command MYCOMMAND3 [<mylist,...>] [MYCLAUSE <myval>] [<all:ALL>] =>")
+    );
+    assert!(upstream_hbpptest.contains("MyFunction( {<mylist>} [, <myval>] [,<.all.>] )"));
+    assert!(upstream_hbpptest.contains("pre := 'MyFunction({\"HELLO\"} ,321  ,.T.  )'"));
+    assert!(upstream_hbpptest.contains("pre := 'MyFunction({\"HELLO\"} ,321   )'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/logical_marker_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}

@@ -70,7 +70,7 @@ Recorte atual já implementado:
 
 Limitações ainda abertas nesta fase:
 
-- sem markers avançados como `<(id)>`, `<"id">`, `<{id}>` e `<.id.>`
+- sem markers avançados como `<(id)>`, `<"id">` e `<{id}>`
 - sem macro markers `:<&>` e variantes mais complexas do upstream
 - sem nested optional/list expansion completa do `_pp_test.prg`
 - sem engine token-based fiel ao `ppcore.c`; o recorte atual continua tokenização leve sobre source textual
@@ -128,6 +128,6 @@ Fases 6 e 9 concluídas:
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
-- baseline de compatibilidade focado contra `doc/pp.txt` e `tests/hbpp/_pp_test.prg`, incluindo replacements com `\[`/`\]` e reordenação selecionada de cláusulas opcionais contíguas
+- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas e result markers lógicos `<.id.>`
 - fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
 - markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes

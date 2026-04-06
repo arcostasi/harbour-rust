@@ -132,6 +132,7 @@ pub enum ResultPart {
     Literal(String),
     Marker(String),
     Stringify(String),
+    Logical(String),
     Optional(Vec<ResultPart>),
 }
 
@@ -924,12 +925,18 @@ fn parse_result_until(
                 ));
             };
             let marker = &text[cursor + 1..cursor + 1 + close_offset];
-            parts.push(ResultPart::Marker(validate_marker_name(
-                marker,
-                path,
-                line_number,
-                column,
-            )?));
+            if let Some(logical_name) =
+                parse_logical_result_marker(marker, path, line_number, column)?
+            {
+                parts.push(ResultPart::Logical(logical_name));
+            } else {
+                parts.push(ResultPart::Marker(validate_marker_name(
+                    marker,
+                    path,
+                    line_number,
+                    column,
+                )?));
+            }
             cursor += close_offset + 2;
             continue;
         }
@@ -966,6 +973,20 @@ fn skip_inline_spaces(text: &str, mut cursor: usize) -> usize {
 
 fn is_result_escape_target(ch: char) -> bool {
     matches!(ch, '[' | ']' | '<' | '>' | '#' | '\\')
+}
+
+fn parse_logical_result_marker(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<Option<String>, PreprocessError> {
+    if !(text.starts_with('.') && text.ends_with('.') && text.len() > 2) {
+        return Ok(None);
+    }
+
+    let name = &text[1..text.len() - 1];
+    Ok(Some(validate_marker_name(name, path, line_number, column)?))
 }
 
 fn parse_literal_token(text: &str, start: usize) -> (String, usize) {
@@ -1653,6 +1674,13 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
                 output.push('"');
             }
         }
+        ResultPart::Logical(name) => {
+            if captures.values.contains_key(name) {
+                output.push_str(".T.");
+            } else {
+                output.push_str(".F.");
+            }
+        }
         ResultPart::Optional(parts) => {
             if result_parts_have_value(parts, captures) {
                 for nested in parts {
@@ -1666,7 +1694,7 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
 fn result_parts_have_value(parts: &[ResultPart], captures: &MatchCaptures) -> bool {
     parts.iter().any(|part| match part {
         ResultPart::Literal(_) => false,
-        ResultPart::Marker(name) | ResultPart::Stringify(name) => {
+        ResultPart::Marker(name) | ResultPart::Stringify(name) | ResultPart::Logical(name) => {
             captures.values.contains_key(name)
         }
         ResultPart::Optional(parts) => result_parts_have_value(parts, captures),

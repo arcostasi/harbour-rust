@@ -1,0 +1,6 @@
+PROCEDURE Main()
+   MyFunction( {"HELLO","WORLD"} , 321 ,.T. )
+   MyFunction( {"HELLO"} , 321 ,.T. )
+   MyFunction( {"HELLO"} , 321 ,.T. )
+   MyFunction( {"HELLO"} , 321  )
+RETURN

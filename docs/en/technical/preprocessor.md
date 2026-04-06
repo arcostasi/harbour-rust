@@ -26,4 +26,4 @@ Implemented areas include:
 
 ## Current Status
 
-The preprocessor already supports the project's current alpha baseline. Focused compatibility fixtures now cover escaped-bracket optional replacements and selected reordering across contiguous optional clauses drawn from the upstream hbpp corpus. Broader nested optional/list combinations, dumb-stringify edge cases, and advanced marker forms still remain future work.
+The preprocessor already supports the project's current alpha baseline. Focused compatibility fixtures now cover escaped-bracket optional replacements, selected reordering across contiguous optional clauses, and selected logical result markers such as `<.id.>` drawn from the upstream hbpp corpus. Broader nested optional/list combinations, dumb-stringify edge cases, and advanced marker forms still remain future work.

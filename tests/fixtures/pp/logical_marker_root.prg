@@ -1,0 +1,8 @@
+#command MYCOMMAND3 [<mylist,...>] [MYCLAUSE <myval>] [<all:ALL>] => ;
+   MyFunction( {<mylist>} [, <myval>] [,<.all.>] )
+PROCEDURE Main()
+   MYCOMMAND3 ALL MYCLAUSE 321 "HELLO","WORLD"
+   MYCOMMAND3 MYCLAUSE 321 ALL "HELLO"
+   MYCOMMAND3 MYCLAUSE 321 "HELLO" ALL
+   MYCOMMAND3 MYCLAUSE 321 "HELLO"
+RETURN
