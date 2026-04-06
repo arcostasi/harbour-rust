@@ -30,7 +30,7 @@ O projeto ainda está em alpha. Limites conhecidos incluem:
 - ainda não existe backend nativo; C é o backend executável principal;
 - ainda há lacunas de compatibilidade em comportamento avançado de macro, fidelidade mais ampla de runtime e cobertura estendida de RDD;
 - `Val()` agora segue o subconjunto ASCII atual guiado por oráculo para continuações com ponto final, sinais repetidos, paradas estilo expoente, pontuação mista e fragmentos separados por espaço após o separador decimal; a divergência remanescente ficou ligada à construção de `Chr(0)` embutido a partir do código-fonte no caminho atual de frontend/codegen;
-- `Str()` ainda tem lacunas documentadas em alguns detalhes históricos de formatação, mas o arredondamento half-away-from-zero guiado por largura e o padding com largura negativa agora seguem o baseline atual guiado por oráculo;
+- `Str()` agora segue o baseline atual guiado por oráculo para arredondamento half-away-from-zero guiado por largura, padding com largura negativa, números positivos grandes em largura default e preservação da escala visual de literais float no caminho executável em C; a lacuna documentada remanescente está na formatação em largura default de alguns números negativos grandes produzidos por expressão;
 - a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime executável em C já preservando esses bytes em helpers selecionados quando eles existem;
 - edge cases históricos devem ser tratados como não suportados até serem testados e documentados.
 

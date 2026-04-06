@@ -92,6 +92,7 @@ impl Eq for CodeblockValue {}
 pub struct FloatValue {
     value: f64,
     display_scale: Option<usize>,
+    display_width: Option<usize>,
 }
 
 impl FloatValue {
@@ -99,6 +100,7 @@ impl FloatValue {
         Self {
             value,
             display_scale: None,
+            display_width: None,
         }
     }
 
@@ -106,6 +108,15 @@ impl FloatValue {
         Self {
             value,
             display_scale: Some(display_scale),
+            display_width: None,
+        }
+    }
+
+    pub fn with_display_layout(value: f64, display_scale: usize, display_width: usize) -> Self {
+        Self {
+            value,
+            display_scale: Some(display_scale),
+            display_width: Some(display_width),
         }
     }
 
@@ -115,6 +126,10 @@ impl FloatValue {
 
     pub fn display_scale(self) -> Option<usize> {
         self.display_scale
+    }
+
+    pub fn display_width(self) -> Option<usize> {
+        self.display_width
     }
 }
 
@@ -362,6 +377,14 @@ impl Value {
 
     pub fn float_with_scale(value: f64, display_scale: usize) -> Self {
         Self::Float(FloatValue::with_display_scale(value, display_scale))
+    }
+
+    pub fn float_with_layout(value: f64, display_scale: usize, display_width: usize) -> Self {
+        Self::Float(FloatValue::with_display_layout(
+            value,
+            display_scale,
+            display_width,
+        ))
     }
 
     pub fn float_display_scale(&self) -> Option<usize> {
@@ -1067,7 +1090,13 @@ pub fn str_value(
         format_str_default(numeric)
     };
 
-    Ok(Value::from(apply_str_width(formatted, width)))
+    let rendered = if width.is_some() {
+        apply_str_width(formatted, width)
+    } else {
+        apply_default_str_width(numeric, formatted)
+    };
+
+    Ok(Value::from(rendered))
 }
 
 pub fn val(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -2356,6 +2385,21 @@ fn format_str_default(number: StrNumeric) -> String {
     }
 }
 
+fn default_str_width(number: StrNumeric, formatted: &str) -> usize {
+    match number {
+        StrNumeric::Integer(_) => {
+            if formatted.len() > 10 {
+                formatted.len() + 1
+            } else {
+                10
+            }
+        }
+        StrNumeric::Float(value) => {
+            usize::max(value.display_width().unwrap_or(10), formatted.len())
+        }
+    }
+}
+
 fn format_str_rounded(number: StrNumeric) -> String {
     match number {
         StrNumeric::Integer(value) => value.to_string(),
@@ -2528,6 +2572,15 @@ fn apply_str_width(formatted: String, width: Option<i64>) -> String {
     if formatted.len() > width {
         "*".repeat(width)
     } else if formatted.len() >= width {
+        formatted
+    } else {
+        format!("{formatted:>width$}")
+    }
+}
+
+fn apply_default_str_width(number: StrNumeric, formatted: String) -> String {
+    let width = default_str_width(number, &formatted);
+    if formatted.len() >= width {
         formatted
     } else {
         format!("{formatted:>width$}")

@@ -62,6 +62,10 @@ static harbour_runtime_Value harbour_str_non_finite_placeholder(
     _Bool explicit_width
 );
 static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value);
+static harbour_runtime_Value harbour_str_apply_default_width(
+    const char *formatted,
+    size_t minimum_width
+);
 static harbour_runtime_Value harbour_val_parse_string(const char *text);
 static _Bool harbour_try_truncated_repeat_count(
     harbour_runtime_Value value,
@@ -144,6 +148,8 @@ harbour_runtime_Value harbour_value_nil(void) {
     value.kind = HARBOUR_VALUE_NIL;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     return value;
 }
 
@@ -152,6 +158,8 @@ harbour_runtime_Value harbour_value_from_logical(_Bool logical) {
     value.kind = HARBOUR_VALUE_LOGICAL;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.logical = logical;
     return value;
 }
@@ -161,6 +169,8 @@ harbour_runtime_Value harbour_value_from_integer(long long integer) {
     value.kind = HARBOUR_VALUE_INTEGER;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.integer = integer;
     return value;
 }
@@ -169,7 +179,7 @@ harbour_runtime_Value harbour_value_from_float(double floating) {
     return harbour_value_from_float_with_scale(floating, 0);
 }
 
-static harbour_runtime_Value harbour_value_from_float_with_scale(
+harbour_runtime_Value harbour_value_from_float_with_scale(
     double floating,
     unsigned int display_scale
 ) {
@@ -177,7 +187,23 @@ static harbour_runtime_Value harbour_value_from_float_with_scale(
     value.kind = HARBOUR_VALUE_FLOAT;
     value.has_display_scale = display_scale > 0;
     value.display_scale = display_scale;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.floating = floating;
+    return value;
+}
+
+harbour_runtime_Value harbour_value_from_float_with_layout(
+    double floating,
+    unsigned int display_scale,
+    unsigned int display_width
+) {
+    harbour_runtime_Value value = harbour_value_from_float_with_scale(
+        floating,
+        display_scale
+    );
+    value.has_display_width = display_width > 0;
+    value.display_width = display_width;
     return value;
 }
 
@@ -206,6 +232,8 @@ harbour_runtime_Value harbour_value_from_string_literal(const char *string) {
     value.kind = HARBOUR_VALUE_STRING;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.string.data = string == NULL ? "" : string;
     value.as.string.length = string == NULL ? 0 : strlen(string);
     return value;
@@ -219,6 +247,8 @@ harbour_runtime_Value harbour_value_from_codeblock(
     value.kind = HARBOUR_VALUE_CODEBLOCK;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.codeblock_function = function;
     value.as.codeblock.identity = harbour_allocate_codeblock_identity();
     value.as.codeblock.repr = repr;
@@ -230,6 +260,8 @@ harbour_runtime_Value harbour_value_error_literal(const char *error) {
     value.kind = HARBOUR_VALUE_ERROR;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.error = error;
     return value;
 }
@@ -242,6 +274,8 @@ static harbour_runtime_Value harbour_value_from_owned_string_buffer(
     value.kind = HARBOUR_VALUE_STRING;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.string.data = buffer == NULL ? "" : buffer;
     value.as.string.length = buffer == NULL ? 0 : length;
     return value;
@@ -395,6 +429,8 @@ harbour_runtime_Value harbour_value_from_array_items(
     value.kind = HARBOUR_VALUE_ARRAY;
     value.has_display_scale = 0;
     value.display_scale = 0;
+    value.has_display_width = 0;
+    value.display_width = 0;
     value.as.array.length = length;
     value.as.array.items = NULL;
     value.as.array.identity = harbour_allocate_array_identity();
@@ -410,6 +446,8 @@ harbour_runtime_Value harbour_value_from_array_items(
         value.kind = HARBOUR_VALUE_NIL;
         value.has_display_scale = 0;
         value.display_scale = 0;
+        value.has_display_width = 0;
+        value.display_width = 0;
         value.as.array.length = 0;
         value.as.array.identity = 0;
         return value;
@@ -2130,10 +2168,14 @@ static harbour_runtime_Value harbour_str_non_finite_placeholder(
 
 static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value value) {
     char buffer[128];
+    size_t minimum_width = 10;
 
     if (value.kind == HARBOUR_VALUE_INTEGER) {
         snprintf(buffer, sizeof(buffer), "%lld", value.as.integer);
-        return harbour_str_apply_width(buffer, 10, 0);
+        if (strlen(buffer) > 10) {
+            minimum_width = strlen(buffer) + 1;
+        }
+        return harbour_str_apply_default_width(buffer, minimum_width);
     }
 
     if (value.kind == HARBOUR_VALUE_FLOAT) {
@@ -2147,7 +2189,11 @@ static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value v
                 (int) value.display_scale,
                 value.as.floating
             );
-            return harbour_str_apply_width(buffer, 10, 0);
+            minimum_width = value.has_display_width ? (size_t) value.display_width : 10;
+            if (strlen(buffer) > minimum_width) {
+                minimum_width = strlen(buffer);
+            }
+            return harbour_str_apply_default_width(buffer, minimum_width);
         }
 
         snprintf(buffer, sizeof(buffer), "%.15f", value.as.floating);
@@ -2159,10 +2205,42 @@ static harbour_runtime_Value harbour_str_default_numeric(harbour_runtime_Value v
             buffer[length++] = '0';
             buffer[length] = '\0';
         }
-        return harbour_str_apply_width(buffer, 10, 0);
+        if (length > minimum_width) {
+            minimum_width = length;
+        }
+        return harbour_str_apply_default_width(buffer, minimum_width);
     }
 
     return harbour_value_error_literal("BASE 1099 Argument error (STR)");
+}
+
+static harbour_runtime_Value harbour_str_apply_default_width(
+    const char *formatted,
+    size_t minimum_width
+) {
+    size_t length;
+    size_t target_width;
+    char *buffer;
+
+    if (formatted == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    length = strlen(formatted);
+    target_width = length > minimum_width ? length : minimum_width;
+    if (length >= target_width) {
+        return harbour_string_value_from_owned_buffer(formatted, length);
+    }
+
+    buffer = (char *) malloc(target_width + 1);
+    if (buffer == NULL) {
+        return harbour_value_from_string_literal("");
+    }
+
+    memset(buffer, ' ', target_width);
+    memcpy(buffer + (target_width - length), formatted, length);
+    buffer[target_width] = '\0';
+    return harbour_value_from_owned_string_buffer(buffer, target_width);
 }
 
 static harbour_runtime_Value harbour_val_parse_string(const char *text) {

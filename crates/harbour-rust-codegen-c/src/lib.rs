@@ -377,6 +377,9 @@ impl Emitter {
         self.emit_line("extern harbour_runtime_Value harbour_value_from_integer(long long value);");
         self.emit_line("extern harbour_runtime_Value harbour_value_from_float(double value);");
         self.emit_line(
+            "extern harbour_runtime_Value harbour_value_from_float_with_layout(double value, unsigned int display_scale, unsigned int display_width);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_value_from_string_literal(const char *value);",
         );
         self.emit_line(
@@ -834,9 +837,7 @@ impl Emitter {
             Expression::Integer(literal) => {
                 Some(format!("harbour_value_from_integer({}LL)", literal.lexeme))
             }
-            Expression::Float(literal) => {
-                Some(format!("harbour_value_from_float({})", literal.lexeme))
-            }
+            Expression::Float(literal) => Some(emit_float_literal(&literal.lexeme)),
             Expression::String(literal) => Some(format!(
                 "harbour_value_from_string_literal(\"{}\")",
                 escape_c_string(&normalize_string_lexeme(&literal.lexeme))
@@ -1514,6 +1515,30 @@ fn normalize_string_lexeme(lexeme: &str) -> String {
     }
 
     lexeme.to_owned()
+}
+
+fn emit_float_literal(lexeme: &str) -> String {
+    match float_literal_display_scale(lexeme) {
+        Some(scale) if scale > 0 => {
+            let width = float_literal_default_width(lexeme, scale);
+            format!(
+                "harbour_value_from_float_with_layout({}, {}U, {}U)",
+                lexeme, scale, width
+            )
+        }
+        _ => format!("harbour_value_from_float({lexeme})"),
+    }
+}
+
+fn float_literal_display_scale(lexeme: &str) -> Option<usize> {
+    let mantissa = lexeme.trim().split(['e', 'E']).next()?;
+    let (_, fraction) = mantissa.split_once('.')?;
+    Some(fraction.len())
+}
+
+fn float_literal_default_width(lexeme: &str, scale: usize) -> usize {
+    let mantissa = lexeme.trim().split(['e', 'E']).next().unwrap_or(lexeme);
+    usize::max(10 + scale + 1, mantissa.len())
 }
 
 #[cfg(test)]

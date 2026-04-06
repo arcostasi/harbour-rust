@@ -405,6 +405,10 @@ fn build_command_writes_c_output_for_str_builtin_fixture() {
 
     let generated = fs::read_to_string(&output_path).expect("generated c output");
     assert!(generated.contains("harbour_builtin_str("));
+    assert!(generated.contains("harbour_value_from_float_with_layout(5000000000.0, 1U, 12U)"));
+    assert!(generated.contains("harbour_value_from_float_with_layout(10.0, 1U, 12U)"));
+    assert!(generated.contains("harbour_value_from_float_with_layout(10.00, 2U, 13U)"));
+    assert!(generated.contains("harbour_value_from_float_with_layout(10.50, 2U, 13U)"));
 
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
@@ -1151,7 +1155,7 @@ fn run_command_executes_exp_builtin_fixture_with_expected_output() {
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(
         stdout,
-        "1\n3269017.37247211067006\n2.72\n        2.7182818285\n22026.5\n"
+        "1\n3269017.37247211067006\n2.72\n        2.7182818285\n22026.47\n"
     );
 }
 
@@ -1388,7 +1392,7 @@ fn run_command_executes_str_builtin_fixture_with_expected_output() {
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(
         stdout,
-        "        10\n         0\n      10.5\n   10\n        10\n   11\n        11\n       -11\n       -10\n 2.00\n   11\n  -11\n    3.12\n    100000\n*****\n"
+        "        10\n         0\n        10.5\n5000000000.0\n 50000000000\n        10.0\n        10.00\n        10.50\n   10\n        10\n   11\n        11\n       -11\n       -10\n 2.00\n   11\n  -11\n    3.12\n    100000\n*****\n"
     );
 }
 

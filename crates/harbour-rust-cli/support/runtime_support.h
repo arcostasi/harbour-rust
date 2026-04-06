@@ -16,6 +16,8 @@ struct harbour_runtime_Value {
     } kind;
     _Bool has_display_scale;
     unsigned int display_scale;
+    _Bool has_display_width;
+    unsigned int display_width;
     struct harbour_runtime_Value (*codeblock_function)(
         const struct harbour_runtime_Value *arguments,
         size_t argument_count
@@ -283,6 +285,11 @@ struct harbour_runtime_Value harbour_value_nil(void);
 struct harbour_runtime_Value harbour_value_from_logical(_Bool logical);
 struct harbour_runtime_Value harbour_value_from_integer(long long integer);
 struct harbour_runtime_Value harbour_value_from_float(double floating);
+struct harbour_runtime_Value harbour_value_from_float_with_layout(
+    double floating,
+    unsigned int display_scale,
+    unsigned int display_width
+);
 struct harbour_runtime_Value harbour_value_from_string_parts(
     const char *string,
     size_t length

@@ -49,6 +49,46 @@ fn runtime_str_edges_baseline() -> String {
         ))
     ));
     out.push_str(&format!(
+        "Str(5000000000.0) => {}\n",
+        result_text(str_value(
+            Some(&Value::float_with_layout(5_000_000_000.0_f64, 1, 12)),
+            None,
+            None,
+        ))
+    ));
+    out.push_str(&format!(
+        "Str(50000000000) => {}\n",
+        result_text(str_value(
+            Some(&Value::from(50_000_000_000_i64)),
+            None,
+            None
+        ))
+    ));
+    out.push_str(&format!(
+        "Str(10.0) => {}\n",
+        result_text(str_value(
+            Some(&Value::float_with_layout(10.0_f64, 1, 12)),
+            None,
+            None,
+        ))
+    ));
+    out.push_str(&format!(
+        "Str(10.00) => {}\n",
+        result_text(str_value(
+            Some(&Value::float_with_layout(10.0_f64, 2, 13)),
+            None,
+            None,
+        ))
+    ));
+    out.push_str(&format!(
+        "Str(10.50) => {}\n",
+        result_text(str_value(
+            Some(&Value::float_with_layout(10.5_f64, 2, 13)),
+            None,
+            None,
+        ))
+    ));
+    out.push_str(&format!(
         "Str(100, 10, NIL) => {}\n",
         result_text(str_value(
             Some(&Value::from(100_i64)),
@@ -122,6 +162,11 @@ fn str_edges_runtime_matches_upstream_oracle_snapshot() {
     assert!(upstream_stra.contains("HBTEST Str( -10.50, -5 )"));
     assert!(upstream_stra.contains("HBTEST Str( -10, -5 )"));
     assert!(upstream_stra.contains("HBTEST Str( 100000, -8 )"));
+    assert!(upstream_stra.contains("HBTEST Str( 5000000000.0 )"));
+    assert!(upstream_stra.contains("HBTEST Str( 50000000000 )"));
+    assert!(upstream_stra.contains("HBTEST Str( 10.0 )"));
+    assert!(upstream_stra.contains("HBTEST Str( 10.00 )"));
+    assert!(upstream_stra.contains("HBTEST Str( 10.50 )"));
     assert!(upstream_stra.contains("HBTEST Str( 100, 10, NIL )"));
     assert!(upstream_stra.contains("HBTEST Str( 100, NIL, NIL )"));
     assert!(upstream_stra.contains("HBTEST Str( 10.50, 5, 0 )"));

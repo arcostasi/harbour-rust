@@ -1284,6 +1284,26 @@ fn public_str_matches_the_current_numeric_runtime_baseline() {
         Ok(Value::from("      10.5"))
     );
     assert_eq!(
+        str_value(Some(&Value::from(5_000_000_000.0_f64)), None, None),
+        Ok(Value::from("5000000000.0"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::from(50_000_000_000_i64)), None, None),
+        Ok(Value::from(" 50000000000"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::float_with_layout(10.0_f64, 1, 12)), None, None),
+        Ok(Value::from("        10.0"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::float_with_layout(10.0_f64, 2, 13)), None, None),
+        Ok(Value::from("        10.00"))
+    );
+    assert_eq!(
+        str_value(Some(&Value::float_with_layout(10.5_f64, 2, 13)), None, None),
+        Ok(Value::from("        10.50"))
+    );
+    assert_eq!(
         str_value(Some(&Value::from(10_i64)), Some(&Value::from(5_i64)), None),
         Ok(Value::from("   10"))
     );

@@ -49,7 +49,7 @@ The runtime already supports:
 - compatibility-oriented diagnostics for selected array and numeric operations;
 - Clipper-style string overflow limits for `Replicate()` and `Space()`.
 - oracle-backed `SubStr()`/`Right()` leniency and host-C preservation of embedded `Chr(0)` in selected executable string helpers.
-- default-width padding for explicit negative-width `Str()` formatting, and width-driven `Str()` rounding now aligned with the oracle through half-away-from-zero behavior.
+- default-width `Str()` formatting now aligned for positive large numbers and source-level float-literal display scale in the executable C path, while explicit negative-width padding and width-driven `Str()` rounding also follow the oracle through half-away-from-zero behavior.
 - executable `Round()` output for large floats now stays in plain decimal form instead of collapsing into scientific notation in the host-C path.
 
 ## Known Limits
@@ -58,7 +58,7 @@ The runtime already supports:
 - some builtins only cover the currently tested subset of arguments;
 - `Val()` now follows the oracle for trailing-dot continuations such as `1..`, `1...`, `..`, and `-..`; the current ASCII subset also matches repeated-sign and exponent-like stop conditions, mixed punctuation such as `13.1.9`, and space-separated fragments after the decimal separator such as `12. 0` and `12 .10`; the remaining divergence is tied to source-level embedded `Chr(0)` construction in the current frontend/codegen path;
 - source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the host-C runtime preserves them in selected helpers once present;
-- exact historical formatting still differs in selected edge cases.
+- exact historical formatting still differs in selected edge cases, especially some default-width large negative numeric expressions.
 
 ## Related Documents
 

@@ -49,7 +49,7 @@ O runtime já suporta:
 - diagnósticos orientados à compatibilidade para operações selecionadas de arrays e números;
 - limites de overflow de string ao estilo Clipper para `Replicate()` e `Space()`.
 - leniência guiada por oráculo em `SubStr()`/`Right()` e preservação de `Chr(0)` embutido em helpers selecionados do runtime executável em C.
-- padding em campo padrão para `Str()` com largura negativa explícita, e arredondamento de `Str()` guiado por largura agora alinhado ao oráculo com comportamento half-away-from-zero.
+- `Str()` em largura default agora está alinhado para números positivos grandes e para a escala visual de literais float no caminho executável em C; além disso, o padding com largura negativa explícita e o arredondamento guiado por largura também seguem o oráculo com comportamento half-away-from-zero.
 - saída executável de `Round()` com floats grandes agora preservada em decimal simples, sem colapsar para notação científica no caminho host C.
 
 ## Limites Conhecidos
@@ -58,7 +58,7 @@ O runtime já suporta:
 - alguns builtins cobrem apenas o subconjunto de argumentos já testado;
 - `Val()` agora segue o oráculo em continuações com ponto final como `1..`, `1...`, `..` e `-..`; o subconjunto ASCII atual também já bate em sinais repetidos, paradas estilo expoente, pontuação mista como `13.1.9` e fragmentos separados por espaço após o separador decimal como `12. 0` e `12 .10`; a divergência remanescente ficou ligada à construção de `Chr(0)` embutido a partir do código-fonte no caminho atual de frontend/codegen;
 - a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime host C já preservando esses bytes em helpers selecionados quando eles existem;
-- a formatação histórica exata ainda diverge em alguns edge cases.
+- a formatação histórica exata ainda diverge em alguns edge cases, especialmente em algumas expressões numéricas negativas grandes com largura default.
 
 ## Documentos Relacionados
 

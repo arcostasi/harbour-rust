@@ -345,7 +345,7 @@ fn emits_round_builtin_fixture_with_runtime_builtin_helper_calls() {
     assert!(
         emitted
             .source
-            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_round((harbour_runtime_Value[]) { harbour_value_from_float(0.5), harbour_value_from_integer(0LL) }, 2) }, 1);")
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_round((harbour_runtime_Value[]) { harbour_value_from_float_with_layout(0.5, 1U, 12U), harbour_value_from_integer(0LL) }, 2) }, 1);")
     );
     assert!(
         emitted
@@ -402,12 +402,32 @@ fn emits_str_builtin_fixture_with_runtime_builtin_helper_calls() {
     assert!(
         emitted
             .source
-            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_str((harbour_runtime_Value[]) { harbour_value_from_float(10.6), harbour_value_from_integer(5LL) }, 2) }, 1);")
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_str((harbour_runtime_Value[]) { harbour_value_from_float_with_layout(10.6, 1U, 12U), harbour_value_from_integer(5LL) }, 2) }, 1);")
     );
     assert!(
         emitted
             .source
-            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_str((harbour_runtime_Value[]) { harbour_value_from_float(3.125), harbour_value_from_integer(8LL), harbour_value_from_integer(2LL) }, 3) }, 1);")
+            .contains("harbour_value_from_float_with_layout(5000000000.0, 1U, 12U)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_from_float_with_layout(10.0, 1U, 12U)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_from_float_with_layout(10.00, 2U, 13U)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_value_from_float_with_layout(10.50, 2U, 13U)")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_str((harbour_runtime_Value[]) { harbour_value_from_float_with_layout(3.125, 3U, 14U), harbour_value_from_integer(8LL), harbour_value_from_integer(2LL) }, 3) }, 1);")
     );
 }
 
@@ -639,12 +659,12 @@ fn emits_replicate_space_builtin_fixture_with_runtime_builtin_helper_calls() {
     assert!(
         emitted
             .source
-            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_replicate((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"HE\"), harbour_value_from_float(3.7) }, 2) }, 1);")
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_replicate((harbour_runtime_Value[]) { harbour_value_from_string_literal(\"HE\"), harbour_value_from_float_with_layout(3.7, 1U, 12U) }, 2) }, 1);")
     );
     assert!(
         emitted
             .source
-            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_space((harbour_runtime_Value[]) { harbour_value_from_float(3.7) }, 1) }, 1);")
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_space((harbour_runtime_Value[]) { harbour_value_from_float_with_layout(3.7, 1U, 12U) }, 1) }, 1);")
     );
 }
 
