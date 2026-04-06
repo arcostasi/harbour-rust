@@ -865,6 +865,18 @@ fn parse_result_until(
             return Ok((parts, cursor + ch.len_utf8()));
         }
 
+        if ch == '\\' {
+            let next_cursor = cursor + ch.len_utf8();
+            if next_cursor < text.len() {
+                let next = char_at(text, next_cursor);
+                if is_result_escape_target(next) {
+                    literal.push(next);
+                    cursor = next_cursor + next.len_utf8();
+                    continue;
+                }
+            }
+        }
+
         if ch == '[' {
             if !literal.is_empty() {
                 parts.push(ResultPart::Literal(std::mem::take(&mut literal)));
@@ -950,6 +962,10 @@ fn skip_inline_spaces(text: &str, mut cursor: usize) -> usize {
         cursor += ch.len_utf8();
     }
     cursor
+}
+
+fn is_result_escape_target(ch: char) -> bool {
+    matches!(ch, '[' | ']' | '<' | '>' | '#' | '\\')
 }
 
 fn parse_literal_token(text: &str, start: usize) -> (String, usize) {
@@ -1286,6 +1302,7 @@ fn match_pattern(
         tokens,
         source,
         start_index,
+        require_full.then_some(tokens.len()),
         MatchCaptures::default(),
     )?;
     if require_full && end != tokens.len() {
@@ -1307,6 +1324,7 @@ fn match_pattern_with_end(
         tokens,
         source,
         start_index,
+        None,
         MatchCaptures::default(),
     )
 }
@@ -1317,10 +1335,29 @@ fn match_pattern_recursive(
     tokens: &[SourceToken],
     source: &str,
     token_index: usize,
+    required_end: Option<usize>,
     captures: MatchCaptures,
 ) -> Option<(usize, MatchCaptures)> {
     if pattern_index == pattern.len() {
+        if let Some(required_end) = required_end
+            && token_index != required_end
+        {
+            return None;
+        }
         return Some((token_index, captures));
+    }
+
+    if matches!(pattern[pattern_index], PatternPart::Optional(_)) {
+        let group_end = optional_group_end(pattern, pattern_index);
+        let optional_indices = (pattern_index..group_end).collect::<Vec<_>>();
+        let matcher = OptionalGroupMatcher {
+            pattern,
+            tokens,
+            source,
+            rest_index: group_end,
+            required_end,
+        };
+        return match_optional_group(&matcher, &optional_indices, token_index, captures);
     }
 
     match &pattern[pattern_index] {
@@ -1333,35 +1370,14 @@ fn match_pattern_recursive(
                     tokens,
                     source,
                     token_index + 1,
+                    required_end,
                     captures,
                 )
             } else {
                 None
             }
         }
-        PatternPart::Optional(optional) => {
-            if let Some((next_index, next_captures)) =
-                match_pattern_recursive(optional, 0, tokens, source, token_index, captures.clone())
-                && let Some(matched) = match_pattern_recursive(
-                    pattern,
-                    pattern_index + 1,
-                    tokens,
-                    source,
-                    next_index,
-                    next_captures,
-                )
-            {
-                return Some(matched);
-            }
-            match_pattern_recursive(
-                pattern,
-                pattern_index + 1,
-                tokens,
-                source,
-                token_index,
-                captures,
-            )
-        }
+        PatternPart::Optional(_) => unreachable!("optional groups are handled before dispatch"),
         PatternPart::Marker(marker) => match marker.kind {
             MarkerKind::Restricted(ref allowed) => {
                 let token = tokens.get(token_index)?;
@@ -1382,6 +1398,7 @@ fn match_pattern_recursive(
                     tokens,
                     source,
                     token_index + 1,
+                    required_end,
                     captures,
                 )
             }
@@ -1400,6 +1417,7 @@ fn match_pattern_recursive(
                         tokens,
                         source,
                         end,
+                        required_end,
                         next_captures,
                     ) {
                         return Some(matched);
@@ -1409,6 +1427,116 @@ fn match_pattern_recursive(
             }
         },
     }
+}
+
+fn optional_group_end(pattern: &[PatternPart], start: usize) -> usize {
+    let mut index = start;
+    while index < pattern.len() {
+        if !matches!(pattern[index], PatternPart::Optional(_)) {
+            break;
+        }
+        index += 1;
+    }
+    index
+}
+
+struct OptionalGroupMatcher<'a> {
+    pattern: &'a [PatternPart],
+    tokens: &'a [SourceToken],
+    source: &'a str,
+    rest_index: usize,
+    required_end: Option<usize>,
+}
+
+fn match_optional_group(
+    matcher: &OptionalGroupMatcher<'_>,
+    optional_indices: &[usize],
+    token_index: usize,
+    captures: MatchCaptures,
+) -> Option<(usize, MatchCaptures)> {
+    let mut ordered_indices = optional_indices
+        .iter()
+        .copied()
+        .map(|index| (index, optional_clause_priority(&matcher.pattern[index])))
+        .collect::<Vec<_>>();
+    ordered_indices.sort_by_key(|(_, priority)| *priority);
+
+    for (optional_index, _) in ordered_indices {
+        let position = optional_indices
+            .iter()
+            .position(|index| *index == optional_index)
+            .expect("optional index is always part of the group");
+        let PatternPart::Optional(optional) = &matcher.pattern[optional_index] else {
+            continue;
+        };
+        for (next_index, next_captures) in collect_optional_matches(
+            optional,
+            matcher.tokens,
+            matcher.source,
+            token_index,
+            &captures,
+        ) {
+            let mut remaining = optional_indices.to_vec();
+            remaining.remove(position);
+            if let Some(matched) =
+                match_optional_group(matcher, &remaining, next_index, next_captures)
+            {
+                return Some(matched);
+            }
+        }
+    }
+
+    match_pattern_recursive(
+        matcher.pattern,
+        matcher.rest_index,
+        matcher.tokens,
+        matcher.source,
+        token_index,
+        matcher.required_end,
+        captures,
+    )
+}
+
+fn optional_clause_priority(part: &PatternPart) -> usize {
+    match part {
+        PatternPart::Optional(parts) => optional_parts_priority(parts),
+        PatternPart::Literal(_) => 0,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Restricted(_),
+            ..
+        }) => 1,
+        PatternPart::Marker(_) => 2,
+    }
+}
+
+fn optional_parts_priority(parts: &[PatternPart]) -> usize {
+    parts.first().map(optional_clause_priority).unwrap_or(3)
+}
+
+fn collect_optional_matches(
+    optional: &[PatternPart],
+    tokens: &[SourceToken],
+    source: &str,
+    token_index: usize,
+    captures: &MatchCaptures,
+) -> Vec<(usize, MatchCaptures)> {
+    let mut matches = Vec::new();
+
+    for end in token_index + 1..=tokens.len() {
+        if let Some((next_index, next_captures)) = match_pattern_recursive(
+            optional,
+            0,
+            tokens,
+            source,
+            token_index,
+            Some(end),
+            captures.clone(),
+        ) {
+            matches.push((next_index, next_captures));
+        }
+    }
+
+    matches
 }
 
 fn token_matches_literal(token: &SourceToken, literal: &str) -> bool {

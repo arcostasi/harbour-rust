@@ -41,7 +41,7 @@ fn phase9_rule_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
-fn phase13_optional_and_stringify_fixture_captures_curated_upstream_gap_subset() {
+fn phase13_optional_and_stringify_fixture_matches_curated_upstream_subset() {
     let Some(upstream_doc) = read_upstream_or_skip("harbour-core/doc/pp.txt", "upstream pp doc")
     else {
         return;

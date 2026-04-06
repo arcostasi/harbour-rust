@@ -1,7 +1,7 @@
 PROCEDURE Main()
    QOUT(  )
-   QOUT(  a\  )
+   QOUT(  a[1]  )
    dm( "a" )
-   MyFunction( {MYCLAUSE 321 "HELLO"}  )
-   MyFunction( {"HELLO","all" MYCLAUSE 321}  )
+   MyFunction( {"HELLO"} , 321 )
+   MyFunction( {"HELLO","all"} , 321 )
 RETURN
