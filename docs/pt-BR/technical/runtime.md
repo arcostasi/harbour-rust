@@ -51,6 +51,7 @@ O runtime já suporta:
 - leniência guiada por oráculo em `SubStr()`/`Right()` e preservação de `Chr(0)` embutido em helpers selecionados do runtime executável em C.
 - `Str()` em largura default agora está alinhado para números positivos grandes e para a escala visual de literais float no caminho executável em C; além disso, o padding com largura negativa explícita e o arredondamento guiado por largura também seguem o oráculo com comportamento half-away-from-zero.
 - saída executável de `Round()` com floats grandes agora preservada em decimal simples, sem colapsar para notação científica no caminho host C.
+- o comportamento executável orientado a tipos agora cobre `ValType()` sobre codeblocks e `Empty()` sobre codeblocks e valores de erro do host C com expectativas guiadas por oráculo.
 
 ## Limites Conhecidos
 

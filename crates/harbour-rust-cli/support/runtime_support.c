@@ -2486,7 +2486,7 @@ struct harbour_runtime_Value harbour_builtin_empty(
         case HARBOUR_VALUE_CODEBLOCK:
             return harbour_value_from_logical(0);
         case HARBOUR_VALUE_ERROR:
-            return harbour_value_from_logical(1);
+            return harbour_value_from_logical(0);
     }
 
     return harbour_value_from_logical(1);

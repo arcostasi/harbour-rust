@@ -469,6 +469,11 @@ fn emits_valtype_builtin_fixture_with_runtime_builtin_helper_calls() {
             .source
             .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_valtype((harbour_runtime_Value[]) { names }, 1) }, 1);")
     );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_valtype((harbour_runtime_Value[]) { block }, 1) }, 1);")
+    );
 }
 
 #[test]
@@ -534,6 +539,11 @@ fn emits_empty_builtin_fixture_with_runtime_builtin_helper_calls() {
         emitted
             .source
             .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_empty((harbour_runtime_Value[]) { filled_items }, 1) }, 1);")
+    );
+    assert!(
+        emitted
+            .source
+            .contains("harbour_builtin_qout((harbour_runtime_Value[]) { harbour_builtin_empty((harbour_runtime_Value[]) { block }, 1) }, 1);")
     );
 }
 

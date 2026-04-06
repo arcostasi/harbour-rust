@@ -21,6 +21,13 @@ fn runtime_type_empty_edges_baseline() -> String {
         result_text(valtype(Some(&Value::empty_array())))
     ));
     out.push_str(&format!(
+        "ValType({{|| NIL}}) => {}\n",
+        result_text(valtype(Some(&Value::codeblock(
+            "{|| NIL}",
+            |_arguments, _context| Ok(Value::Nil)
+        ))))
+    ));
+    out.push_str(&format!(
         "Empty(\" \\\\r\\\\t\") => {}\n",
         result_text(empty(Some(&Value::from(" \r\t"))))
     ));
@@ -39,6 +46,13 @@ fn runtime_type_empty_edges_baseline() -> String {
     out.push_str(&format!(
         "Empty({{0}}) => {}\n",
         result_text(empty(Some(&Value::array(vec![Value::from(0_i64)]))))
+    ));
+    out.push_str(&format!(
+        "Empty({{|| NIL}}) => {}\n",
+        result_text(empty(Some(&Value::codeblock(
+            "{|| NIL}",
+            |_arguments, _context| Ok(Value::Nil)
+        ))))
     ));
     out
 }
@@ -85,11 +99,13 @@ fn type_empty_edges_runtime_matches_upstream_oracle_snapshot() {
     assert!(upstream_hvm.contains("HBTEST ValType(  slFalse   )           IS \"L\""));
     assert!(upstream_hvm.contains("HBTEST ValType(  scStringE )           IS \"C\""));
     assert!(upstream_hvm.contains("HBTEST ValType( { 1, 2, 3 } )          IS \"A\""));
+    assert!(upstream_hvm.contains("HBTEST ValType(  sbBlock   )           IS \"B\""));
     assert!(upstream_hvma.contains("HBTEST Empty( \" \" + Chr( 13 ) + Chr( 9 )"));
     assert!(upstream_hvma.contains("HBTEST Empty( \"  A\""));
     assert!(upstream_hvma.contains("HBTEST Empty( \" \" + Chr( 0 )"));
     assert!(upstream_hvma.contains("HBTEST Empty( {}"));
     assert!(upstream_hvma.contains("HBTEST Empty( { 0 }"));
+    assert!(upstream_hvma.contains("HBTEST Empty( {| x | x + x }"));
 
     assert_eq!(runtime_type_empty_edges_baseline(), expected);
 }

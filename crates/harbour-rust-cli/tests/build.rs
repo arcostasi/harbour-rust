@@ -1462,7 +1462,7 @@ fn run_command_executes_valtype_builtin_fixture_with_expected_output() {
     assert!(output.status.success(), "expected successful run status");
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert_eq!(stdout, "U\nU\nL\nN\nN\nC\nA\n");
+    assert_eq!(stdout, "U\nU\nL\nN\nN\nC\nA\nB\n");
 }
 
 #[test]
@@ -1542,7 +1542,10 @@ fn run_command_executes_empty_builtin_fixture_with_expected_output() {
     assert!(output.status.success(), "expected successful run status");
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert_eq!(stdout, ".T.\n.T.\n.T.\n.F.\n.T.\n.F.\n.T.\n.F.\n.T.\n.F.\n");
+    assert_eq!(
+        stdout,
+        ".T.\n.T.\n.T.\n.F.\n.T.\n.F.\n.T.\n.F.\n.T.\n.F.\n.F.\n"
+    );
 }
 
 #[test]

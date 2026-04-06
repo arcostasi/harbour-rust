@@ -109,6 +109,54 @@ fn runtime_support_prints_large_rounded_floats_without_scientific_notation() {
     fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
 }
 
+#[test]
+fn runtime_support_matches_type_and_empty_special_cases() {
+    let compiler = detect_host_compiler().expect("host compiler");
+    let temp_dir = unique_temp_dir("runtime-support-type-empty");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+
+    let harness_path = temp_dir.join("runtime_support_type_empty.c");
+    let output_path = temp_dir.join(executable_name("runtime_support_type_empty"));
+    let support_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("support");
+    let support_c_path = support_dir.join("runtime_support.c");
+
+    fs::write(&harness_path, runtime_support_type_empty_harness_source()).expect("write harness");
+
+    let compile_output = compiler_command(
+        &compiler,
+        &support_dir,
+        &harness_path,
+        &support_c_path,
+        &output_path,
+    )
+    .output()
+    .expect("invoke compiler");
+
+    assert!(
+        compile_output.status.success(),
+        "expected successful host C compilation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&compile_output.stdout),
+        String::from_utf8_lossy(&compile_output.stderr)
+    );
+
+    let run_output = Command::new(&output_path).output().expect("run harness");
+    assert!(
+        run_output.status.success(),
+        "expected successful harness status\nstderr:\n{}",
+        String::from_utf8_lossy(&run_output.stderr)
+    );
+
+    let stdout = String::from_utf8(run_output.stdout)
+        .expect("stdout utf8")
+        .replace("\r\n", "\n");
+    assert_eq!(
+        stdout,
+        "valtype_block:B\nvaltype_array:A\nempty_block:0\nempty_error:0\n"
+    );
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
 fn runtime_support_harness_source() -> &'static str {
     r#"#include <stdio.h>
 #include "runtime_support.h"
@@ -215,6 +263,51 @@ int main(void) {
     return 0;
 }
 "##
+}
+
+fn runtime_support_type_empty_harness_source() -> &'static str {
+    r#"#include <stdio.h>
+#include "runtime_support.h"
+
+static struct harbour_runtime_Value identity_block(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (arguments != NULL && argument_count > 0) {
+        return arguments[0];
+    }
+
+    return harbour_value_nil();
+}
+
+int main(void) {
+    struct harbour_runtime_Value block = harbour_value_from_codeblock(identity_block, "{|x| x}");
+    struct harbour_runtime_Value array = harbour_value_from_array_items(NULL, 0);
+    struct harbour_runtime_Value error = harbour_value_error_literal("BASE 9999 Test error");
+    struct harbour_runtime_Value type_block = harbour_builtin_valtype(
+        (struct harbour_runtime_Value[]) { block },
+        1
+    );
+    struct harbour_runtime_Value type_array = harbour_builtin_valtype(
+        (struct harbour_runtime_Value[]) { array },
+        1
+    );
+    struct harbour_runtime_Value empty_block = harbour_builtin_empty(
+        (struct harbour_runtime_Value[]) { block },
+        1
+    );
+    struct harbour_runtime_Value empty_error = harbour_builtin_empty(
+        (struct harbour_runtime_Value[]) { error },
+        1
+    );
+
+    printf("valtype_block:%.*s\n", (int) type_block.as.string.length, type_block.as.string.data);
+    printf("valtype_array:%.*s\n", (int) type_array.as.string.length, type_array.as.string.data);
+    printf("empty_block:%d\n", empty_block.as.logical ? 1 : 0);
+    printf("empty_error:%d\n", empty_error.as.logical ? 1 : 0);
+    return 0;
+}
+"#
 }
 
 fn detect_host_compiler() -> Option<String> {

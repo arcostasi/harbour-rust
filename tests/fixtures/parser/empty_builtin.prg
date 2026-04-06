@@ -1,6 +1,7 @@
 PROCEDURE Main()
    LOCAL empty_items := {}
    LOCAL filled_items := { 0 }
+   LOCAL block := {|x| x }
 
    ? Empty()
    ? Empty( NIL )
@@ -12,4 +13,5 @@ PROCEDURE Main()
    ? Empty( .T. )
    ? Empty( empty_items )
    ? Empty( filled_items )
+   ? Empty( block )
 RETURN

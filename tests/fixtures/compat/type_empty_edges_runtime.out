@@ -1,8 +1,10 @@
 ValType(.F.) => L
 ValType("") => C
 ValType({}) => A
+ValType({|| NIL}) => B
 Empty(" \\r\\t") => .T.
 Empty("  A") => .F.
 Empty(" \\0") => .F.
 Empty({}) => .T.
 Empty({0}) => .F.
+Empty({|| NIL}) => .F.

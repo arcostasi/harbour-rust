@@ -51,6 +51,7 @@ The runtime already supports:
 - oracle-backed `SubStr()`/`Right()` leniency and host-C preservation of embedded `Chr(0)` in selected executable string helpers.
 - default-width `Str()` formatting now aligned for positive large numbers and source-level float-literal display scale in the executable C path, while explicit negative-width padding and width-driven `Str()` rounding also follow the oracle through half-away-from-zero behavior.
 - executable `Round()` output for large floats now stays in plain decimal form instead of collapsing into scientific notation in the host-C path.
+- type-oriented executable behavior now covers `ValType()` on codeblocks and `Empty()` on codeblocks and host-C error values with oracle-backed expectations.
 
 ## Known Limits
 
