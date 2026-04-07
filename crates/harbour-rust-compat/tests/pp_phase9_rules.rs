@@ -146,6 +146,45 @@ fn phase13_quoted_result_marker_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase14_quoted_result_marker_macro_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_doc) = read_upstream_or_skip("harbour-core/doc/pp.txt", "upstream pp doc")
+    else {
+        return;
+    };
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/quoted_macro_marker_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_doc.contains("Normal stringify result marker"));
+    assert!(upstream_doc.contains("macro tokens expressions starting with '&' followed by '('"));
+    assert!(upstream_doc.contains("rest of tokens copied"));
+    assert!(upstream_hbpptest.contains("#command MCOMMAND <x> => normal_c(<\"x\">)"));
+    assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar+1\")'"));
+    assert!(upstream_hbpptest.contains("pre :='normal_c((cVar) +1)'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/quoted_macro_marker_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase13_smart_result_marker_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
@@ -163,6 +202,45 @@ fn phase13_smart_result_marker_fixture_matches_curated_upstream_subset() {
     let output = Preprocessor::default().preprocess(
         SourceFile::from_path(workspace_fixture("tests/fixtures/pp/smart_marker_root.prg"))
             .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
+fn phase14_smart_result_marker_macro_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_doc) = read_upstream_or_skip("harbour-core/doc/pp.txt", "upstream pp doc")
+    else {
+        return;
+    };
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/smart_marker_macro_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_doc.contains("Smart stringify result marker"));
+    assert!(upstream_doc.contains("rules as for normal stringify with the exception"));
+    assert!(upstream_doc.contains("which start with string or '(' token"));
+    assert!(upstream_hbpptest.contains("#translate MTRANSLATE <x:&>  => macro_t(<(x)>)"));
+    assert!(upstream_hbpptest.contains("pre :='macro_t(cVar)'"));
+    assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar&cVar\")'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/smart_marker_macro_root.prg",
+        ))
+        .expect("fixture"),
     );
 
     assert!(

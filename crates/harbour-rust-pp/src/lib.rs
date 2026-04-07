@@ -1726,9 +1726,7 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
         }
         ResultPart::Stringify(name) => {
             if let Some(value) = captures.values.get(name) {
-                output.push('"');
-                output.push_str(&escape_string_literal(&value.raw));
-                output.push('"');
+                push_quoted_capture(&value.raw, output);
             }
         }
         ResultPart::Blockify(name) => {
@@ -1738,16 +1736,12 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
         }
         ResultPart::Smart(name) => {
             if let Some(value) = captures.values.get(name) {
-                output.push('"');
-                output.push_str(&escape_string_literal(&value.raw));
-                output.push('"');
+                render_smart_capture(&value.raw, output);
             }
         }
         ResultPart::Quoted(name) => {
             if let Some(value) = captures.values.get(name) {
-                output.push('"');
-                output.push_str(&escape_string_literal(&value.raw));
-                output.push('"');
+                render_quoted_capture(&value.raw, output);
             }
         }
         ResultPart::Logical(name) => {
@@ -1798,6 +1792,77 @@ fn capture_starts_with_codeblock(raw: &str) -> bool {
     };
 
     matches!(rest.trim_start().chars().next(), Some('|'))
+}
+
+fn render_smart_capture(raw: &str, output: &mut String) {
+    let trimmed = raw.trim_start();
+    if matches!(trimmed.chars().next(), Some('('))
+        || matches!(trimmed.chars().next(), Some(ch) if is_string_delimiter(ch))
+    {
+        output.push_str(raw);
+        return;
+    }
+
+    if let Some(rendered) = render_macro_aware_stringify(raw) {
+        output.push_str(&rendered);
+        return;
+    }
+
+    push_quoted_capture(raw, output);
+}
+
+fn render_quoted_capture(raw: &str, output: &mut String) {
+    if let Some(rendered) = render_macro_aware_stringify(raw) {
+        output.push_str(&rendered);
+        return;
+    }
+
+    push_quoted_capture(raw, output);
+}
+
+fn render_macro_aware_stringify(raw: &str) -> Option<String> {
+    let trimmed = raw.trim_start();
+    let rest = trimmed.strip_prefix('&')?.trim_start();
+
+    if rest.starts_with('(') {
+        return Some(rest.to_owned());
+    }
+
+    if let Some(keyword) = parse_simple_macro_keyword(rest) {
+        return Some(keyword.to_owned());
+    }
+
+    Some(format!("\"{}\"", escape_string_literal(rest)))
+}
+
+fn parse_simple_macro_keyword(text: &str) -> Option<&str> {
+    let mut chars = text.char_indices();
+    let (_, first) = chars.next()?;
+    if !is_identifier_start(first) {
+        return None;
+    }
+
+    let mut end = first.len_utf8();
+    for (index, ch) in chars {
+        if !is_identifier_continue(ch) {
+            end = index;
+            break;
+        }
+        end = index + ch.len_utf8();
+    }
+
+    let identifier = &text[..end];
+    let suffix = &text[end..];
+    match suffix {
+        "" | "." => Some(identifier),
+        _ => None,
+    }
+}
+
+fn push_quoted_capture(raw: &str, output: &mut String) {
+    output.push('"');
+    output.push_str(&escape_string_literal(raw));
+    output.push('"');
 }
 
 fn escape_string_literal(text: &str) -> String {

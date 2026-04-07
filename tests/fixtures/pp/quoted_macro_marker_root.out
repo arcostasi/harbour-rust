@@ -1,0 +1,11 @@
+PROCEDURE Main()
+   nm( cVar )
+   nm( cVar )
+   nm( (cVar) )
+   nm( (cVar) )
+   nm( "cVar&cVar" )
+   nm( "cVar+1" )
+   nm( "cVar .AND. .T." )
+   nm( (cVar) + 1 )
+   nm( (cVar) + 1 )
+RETURN

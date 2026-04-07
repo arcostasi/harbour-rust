@@ -1,0 +1,12 @@
+#command _SMART_M(<z>) => sm( <(z)> )
+PROCEDURE Main()
+   _SMART_M(&cVar)
+   _SMART_M(&cVar.)
+   _SMART_M(&(cVar))
+   _SMART_M(& (cVar))
+   _SMART_M(&cVar&cVar)
+   _SMART_M(&cVar+1)
+   _SMART_M(&cVar .AND. .T.)
+   _SMART_M(&(cVar) + 1)
+   _SMART_M(& (cVar) + 1)
+RETURN

@@ -70,7 +70,7 @@ Recorte atual já implementado:
 
 Limitações ainda abertas nesta fase:
 
-- sem semântica mais ampla de `<{id}>`, `<"id">` e `<(id)>` em capturas com múltiplas expressões, strings e macros
+- sem semântica mais ampla de `<{id}>`, `<"id">` e `<(id)>` em capturas com múltiplas expressões, strings e macros, além de pattern markers de macro como `<id:&>`
 - sem macro markers `:<&>` e variantes mais complexas do upstream
 - sem nested optional/list expansion completa do `_pp_test.prg`
 - sem engine token-based fiel ao `ppcore.c`; o recorte atual continua tokenização leve sobre source textual
@@ -118,7 +118,9 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/logical_marker_root.prg` | golden de result marker lógico `<.id.>` |
 | `tests/fixtures/pp/blockify_marker_root.prg` | golden do subset mínimo de blockify result marker `<{id}>` |
 | `tests/fixtures/pp/quoted_marker_root.prg` | golden do subset mínimo de result marker `<"id">` |
+| `tests/fixtures/pp/quoted_macro_marker_root.prg` | golden do subset macro-orientado de result marker `<"id">` |
 | `tests/fixtures/pp/smart_marker_root.prg` | golden do subset mínimo de smart result marker `<(id)>` |
+| `tests/fixtures/pp/smart_marker_macro_root.prg` | golden do subset macro-orientado de smart result marker `<(id)>` |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
 | `tests/fixtures/pp/malformed_rule_root.prg` | erro explícito de regra malformada |
 | `tests/fixtures/pp/phase9_acceptance.prg` | `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo |
@@ -132,6 +134,6 @@ Fases 6, 9 e 13 concluídas:
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
-- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset mínimo de `<"id">` e um subset mínimo de `<(id)>`
+- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset macro-orientado de `<"id">` e um subset macro-orientado de `<(id)>`
 - fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
 - semântica mais ampla de markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes

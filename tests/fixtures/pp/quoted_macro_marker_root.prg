@@ -1,0 +1,12 @@
+#command _NORMAL_M(<z>) => nm( <"z"> )
+PROCEDURE Main()
+   _NORMAL_M(&cVar)
+   _NORMAL_M(&cVar.)
+   _NORMAL_M(&(cVar))
+   _NORMAL_M(& (cVar))
+   _NORMAL_M(&cVar&cVar)
+   _NORMAL_M(&cVar+1)
+   _NORMAL_M(&cVar .AND. .T.)
+   _NORMAL_M(&(cVar) + 1)
+   _NORMAL_M(& (cVar) + 1)
+RETURN

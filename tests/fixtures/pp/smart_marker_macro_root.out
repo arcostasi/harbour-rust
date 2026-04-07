@@ -1,0 +1,11 @@
+PROCEDURE Main()
+   sm( cVar )
+   sm( cVar )
+   sm( (cVar) )
+   sm( (cVar) )
+   sm( "cVar&cVar" )
+   sm( "cVar+1" )
+   sm( "cVar .AND. .T." )
+   sm( (cVar) + 1 )
+   sm( (cVar) + 1 )
+RETURN
