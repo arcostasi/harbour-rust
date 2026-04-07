@@ -343,6 +343,22 @@ fn preprocesses_nested_optional_list_fixture() {
 }
 
 #[test]
+fn preprocesses_nested_optional_match_fixture() {
+    let root = fixture_path("nested_optional_match_root.prg");
+    let expected = fs::read_to_string(fixture_path("nested_optional_match_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 1);
+}
+
+#[test]
 fn preprocesses_multiline_command_fixture() {
     let root = fixture_path("multiline_command_root.prg");
     let expected = fs::read_to_string(fixture_path("multiline_command_root.out")).unwrap();

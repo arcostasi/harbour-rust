@@ -395,3 +395,36 @@ fn phase14_nested_optional_list_fixture_matches_curated_upstream_subset() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn phase14_nested_optional_match_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/nested_optional_match_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#xtranslate AAA [A <a> [B <b>] ] => Qout([<a>][, <b>])"));
+    assert!(upstream_hbpptest.contains("pre :=\"Qout()\""));
+    assert!(upstream_hbpptest.contains("pre :=\"Qout(a )\""));
+    assert!(upstream_hbpptest.contains("pre :=\"Qout(a ,b )\""));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/nested_optional_match_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}

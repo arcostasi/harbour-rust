@@ -1,0 +1,5 @@
+PROCEDURE Main()
+   emit()
+   emit(alpha)
+   emit(alpha,beta)
+RETURN

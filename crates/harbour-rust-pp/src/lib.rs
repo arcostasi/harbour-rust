@@ -1526,7 +1526,7 @@ fn match_pattern_recursive(
             }
             MarkerKind::Regular | MarkerKind::List => {
                 let minimum_end = token_index + 1;
-                for end in (minimum_end..=tokens.len()).rev() {
+                for end in marker_candidate_ends(pattern, pattern_index, tokens, minimum_end) {
                     let capture =
                         match build_capture(&marker.kind, tokens, source, token_index, end) {
                             Some(capture) => capture,
@@ -1693,6 +1693,57 @@ fn is_macro_identifier_token(text: &str) -> bool {
 
 fn optional_parts_priority(parts: &[PatternPart]) -> usize {
     parts.first().map(optional_clause_priority).unwrap_or(3)
+}
+
+fn marker_candidate_ends(
+    pattern: &[PatternPart],
+    pattern_index: usize,
+    tokens: &[SourceToken],
+    minimum_end: usize,
+) -> Vec<usize> {
+    let mut preferred = Vec::new();
+    let mut fallback = Vec::new();
+    let stop_tokens = leading_stop_tokens(pattern, pattern_index + 1);
+
+    for end in minimum_end..=tokens.len() {
+        if tokens.get(end).is_some_and(|token| {
+            stop_tokens
+                .iter()
+                .any(|stop| token_matches_text(&token.text, stop))
+        }) {
+            preferred.push(end);
+        } else {
+            fallback.push(end);
+        }
+    }
+
+    preferred.extend(fallback.into_iter().rev());
+    preferred
+}
+
+fn leading_stop_tokens(pattern: &[PatternPart], start: usize) -> Vec<String> {
+    let mut stops = Vec::new();
+    collect_leading_stop_tokens(&pattern[start..], &mut stops);
+    stops
+}
+
+fn collect_leading_stop_tokens(pattern: &[PatternPart], stops: &mut Vec<String>) {
+    let Some(first) = pattern.first() else {
+        return;
+    };
+
+    match first {
+        PatternPart::Literal(literal) => stops.push(literal.clone()),
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Restricted(allowed),
+            ..
+        }) => stops.extend(allowed.iter().cloned()),
+        PatternPart::Optional(parts) => {
+            collect_leading_stop_tokens(parts, stops);
+            collect_leading_stop_tokens(&pattern[1..], stops);
+        }
+        PatternPart::Marker(_) => {}
+    }
 }
 
 fn collect_optional_matches(
@@ -2435,5 +2486,22 @@ mod tests {
             output.errors
         );
         assert_eq!(output.text, "assign(0,v1)\nassign(0,v1,v2,v3)\n");
+    }
+
+    #[test]
+    fn expands_nested_optional_match_patterns() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate AAA [A <a> [B <b>] ] => emit([<a>][,<b>])\nAAA\nAAA A alpha\nAAA A alpha B beta\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.text, "emit()\nemit(alpha)\nemit(alpha,beta)\n");
     }
 }
