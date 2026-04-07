@@ -1,0 +1,4 @@
+PROCEDURE Main()
+   nm( "a" )
+   nm( "a[1]" )
+RETURN

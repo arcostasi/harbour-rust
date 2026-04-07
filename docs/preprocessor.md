@@ -70,7 +70,7 @@ Recorte atual já implementado:
 
 Limitações ainda abertas nesta fase:
 
-- sem markers avançados como `<(id)>`, `<"id">` e `<{id}>`
+- sem markers avançados como `<(id)>` e `<{id}>`, além da semântica mais ampla de `<"id">`
 - sem macro markers `:<&>` e variantes mais complexas do upstream
 - sem nested optional/list expansion completa do `_pp_test.prg`
 - sem engine token-based fiel ao `ppcore.c`; o recorte atual continua tokenização leve sobre source textual
@@ -115,6 +115,8 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/angle_search_path_root.prg` | resolvido por search path |
 | `tests/fixtures/pp/command_translate_root.prg` | golden de `#command` + `#translate` |
 | `tests/fixtures/pp/rule_markers_root.prg` | golden de opcionais, lista, restrição e stringify |
+| `tests/fixtures/pp/logical_marker_root.prg` | golden de result marker lógico `<.id.>` |
+| `tests/fixtures/pp/quoted_marker_root.prg` | golden do subset mínimo de result marker `<"id">` |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
 | `tests/fixtures/pp/malformed_rule_root.prg` | erro explícito de regra malformada |
 | `tests/fixtures/pp/phase9_acceptance.prg` | `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo |
@@ -128,6 +130,6 @@ Fases 6 e 9 concluídas:
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
-- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas e result markers lógicos `<.id.>`
+- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, result markers lógicos `<.id.>` e um subset mínimo de `<"id">`
 - fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
 - markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes

@@ -1,0 +1,5 @@
+#command _NORMAL_M(<z>) => nm( <"z"> )
+PROCEDURE Main()
+   _NORMAL_M(a)
+   _NORMAL_M(a[1])
+RETURN
