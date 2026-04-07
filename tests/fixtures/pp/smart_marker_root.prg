@@ -1,0 +1,5 @@
+#command _SMART_M(<z>) => sm( <(z)> )
+PROCEDURE Main()
+   _SMART_M(a)
+   _SMART_M(a[1])
+RETURN

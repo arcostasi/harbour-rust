@@ -132,6 +132,7 @@ pub enum ResultPart {
     Literal(String),
     Marker(String),
     Stringify(String),
+    Smart(String),
     Quoted(String),
     Logical(String),
     Optional(Vec<ResultPart>),
@@ -926,7 +927,10 @@ fn parse_result_until(
                 ));
             };
             let marker = &text[cursor + 1..cursor + 1 + close_offset];
-            if let Some(quoted_name) =
+            if let Some(smart_name) = parse_smart_result_marker(marker, path, line_number, column)?
+            {
+                parts.push(ResultPart::Smart(smart_name));
+            } else if let Some(quoted_name) =
                 parse_quoted_result_marker(marker, path, line_number, column)?
             {
                 parts.push(ResultPart::Quoted(quoted_name));
@@ -1001,6 +1005,20 @@ fn parse_quoted_result_marker(
     column: usize,
 ) -> Result<Option<String>, PreprocessError> {
     if !(text.starts_with('"') && text.ends_with('"') && text.len() > 2) {
+        return Ok(None);
+    }
+
+    let name = &text[1..text.len() - 1];
+    Ok(Some(validate_marker_name(name, path, line_number, column)?))
+}
+
+fn parse_smart_result_marker(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<Option<String>, PreprocessError> {
+    if !(text.starts_with('(') && text.ends_with(')') && text.len() > 2) {
         return Ok(None);
     }
 
@@ -1693,6 +1711,13 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
                 output.push('"');
             }
         }
+        ResultPart::Smart(name) => {
+            if let Some(value) = captures.values.get(name) {
+                output.push('"');
+                output.push_str(&escape_string_literal(&value.raw));
+                output.push('"');
+            }
+        }
         ResultPart::Quoted(name) => {
             if let Some(value) = captures.values.get(name) {
                 output.push('"');
@@ -1722,6 +1747,7 @@ fn result_parts_have_value(parts: &[ResultPart], captures: &MatchCaptures) -> bo
         ResultPart::Literal(_) => false,
         ResultPart::Marker(name)
         | ResultPart::Stringify(name)
+        | ResultPart::Smart(name)
         | ResultPart::Quoted(name)
         | ResultPart::Logical(name) => captures.values.contains_key(name),
         ResultPart::Optional(parts) => result_parts_have_value(parts, captures),

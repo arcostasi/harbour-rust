@@ -1,0 +1,4 @@
+PROCEDURE Main()
+   sm( "a" )
+   sm( "a[1]" )
+RETURN
