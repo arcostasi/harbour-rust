@@ -70,7 +70,7 @@ Recorte atual já implementado:
 
 Limitações ainda abertas nesta fase:
 
-- sem semântica mais ampla de `<{id}>`, `<"id">` e `<(id)>` em capturas com múltiplas expressões, strings e macros, além de behavior mais amplo de pattern markers de macro além do subset atual `<id:&>` com spillover em operadores e sufixos encadeados selecionados
+- sem semântica mais ampla de `<{id}>`, `<"id">` e `<(id)>` em capturas com múltiplas expressões, strings e macros, além de behavior mais amplo de pattern markers de macro além do subset atual `<id:&>` com spillover em operadores, cadeias longas multi-segmento e misturas selecionadas com `&(expr)`
 - sem macro markers `:<&>` e variantes mais complexas do upstream
 - sem nested optional/list expansion completa do `_pp_test.prg` além do subset focado `AAA`/`SET`
 - sem engine token-based fiel ao `ppcore.c`; o recorte atual continua tokenização leve sobre source textual
@@ -138,6 +138,6 @@ Fases 6, 9 e 13 concluídas:
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
-- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, um subset focado `AAA`/`SET` para nested optional/list, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset macro-orientado de `<"id">`, um subset macro-orientado de `<(id)>` e um subset mínimo de pattern marker `<id:&>` com spillover em operadores e sufixos encadeados selecionados
+- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, um subset focado `AAA`/`SET` para nested optional/list, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset macro-orientado de `<"id">`, um subset macro-orientado de `<(id)>` e um subset expandido de pattern marker `<id:&>` com spillover em operadores, cadeias longas multi-segmento e misturas selecionadas com `&(expr)`
 - fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
 - semântica mais ampla de markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes

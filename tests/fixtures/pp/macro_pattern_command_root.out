@@ -8,5 +8,7 @@ PROCEDURE Main()
    normal_c( "&cVar+=1" )
    normal_c( "&cVar+1" )
    normal_c( (cVar) +1 )
+   macro_c( "&cVar.&cVar." )
+   macro_c( "&cVar.&cVar.&cVar&cVar2" )
    normal_c( "&cVar.&(cVar)" )
 RETURN

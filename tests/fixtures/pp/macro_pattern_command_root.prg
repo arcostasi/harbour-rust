@@ -10,5 +10,7 @@ PROCEDURE Main()
    MCOMMAND &cVar+=1
    MCOMMAND &cVar+1
    MCOMMAND &(cVar) +1
+   MCOMMAND &cVar.&cVar.
+   MCOMMAND &cVar.&cVar.&cVar&cVar2
    MCOMMAND &cVar.&(cVar)
 RETURN

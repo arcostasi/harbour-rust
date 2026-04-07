@@ -275,6 +275,8 @@ fn phase14_macro_pattern_translate_fixture_matches_curated_upstream_subset() {
     assert!(upstream_hbpptest.contains("pre :='macro_t(cVar)++'"));
     assert!(upstream_hbpptest.contains("pre :='macro_t(cVar)+=1'"));
     assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar&cVar\")'"));
+    assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar.&cVar.\")'"));
+    assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar.&cVar.&cVar&cVar\")'"));
     assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar.&\")(cVar)'"));
 
     let output = Preprocessor::default().preprocess(
@@ -308,6 +310,8 @@ fn phase14_macro_pattern_command_fixture_matches_curated_upstream_subset() {
     assert!(upstream_hbpptest.contains("#command MCOMMAND <x> => normal_c(<\"x\">)"));
     assert!(upstream_hbpptest.contains("#command MCOMMAND <x:&>  => macro_c(<(x)>)"));
     assert!(upstream_hbpptest.contains("pre :='macro_c(cVar)'"));
+    assert!(upstream_hbpptest.contains("pre :='macro_c(\"&cVar.&cVar.\")'"));
+    assert!(upstream_hbpptest.contains("pre :='macro_c(\"&cVar.&cVar.&cVar&cVar2\")'"));
     assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar++\")'"));
     assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar+=1\")'"));
     assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar+1\")'"));

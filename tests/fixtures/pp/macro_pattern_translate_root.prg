@@ -11,5 +11,7 @@ PROCEDURE Main()
    MTRANSLATE &cVar.+1
    MTRANSLATE &cVar .AND. .T.
    MTRANSLATE &(cVar) +1
+   MTRANSLATE &cVar.&cVar.
+   MTRANSLATE &cVar.&cVar.&cVar&cVar
    MTRANSLATE &cVar.&(cVar)
 RETURN
