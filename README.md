@@ -28,7 +28,7 @@ The project also has a personal origin: xBase was the maintainer's first serious
 
 ## Current Status
 
-The repository has completed phases 0 through 13 of its current roadmap, and phase 14 compatibility-corpus expansion is now in progress while the project remains on the `0.4.0-alpha` release line.
+The repository has completed phases 0 through 14 of its current roadmap, while the project remains on the `0.4.0-alpha` release line.
 
 Current highlights:
 
