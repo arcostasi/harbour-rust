@@ -1306,6 +1306,26 @@ struct CaptureValue {
     list_items: Option<Vec<String>>,
 }
 
+impl CaptureValue {
+    fn render_text(&self, repeat_index: Option<usize>) -> Option<&str> {
+        match (&self.list_items, repeat_index) {
+            (Some(items), Some(index)) => items.get(index).map(String::as_str),
+            _ => Some(self.raw.as_str()),
+        }
+    }
+
+    fn repeat_count(&self) -> usize {
+        self.list_items.as_ref().map_or(1, Vec::len)
+    }
+
+    fn has_value_at(&self, repeat_index: usize) -> bool {
+        match &self.list_items {
+            Some(items) => repeat_index < items.len(),
+            None => true,
+        }
+    }
+}
+
 fn tokenize_source_line(text: &str) -> Vec<SourceToken> {
     let mut tokens = Vec::new();
     let mut cursor = 0;
@@ -1684,7 +1704,7 @@ fn collect_optional_matches(
 ) -> Vec<(usize, MatchCaptures)> {
     let mut matches = Vec::new();
 
-    for end in token_index + 1..=tokens.len() {
+    for end in (token_index + 1..=tokens.len()).rev() {
         if let Some((next_index, next_captures)) = match_pattern_recursive(
             optional,
             0,
@@ -1733,7 +1753,8 @@ fn build_capture(
     match kind {
         MarkerKind::Regular => Some(CaptureValue {
             raw,
-            list_items: None,
+            list_items: split_list_capture(tokens, source, start, end)
+                .filter(|entries| entries.len() > 1),
         }),
         MarkerKind::List => {
             split_list_capture(tokens, source, start, end).map(|entries| CaptureValue {
@@ -1796,37 +1817,52 @@ fn merge_capture(
 fn render_result(parts: &[ResultPart], captures: &MatchCaptures) -> String {
     let mut output = String::new();
     for part in parts {
-        render_result_part(part, captures, &mut output);
+        render_result_part(part, captures, &mut output, None);
     }
     output
 }
 
-fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut String) {
+fn render_result_part(
+    part: &ResultPart,
+    captures: &MatchCaptures,
+    output: &mut String,
+    repeat_index: Option<usize>,
+) {
     match part {
         ResultPart::Literal(text) => output.push_str(text),
         ResultPart::Marker(name) => {
             if let Some(value) = captures.values.get(name) {
-                output.push_str(&value.raw);
+                if let Some(text) = value.render_text(repeat_index) {
+                    output.push_str(text);
+                }
             }
         }
         ResultPart::Stringify(name) => {
             if let Some(value) = captures.values.get(name) {
-                push_quoted_capture(&value.raw, output);
+                if let Some(text) = value.render_text(repeat_index) {
+                    push_quoted_capture(text, output);
+                }
             }
         }
         ResultPart::Blockify(name) => {
             if let Some(value) = captures.values.get(name) {
-                render_blockify_capture(&value.raw, output);
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_blockify_capture(text, output);
+                }
             }
         }
         ResultPart::Smart(name) => {
             if let Some(value) = captures.values.get(name) {
-                render_smart_capture(&value.raw, output);
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_smart_capture(text, output);
+                }
             }
         }
         ResultPart::Quoted(name) => {
             if let Some(value) = captures.values.get(name) {
-                render_quoted_capture(&value.raw, output);
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_quoted_capture(text, output);
+                }
             }
         }
         ResultPart::Logical(name) => {
@@ -1837,26 +1873,78 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
             }
         }
         ResultPart::Optional(parts) => {
-            if result_parts_have_value(parts, captures) {
-                for nested in parts {
-                    render_result_part(nested, captures, output);
+            if let Some(repeat_index) = repeat_index {
+                if result_parts_have_value_at(parts, captures, repeat_index) {
+                    for nested in parts {
+                        render_result_part(nested, captures, output, Some(repeat_index));
+                    }
+                }
+            } else {
+                for repeat_index in 0..result_parts_repeat_count(parts, captures) {
+                    if result_parts_have_value_at(parts, captures, repeat_index) {
+                        for nested in parts {
+                            render_result_part(nested, captures, output, Some(repeat_index));
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-fn result_parts_have_value(parts: &[ResultPart], captures: &MatchCaptures) -> bool {
-    parts.iter().any(|part| match part {
+fn result_parts_repeat_count(parts: &[ResultPart], captures: &MatchCaptures) -> usize {
+    parts
+        .iter()
+        .map(|part| result_part_repeat_count(part, captures))
+        .max()
+        .unwrap_or(0)
+}
+
+fn result_part_repeat_count(part: &ResultPart, captures: &MatchCaptures) -> usize {
+    match part {
+        ResultPart::Literal(_) => 0,
+        ResultPart::Marker(name)
+        | ResultPart::Stringify(name)
+        | ResultPart::Blockify(name)
+        | ResultPart::Smart(name)
+        | ResultPart::Quoted(name) => captures
+            .values
+            .get(name)
+            .map(CaptureValue::repeat_count)
+            .unwrap_or(0),
+        ResultPart::Logical(name) => usize::from(captures.values.contains_key(name)),
+        ResultPart::Optional(parts) => result_parts_repeat_count(parts, captures),
+    }
+}
+
+fn result_parts_have_value_at(
+    parts: &[ResultPart],
+    captures: &MatchCaptures,
+    repeat_index: usize,
+) -> bool {
+    parts
+        .iter()
+        .any(|part| result_part_has_value_at(part, captures, repeat_index))
+}
+
+fn result_part_has_value_at(
+    part: &ResultPart,
+    captures: &MatchCaptures,
+    repeat_index: usize,
+) -> bool {
+    match part {
         ResultPart::Literal(_) => false,
         ResultPart::Marker(name)
         | ResultPart::Stringify(name)
         | ResultPart::Blockify(name)
         | ResultPart::Smart(name)
-        | ResultPart::Quoted(name)
-        | ResultPart::Logical(name) => captures.values.contains_key(name),
-        ResultPart::Optional(parts) => result_parts_have_value(parts, captures),
-    })
+        | ResultPart::Quoted(name) => captures
+            .values
+            .get(name)
+            .is_some_and(|value| value.has_value_at(repeat_index)),
+        ResultPart::Logical(name) => captures.values.contains_key(name),
+        ResultPart::Optional(parts) => result_parts_have_value_at(parts, captures, repeat_index),
+    }
 }
 
 fn render_blockify_capture(raw: &str, output: &mut String) {
@@ -2330,5 +2418,22 @@ mod tests {
             output.errors
         );
         assert_eq!(output.text, "PROCEDURE Main()\n   ? n\nRETURN\n");
+    }
+
+    #[test]
+    fn repeats_optional_result_clauses_for_list_captures() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xcommand SET <vars,...> WITH <val> => assign(<val>[,<vars>])\nSET v1 WITH 0\nSET v1, v2, v3 WITH 0\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.text, "assign(0,v1)\nassign(0,v1,v2,v3)\n");
     }
 }
