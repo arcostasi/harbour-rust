@@ -28,12 +28,12 @@ O projeto também tem uma origem pessoal: xBase foi o primeiro ambiente de progr
 
 ## Estado Atual
 
-O repositório concluiu as fases 0 a 12 do roadmap inicial e está em preparação para a linha de release `0.4.0-alpha`.
+O repositório concluiu as fases 0 a 13 do roadmap atual e permanece na linha de release `0.4.0-alpha` enquanto o trabalho em corpus de compatibilidade mais amplo continua.
 
 Destaques atuais:
 
 - pipelines de parser, HIR, sema, runtime, IR e backend C executável atual implementados;
-- compatibilidade procedural, arrays, `STATIC`, memvars, codeblocks e parte do pré-processador disponíveis;
+- compatibilidade procedural, arrays, `STATIC`, memvars, codeblocks e marcadores avançados selecionados do pré-processador disponíveis;
 - base inicial de DBF/RDD presente;
 - CLI, harnesses de regressão, benchmarks, scaffold de fuzzing e workflows de release configurados.
 

@@ -33,6 +33,7 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | 10 | base de DBF/RDD | concluída |
 | 11 | diagnósticos, CLI, DX | concluída |
 | 12 | qualidade e prontidão para release | concluída |
+| 13 | marcadores avançados de pré-processador ancorados no oráculo | concluída |
 
 ## Prioridades de Curto Prazo
 

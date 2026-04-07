@@ -33,6 +33,7 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | 10 | DBF/RDD foundation | completed |
 | 11 | diagnostics, CLI, DX | completed |
 | 12 | quality and release readiness | completed |
+| 13 | oracle-backed advanced preprocessor markers | completed |
 
 ## Near-Term Priorities
 

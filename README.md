@@ -28,12 +28,12 @@ The project also has a personal origin: xBase was the maintainer's first serious
 
 ## Current Status
 
-The repository has completed phases 0 through 12 of its initial roadmap and is being prepared for the `0.4.0-alpha` release line.
+The repository has completed phases 0 through 13 of its current roadmap and remains on the `0.4.0-alpha` release line while broader compatibility-corpus work continues.
 
 Current highlights:
 
 - parser, HIR, sema, runtime, IR, and the current executable C backend are implemented;
-- procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected preprocessor features are available;
+- procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected advanced preprocessor markers are available;
 - DBF/RDD groundwork is present;
 - CLI, regression harnesses, benchmarks, fuzz scaffolding, and release workflows are in place.
 

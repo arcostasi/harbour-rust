@@ -84,8 +84,8 @@ O `harbour-core/` está disponível localmente. Use `docs/upstream-navigator.md`
 
 ## Estado atual
 
-Fases 0–6 concluídas. Próximo: Fase 7 (compatibilidade procedural ampliada).
+Fases 0–13 concluídas. Próximo: expansão do corpus de compatibilidade pós-Fase 13.
 
 Pipeline funcional: `source -> pp -> lexer -> parser -> AST -> HIR -> sema -> IR -> codegen-c -> binário`.
 
-Baseline executável: `hello.prg`, `while.prg`, `for_sum.prg`, arrays com indexação e atribuição.
+Baseline executável: `hello.prg`, `while.prg`, `for_sum.prg`, arrays com indexação e atribuição, além de cobertura curada para markers avançados do pré-processador.

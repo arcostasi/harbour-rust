@@ -126,7 +126,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 
 ## Estado atual
 
-Fases 6 e 9 concluídas:
+Fases 6, 9 e 13 concluídas:
 
 - `#define` objeto com expansão recursiva e detecção de ciclo
 - `#include` com quoted e angle-bracket, search paths configuráveis
@@ -134,4 +134,4 @@ Fases 6 e 9 concluídas:
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
 - baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset mínimo de `<"id">` e um subset mínimo de `<(id)>`
 - fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
-- markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes
+- semântica mais ampla de markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes
