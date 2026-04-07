@@ -26,4 +26,4 @@ As áreas implementadas incluem:
 
 ## Estado Atual
 
-O pré-processador já suporta o baseline alpha atual do projeto. Fixtures focadas de compatibilidade agora também acompanham gaps conhecidos em combinações de marcadores opcionais e stringify vindas do corpus hbpp do upstream, mas replacements opcionais com colchetes escapados e capturas reordenadas de cláusulas opcionais ainda ficam como trabalho futuro.
+O pré-processador já suporta o baseline alpha atual do projeto. Fixtures focadas de compatibilidade agora cobrem replacements opcionais com colchetes escapados, reordenação selecionada de cláusulas opcionais contíguas, result markers lógicos como `<.id.>`, um subconjunto mínimo de blockify `<{id}>`, um subconjunto mínimo de quoted-result `<"id">` e um subconjunto mínimo de smart-result `<(id)>` ancorados no corpus hbpp do upstream. Combinações mais amplas de opcionais/listas, edge cases de dumb-stringify e semântica mais ampla desses markers continuam como trabalho futuro.

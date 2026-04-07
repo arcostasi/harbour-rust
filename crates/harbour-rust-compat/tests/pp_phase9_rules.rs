@@ -172,3 +172,40 @@ fn phase13_smart_result_marker_fixture_matches_curated_upstream_subset() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn phase13_blockify_result_marker_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_doc) = read_upstream_or_skip("harbour-core/doc/pp.txt", "upstream pp doc")
+    else {
+        return;
+    };
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/blockify_marker_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_doc.contains("<{idMarker}> Blockify result marker"));
+    assert!(upstream_doc.contains("adding \"{||\" prefix and \"}\" suffix"));
+    assert!(upstream_hbpptest.contains("_GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> )"));
+    assert!(upstream_hbpptest.contains("dbSetFilter({|| &cVar.},cVar)"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/blockify_marker_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}

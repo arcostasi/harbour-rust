@@ -132,6 +132,7 @@ pub enum ResultPart {
     Literal(String),
     Marker(String),
     Stringify(String),
+    Blockify(String),
     Smart(String),
     Quoted(String),
     Logical(String),
@@ -927,7 +928,12 @@ fn parse_result_until(
                 ));
             };
             let marker = &text[cursor + 1..cursor + 1 + close_offset];
-            if let Some(smart_name) = parse_smart_result_marker(marker, path, line_number, column)?
+            if let Some(blockify_name) =
+                parse_blockify_result_marker(marker, path, line_number, column)?
+            {
+                parts.push(ResultPart::Blockify(blockify_name));
+            } else if let Some(smart_name) =
+                parse_smart_result_marker(marker, path, line_number, column)?
             {
                 parts.push(ResultPart::Smart(smart_name));
             } else if let Some(quoted_name) =
@@ -991,6 +997,20 @@ fn parse_logical_result_marker(
     column: usize,
 ) -> Result<Option<String>, PreprocessError> {
     if !(text.starts_with('.') && text.ends_with('.') && text.len() > 2) {
+        return Ok(None);
+    }
+
+    let name = &text[1..text.len() - 1];
+    Ok(Some(validate_marker_name(name, path, line_number, column)?))
+}
+
+fn parse_blockify_result_marker(
+    text: &str,
+    path: &Path,
+    line_number: usize,
+    column: usize,
+) -> Result<Option<String>, PreprocessError> {
+    if !(text.starts_with('{') && text.ends_with('}') && text.len() > 2) {
         return Ok(None);
     }
 
@@ -1711,6 +1731,11 @@ fn render_result_part(part: &ResultPart, captures: &MatchCaptures, output: &mut 
                 output.push('"');
             }
         }
+        ResultPart::Blockify(name) => {
+            if let Some(value) = captures.values.get(name) {
+                render_blockify_capture(&value.raw, output);
+            }
+        }
         ResultPart::Smart(name) => {
             if let Some(value) = captures.values.get(name) {
                 output.push('"');
@@ -1747,11 +1772,32 @@ fn result_parts_have_value(parts: &[ResultPart], captures: &MatchCaptures) -> bo
         ResultPart::Literal(_) => false,
         ResultPart::Marker(name)
         | ResultPart::Stringify(name)
+        | ResultPart::Blockify(name)
         | ResultPart::Smart(name)
         | ResultPart::Quoted(name)
         | ResultPart::Logical(name) => captures.values.contains_key(name),
         ResultPart::Optional(parts) => result_parts_have_value(parts, captures),
     })
+}
+
+fn render_blockify_capture(raw: &str, output: &mut String) {
+    if capture_starts_with_codeblock(raw) {
+        output.push_str(raw);
+        return;
+    }
+
+    output.push_str("{|| ");
+    output.push_str(raw);
+    output.push('}');
+}
+
+fn capture_starts_with_codeblock(raw: &str) -> bool {
+    let trimmed = raw.trim_start();
+    let Some(rest) = trimmed.strip_prefix('{') else {
+        return false;
+    };
+
+    matches!(rest.trim_start().chars().next(), Some('|'))
 }
 
 fn escape_string_literal(text: &str) -> String {

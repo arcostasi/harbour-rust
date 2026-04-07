@@ -1,0 +1,4 @@
+PROCEDURE Main()
+   bm( {|| a} )
+   bm( {|| a} )
+RETURN
