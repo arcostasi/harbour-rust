@@ -439,3 +439,32 @@ fn phase14_nested_optional_match_fixture_matches_curated_upstream_subset() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn phase15_insert_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpp) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/insert_rule_root.out"))
+        .expect("fixture snapshot");
+
+    assert!(upstream_hbpp.contains("#xcommand INSERT INTO <table> ( <uField1> [, <uFieldN> ] ) VALUES ( <uVal1> [, <uValN> ] ) => ;"));
+    assert!(upstream_hbpp.contains("replace <table>-><uField1> with <uVal1> ;;"));
+    assert!(upstream_hbpp.contains("#xcommand INSERT2 INTO <table> ( <uField1> [, <uFieldN> ] ) VALUES ( <uVal1> [, <uValN> ] ) => ;"));
+    assert!(upstream_hbpp.contains("insert2 into test ( FIRST, LAST, STREET ) ;"));
+    assert!(upstream_hbpp.contains("values ( \"first\", \"last\", \"street\" )"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/insert_rule_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}

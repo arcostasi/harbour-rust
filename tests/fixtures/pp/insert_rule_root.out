@@ -1,0 +1,4 @@
+PROCEDURE Main()
+   if test->( dbappend() ) replace test->FIRST with "first"  replace test->LAST with "last" ;  replace test->STREET with "street" ;  test->( dbunlock() ) endif
+   if test->( dbappend() ) test->FIRST := "first"  test->LAST := "last" ;  test->STREET := "street" ;  test->( dbunlock() ) endif
+RETURN

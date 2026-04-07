@@ -35,6 +35,7 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | 12 | quality and release readiness | completed |
 | 13 | oracle-backed advanced preprocessor markers | completed |
 | 14 | curated compatibility corpus expansion | completed |
+| 15 | post-0.4 compatibility expansion | in progress |
 
 ## Near-Term Priorities
 

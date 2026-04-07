@@ -28,7 +28,7 @@ O projeto também tem uma origem pessoal: xBase foi o primeiro ambiente de progr
 
 ## Estado Atual
 
-O repositório concluiu as fases 0 a 14 do roadmap atual, enquanto o projeto permanece na linha de release `0.4.0-alpha`.
+O repositório concluiu as fases 0 a 14 do roadmap atual e abriu o trabalho de compatibilidade de continuação da fase 15, enquanto o projeto permanece na linha de release `0.4.0-alpha`.
 
 Destaques atuais:
 

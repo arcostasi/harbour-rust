@@ -35,6 +35,7 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | 12 | qualidade e prontidão para release | concluída |
 | 13 | marcadores avançados de pré-processador ancorados no oráculo | concluída |
 | 14 | expansão curada do corpus de compatibilidade | concluída |
+| 15 | expansão de compatibilidade pós-0.4 | em andamento |
 
 ## Prioridades de Curto Prazo
 

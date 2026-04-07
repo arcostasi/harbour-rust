@@ -372,8 +372,11 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
                 continue;
             }
 
-            let line_content = trim_line_ending(raw_line);
-            let line_ending = &raw_line[line_content.len()..];
+            let (logical_line, end_index) = collect_normal_line(&lines, index);
+            let line_content = trim_line_ending(&logical_line);
+            let ending_source_line = lines[end_index];
+            let ending_source_content = trim_line_ending(ending_source_line);
+            let line_ending = &ending_source_line[ending_source_content.len()..];
             let (expanded_line, mut errors) = preprocess_normal_line(
                 line_content,
                 &self.defines,
@@ -387,7 +390,7 @@ impl<'a, R: IncludeResolver> PreprocessState<'a, R> {
                 line_number,
                 &format!("{expanded_line}{line_ending}"),
             );
-            index += 1;
+            index = end_index + 1;
         }
 
         self.include_stack.pop();
@@ -1153,6 +1156,27 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
     (logical, index)
 }
 
+fn collect_normal_line(lines: &[&str], start_index: usize) -> (String, usize) {
+    let mut logical = trim_line_ending(lines[start_index]).to_owned();
+    let mut index = start_index;
+
+    while logical.trim_end().ends_with(';')
+        && index + 1 < lines.len()
+        && !is_directive_start(lines[index + 1])
+    {
+        logical = logical
+            .trim_end()
+            .trim_end_matches(';')
+            .trim_end()
+            .to_owned();
+        index += 1;
+        logical.push(' ');
+        logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
+    }
+
+    (logical, index)
+}
+
 fn preprocess_normal_line(
     line: &str,
     defines: &[DefineDirective],
@@ -1570,18 +1594,49 @@ struct OptionalGroupMatcher<'a> {
     required_end: Option<usize>,
 }
 
+struct OptionalGroupMatch {
+    next_index: usize,
+    captures: MatchCaptures,
+    matched_optionals: usize,
+}
+
 fn match_optional_group(
     matcher: &OptionalGroupMatcher<'_>,
     optional_indices: &[usize],
     token_index: usize,
     captures: MatchCaptures,
 ) -> Option<(usize, MatchCaptures)> {
+    match_optional_group_scored(matcher, optional_indices, token_index, captures)
+        .map(|matched| (matched.next_index, matched.captures))
+}
+
+fn match_optional_group_scored(
+    matcher: &OptionalGroupMatcher<'_>,
+    optional_indices: &[usize],
+    token_index: usize,
+    captures: MatchCaptures,
+) -> Option<OptionalGroupMatch> {
     let mut ordered_indices = optional_indices
         .iter()
         .copied()
         .map(|index| (index, optional_clause_priority(&matcher.pattern[index])))
         .collect::<Vec<_>>();
     ordered_indices.sort_by_key(|(_, priority)| *priority);
+
+    let mut best = match_pattern_recursive(
+        matcher.pattern,
+        matcher.rest_index,
+        matcher.tokens,
+        matcher.source,
+        token_index,
+        matcher.required_end,
+        captures.clone(),
+    )
+    .map(|(next_index, captures)| OptionalGroupMatch {
+        next_index,
+        captures,
+        matched_optionals: 0,
+    });
 
     for (optional_index, _) in ordered_indices {
         let position = optional_indices
@@ -1600,23 +1655,27 @@ fn match_optional_group(
         ) {
             let mut remaining = optional_indices.to_vec();
             remaining.remove(position);
-            if let Some(matched) =
-                match_optional_group(matcher, &remaining, next_index, next_captures)
+            if let Some(mut matched) =
+                match_optional_group_scored(matcher, &remaining, next_index, next_captures)
             {
-                return Some(matched);
+                matched.matched_optionals += 1;
+                if best
+                    .as_ref()
+                    .is_none_or(|best_match| is_better_optional_match(&matched, best_match))
+                {
+                    best = Some(matched);
+                }
             }
         }
     }
 
-    match_pattern_recursive(
-        matcher.pattern,
-        matcher.rest_index,
-        matcher.tokens,
-        matcher.source,
-        token_index,
-        matcher.required_end,
-        captures,
-    )
+    best
+}
+
+fn is_better_optional_match(candidate: &OptionalGroupMatch, current: &OptionalGroupMatch) -> bool {
+    candidate.matched_optionals > current.matched_optionals
+        || (candidate.matched_optionals == current.matched_optionals
+            && candidate.next_index > current.next_index)
 }
 
 fn optional_clause_priority(part: &PatternPart) -> usize {
@@ -1755,7 +1814,7 @@ fn collect_optional_matches(
 ) -> Vec<(usize, MatchCaptures)> {
     let mut matches = Vec::new();
 
-    for end in (token_index + 1..=tokens.len()).rev() {
+    for end in token_index + 1..=tokens.len() {
         if let Some((next_index, next_captures)) = match_pattern_recursive(
             optional,
             0,
@@ -2585,5 +2644,25 @@ mod tests {
             output.errors
         );
         assert_eq!(output.text, "emit()\nemit(alpha)\nemit(alpha,beta)\n");
+    }
+
+    #[test]
+    fn expands_insert_rules_across_continued_source_lines() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xcommand INSERT2 INTO <table> ( <uField1> [, <uFieldN> ] ) VALUES ( <uVal1> [, <uValN> ] ) => ;\nif <table>->( dbappend() ) ;;\n <table>-><uField1> := <uVal1> ;;\n [ <table>-><uFieldN> := <uValN> ; ] ;\n <table>->( dbunlock() ) ;;\nendif\ninsert2 into test ( FIRST, LAST, STREET ) ;\n   values ( \"first\", \"last\", \"street\" )\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(
+            output.text,
+            "if test->( dbappend() ) test->FIRST := \"first\"  test->LAST := \"last\" ;  test->STREET := \"street\" ;  test->( dbunlock() ) endif\n"
+        );
     }
 }

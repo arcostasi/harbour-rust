@@ -163,7 +163,7 @@ fn preprocesses_command_and_translate_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 4);
+    assert_eq!(output.rules.len(), 2);
 }
 
 #[test]
@@ -179,7 +179,7 @@ fn preprocesses_optional_list_and_restricted_rule_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 2);
+    assert_eq!(output.rules.len(), 3);
 }
 
 #[test]
@@ -195,7 +195,7 @@ fn preprocesses_optional_stringify_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 2);
+    assert_eq!(output.rules.len(), 3);
 }
 
 #[test]
@@ -211,7 +211,7 @@ fn preprocesses_logical_result_marker_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 2);
+    assert_eq!(output.rules.len(), 1);
 }
 
 #[test]
@@ -356,6 +356,22 @@ fn preprocesses_nested_optional_match_fixture() {
     );
     assert_eq!(output.text, expected);
     assert_eq!(output.rules.len(), 1);
+}
+
+#[test]
+fn preprocesses_insert_rule_fixture() {
+    let root = fixture_path("insert_rule_root.prg");
+    let expected = fs::read_to_string(fixture_path("insert_rule_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 2);
 }
 
 #[test]

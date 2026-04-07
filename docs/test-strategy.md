@@ -241,7 +241,7 @@ cargo check --manifest-path fuzz/Cargo.toml
 - `tests/fixtures/pp/rule_markers_root.prg` -> golden de opcionais, lista, restrição e stringify
 - `tests/fixtures/pp/multiline_command_root.prg` -> golden de diretiva multi-linha com `;`
 - `tests/fixtures/pp/malformed_rule_root.prg` -> erro explícito de regra malformada
-- `crates/harbour-rust-compat/tests/pp_phase9_rules.rs` -> baseline focado do recorte de `#command`/`#translate` ancorado em `harbour-core/doc/pp.txt` e `harbour-core/tests/hbpp/_pp_test.prg`, incluindo opcionais/listas nested do subset `AAA`/`SET`/`AVG` e cadeias macro mais longas do subset `<id:&>`
+- `crates/harbour-rust-compat/tests/pp_phase9_rules.rs` -> baseline focado do recorte de `#command`/`#translate` ancorado em `harbour-core/doc/pp.txt` e `harbour-core/tests/hbpp/_pp_test.prg`, incluindo opcionais/listas nested do subset `AAA`/`SET`/`AVG`, cláusulas opcionais repetidas e source-line continuation do subset `INSERT`/`INSERT2`, e cadeias macro mais longas do subset `<id:&>`
 - `tests/fixtures/pp/phase9_acceptance.prg` -> `harbour-rust-cli build/run` com `#command` + `#translate` no pipeline completo
 - `tests/fixtures/pp/phase9_preprocess_error.prg` -> erro explícito de preprocessamento no CLI para regra malformada
 - Fase 9 fechada no subset acima; compatibilidade completa com `ppcore.c` e corpus maior de `tests/hbpp` segue como expansão futura, não como bloqueio do aceite atual
