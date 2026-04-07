@@ -1,0 +1,11 @@
+PROCEDURE Main()
+   macro_t( cVar )
+   macro_t( cVar )
+   macro_t( (cVar) )
+   macro_t( (cVar) )
+   macro_t( "&cVar&cVar" )
+   macro_t( cVar )+1
+   macro_t( cVar )+1
+   macro_t( cVar ) .AND. .T.
+   macro_t( (cVar) ) +1
+RETURN

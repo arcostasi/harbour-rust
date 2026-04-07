@@ -1,0 +1,9 @@
+PROCEDURE Main()
+   macro_c( cVar )
+   macro_c( cVar )
+   macro_c( (cVar) )
+   macro_c( (cVar) )
+   macro_c( "&cVar&cVar" )
+   normal_c( "&cVar+1" )
+   normal_c( (cVar) +1 )
+RETURN

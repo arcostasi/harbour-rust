@@ -124,6 +124,7 @@ pub struct PatternMarker {
 pub enum MarkerKind {
     Regular,
     List,
+    Macro,
     Restricted(Vec<String>),
 }
 
@@ -785,6 +786,12 @@ fn parse_marker(
 
     if let Some((name, restriction_text)) = text.split_once(':') {
         let name = validate_marker_name(name, path, line_number, column)?;
+        if restriction_text.trim() == "&" {
+            return Ok(PatternMarker {
+                name,
+                kind: MarkerKind::Macro,
+            });
+        }
         let allowed = restriction_text
             .split(',')
             .map(str::trim)
@@ -1480,6 +1487,23 @@ fn match_pattern_recursive(
                     captures,
                 )
             }
+            MarkerKind::Macro => {
+                let end = match_macro_capture_end(tokens, token_index)?;
+                let capture = CaptureValue {
+                    raw: source[tokens[token_index].start..tokens[end - 1].end].to_owned(),
+                    list_items: None,
+                };
+                let captures = merge_capture(captures, &marker.name, capture)?;
+                match_pattern_recursive(
+                    pattern,
+                    pattern_index + 1,
+                    tokens,
+                    source,
+                    end,
+                    required_end,
+                    captures,
+                )
+            }
             MarkerKind::Regular | MarkerKind::List => {
                 let minimum_end = token_index + 1;
                 for end in (minimum_end..=tokens.len()).rev() {
@@ -1583,8 +1607,65 @@ fn optional_clause_priority(part: &PatternPart) -> usize {
             kind: MarkerKind::Restricted(_),
             ..
         }) => 1,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Macro,
+            ..
+        }) => 1,
         PatternPart::Marker(_) => 2,
     }
+}
+
+fn match_macro_capture_end(tokens: &[SourceToken], start: usize) -> Option<usize> {
+    if tokens.get(start)?.text != "&" {
+        return None;
+    }
+
+    let next = tokens.get(start + 1)?;
+    if next.text == "(" {
+        return match_parenthesized_macro_end(tokens, start + 1);
+    }
+
+    if !is_macro_identifier_token(&next.text) {
+        return None;
+    }
+
+    let mut end = start + 2;
+    while tokens.get(end).is_some_and(|token| token.text == "&") {
+        let Some(next_part) = tokens.get(end + 1) else {
+            break;
+        };
+        if !is_macro_identifier_token(&next_part.text) {
+            break;
+        }
+        end += 2;
+    }
+
+    Some(end)
+}
+
+fn match_parenthesized_macro_end(tokens: &[SourceToken], open_index: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate().skip(open_index) {
+        match token.text.as_str() {
+            "(" => depth += 1,
+            ")" => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return Some(index + 1);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn is_macro_identifier_token(text: &str) -> bool {
+    if let Some(base) = text.strip_suffix('.') {
+        return !base.is_empty() && identifier_length(base) == base.len();
+    }
+
+    identifier_length(text) == text.len()
 }
 
 fn optional_parts_priority(parts: &[PatternPart]) -> usize {
@@ -1657,6 +1738,7 @@ fn build_capture(
                 list_items: Some(entries),
             })
         }
+        MarkerKind::Macro => None,
         MarkerKind::Restricted(_) => None,
     }
 }
@@ -1832,7 +1914,7 @@ fn render_macro_aware_stringify(raw: &str) -> Option<String> {
         return Some(keyword.to_owned());
     }
 
-    Some(format!("\"{}\"", escape_string_literal(rest)))
+    Some(format!("\"{}\"", escape_string_literal(trimmed)))
 }
 
 fn parse_simple_macro_keyword(text: &str) -> Option<&str> {
