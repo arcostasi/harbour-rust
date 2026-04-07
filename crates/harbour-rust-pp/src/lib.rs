@@ -1634,6 +1634,9 @@ fn match_macro_capture_end(tokens: &[SourceToken], start: usize) -> Option<usize
         let Some(next_part) = tokens.get(end + 1) else {
             break;
         };
+        if next_part.text == "(" {
+            return Some(end + 1);
+        }
         if !is_macro_identifier_token(&next_part.text) {
             break;
         }
