@@ -1,4 +1,7 @@
 PROCEDURE Main()
-   assign(0,v1)
-   assign(0,v1,v2,v3)
+   v1:=0 
+   v1:=0 ; v2:=0; v3:=0
+   AVERAGE( {||s1:=s1+f1}  )
+   AVERAGE( {||s1:=s1+f1} , {||s2:=s2+f2}  )
+   AVERAGE( {||s1:=s1+f1} , {||s2:=s2+f2} , {||s3:=s3+f3}  )
 RETURN

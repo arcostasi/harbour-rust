@@ -1867,8 +1867,9 @@ fn merge_capture(
 
 fn render_result(parts: &[ResultPart], captures: &MatchCaptures) -> String {
     let mut output = String::new();
+    let global_counts = collect_result_marker_counts(parts);
     for part in parts {
-        render_result_part(part, captures, &mut output, None);
+        render_result_part(part, captures, &global_counts, &mut output, None);
     }
     output
 }
@@ -1876,6 +1877,7 @@ fn render_result(parts: &[ResultPart], captures: &MatchCaptures) -> String {
 fn render_result_part(
     part: &ResultPart,
     captures: &MatchCaptures,
+    global_counts: &BTreeMap<String, usize>,
     output: &mut String,
     repeat_index: Option<usize>,
 ) {
@@ -1924,22 +1926,102 @@ fn render_result_part(
             }
         }
         ResultPart::Optional(parts) => {
+            let local_counts = collect_result_marker_counts(parts);
+            let driver_names = local_counts
+                .keys()
+                .filter(|name| global_counts.get(*name) == local_counts.get(*name))
+                .cloned()
+                .collect::<Vec<_>>();
             if let Some(repeat_index) = repeat_index {
-                if result_parts_have_value_at(parts, captures, repeat_index) {
+                if optional_group_has_value_at(parts, captures, repeat_index, &driver_names) {
                     for nested in parts {
-                        render_result_part(nested, captures, output, Some(repeat_index));
+                        render_result_part(
+                            nested,
+                            captures,
+                            global_counts,
+                            output,
+                            Some(repeat_index),
+                        );
                     }
                 }
             } else {
-                for repeat_index in 0..result_parts_repeat_count(parts, captures) {
-                    if result_parts_have_value_at(parts, captures, repeat_index) {
+                for repeat_index in 0..optional_group_repeat_count(parts, captures, &driver_names) {
+                    if optional_group_has_value_at(parts, captures, repeat_index, &driver_names) {
                         for nested in parts {
-                            render_result_part(nested, captures, output, Some(repeat_index));
+                            render_result_part(
+                                nested,
+                                captures,
+                                global_counts,
+                                output,
+                                Some(repeat_index),
+                            );
                         }
                     }
                 }
             }
         }
+    }
+}
+
+fn collect_result_marker_counts(parts: &[ResultPart]) -> BTreeMap<String, usize> {
+    let mut counts = BTreeMap::new();
+    for part in parts {
+        collect_result_marker_counts_part(part, &mut counts);
+    }
+    counts
+}
+
+fn collect_result_marker_counts_part(part: &ResultPart, counts: &mut BTreeMap<String, usize>) {
+    match part {
+        ResultPart::Literal(_) => {}
+        ResultPart::Marker(name)
+        | ResultPart::Stringify(name)
+        | ResultPart::Blockify(name)
+        | ResultPart::Smart(name)
+        | ResultPart::Quoted(name)
+        | ResultPart::Logical(name) => {
+            *counts.entry(name.clone()).or_insert(0) += 1;
+        }
+        ResultPart::Optional(parts) => {
+            for nested in parts {
+                collect_result_marker_counts_part(nested, counts);
+            }
+        }
+    }
+}
+
+fn optional_group_repeat_count(
+    parts: &[ResultPart],
+    captures: &MatchCaptures,
+    driver_names: &[String],
+) -> usize {
+    if !driver_names.is_empty() {
+        driver_names
+            .iter()
+            .filter_map(|name| captures.values.get(name))
+            .map(CaptureValue::repeat_count)
+            .max()
+            .unwrap_or(0)
+    } else {
+        result_parts_repeat_count(parts, captures)
+    }
+}
+
+fn optional_group_has_value_at(
+    parts: &[ResultPart],
+    captures: &MatchCaptures,
+    repeat_index: usize,
+    driver_names: &[String],
+) -> bool {
+    if !driver_names.is_empty() {
+        driver_names.iter().any(|name| {
+            captures
+                .values
+                .get(name)
+                .is_some_and(|value| value.has_value_at(repeat_index))
+        })
+    } else {
+        result_parts_have_value_at(parts, captures, repeat_index)
     }
 }
 

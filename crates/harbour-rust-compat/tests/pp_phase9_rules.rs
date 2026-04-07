@@ -384,6 +384,13 @@ fn phase14_nested_optional_list_fixture_matches_curated_upstream_subset() {
 
     assert!(upstream_hbpptest.contains("#xcommand SET <var1> [, <varN>] WITH <val> =>"));
     assert!(upstream_hbpptest.contains("pre := \"v1:=0; v2:=0 ; v3:=0 \""));
+    assert!(upstream_hbpptest.contains("#command AVG <x1> [, <xn>] TO <v1> [, <vn>]  =>"));
+    assert!(upstream_hbpptest.contains("pre := \"AVERAGE({||s1:=s1+f1}  )\""));
+    assert!(upstream_hbpptest.contains("pre := \"AVERAGE({||s1:=s1+f1} ,{||s2:=s2+f2}   )\""));
+    assert!(
+        upstream_hbpptest
+            .contains("pre := \"AVERAGE({||s1:=s1+f1} ,{||s2:=s2+f2}  ,{||s3:=s3+f3}   )\"")
+    );
 
     let output = Preprocessor::default().preprocess(
         SourceFile::from_path(workspace_fixture(

@@ -195,7 +195,7 @@ fn preprocesses_optional_stringify_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 1);
+    assert_eq!(output.rules.len(), 2);
 }
 
 #[test]
@@ -211,7 +211,7 @@ fn preprocesses_logical_result_marker_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 1);
+    assert_eq!(output.rules.len(), 2);
 }
 
 #[test]
@@ -339,7 +339,7 @@ fn preprocesses_nested_optional_list_fixture() {
         output.errors
     );
     assert_eq!(output.text, expected);
-    assert_eq!(output.rules.len(), 1);
+    assert_eq!(output.rules.len(), 2);
 }
 
 #[test]
