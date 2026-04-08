@@ -5,6 +5,10 @@ struct GoldenCase {
     snapshot: &'static str,
 }
 
+fn normalize_newlines(text: &str) -> String {
+    text.replace("\r\n", "\n").replace('\r', "\n")
+}
+
 #[test]
 fn curated_cli_run_fixtures_match_golden_snapshots() {
     let cases = [
@@ -27,8 +31,8 @@ fn curated_cli_run_fixtures_match_golden_snapshots() {
     ];
 
     for case in cases {
-        let expected = read_workspace_text(case.snapshot);
-        let actual = run_fixture(case.fixture);
+        let expected = normalize_newlines(&read_workspace_text(case.snapshot));
+        let actual = normalize_newlines(&run_fixture(case.fixture));
         assert_eq!(actual, expected, "golden mismatch for {}", case.fixture);
     }
 }
