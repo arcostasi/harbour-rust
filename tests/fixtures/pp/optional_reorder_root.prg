@@ -1,0 +1,8 @@
+#xcommand MYCOMMAND3 [<myList,...>] ;
+   [MYCLAUSE <myVal>] [MYOTHER <myOther>] => MyFunction3( {<myList>}, <myVal>, <myOther> )
+PROCEDURE Main()
+   MYCOMMAND3 MYCLAUSE 322 "Hello" MYOTHER 1
+   MYCOMMAND3 MYOTHER 1 MYCLAUSE 322 "Hello"
+   MYCOMMAND3 "Hello" MYOTHER 1 MYCLAUSE 322
+   MYCOMMAND3 MYOTHER 1 "Hello" MYCLAUSE 322
+RETURN

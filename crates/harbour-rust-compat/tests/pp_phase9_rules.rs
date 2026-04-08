@@ -508,3 +508,39 @@ fn phase15_multiline_result_fixture_matches_curated_upstream_subset() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn phase15_optional_reorder_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpp) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/optional_reorder_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpp.contains("#xcommand MYCOMMAND3 [<myList,...>] ;"));
+    assert!(upstream_hbpp.contains(
+        "[MYCLAUSE <myVal>] [MYOTHER <myOther>] => MyFunction3( {<myList>}, <myVal>, <myOther> )"
+    ));
+    assert!(upstream_hbpp.contains("MYCOMMAND3 MYCLAUSE 322 \"Hello\" MYOTHER 1"));
+    assert!(upstream_hbpp.contains("MYCOMMAND3 MYOTHER 1 MYCLAUSE 322 \"Hello\""));
+    assert!(upstream_hbpp.contains("MYCOMMAND3 \"Hello\" MYOTHER 1 MYCLAUSE 322"));
+    assert!(upstream_hbpp.contains("MYCOMMAND3 MYOTHER 1 \"Hello\" MYCLAUSE 322"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/optional_reorder_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}

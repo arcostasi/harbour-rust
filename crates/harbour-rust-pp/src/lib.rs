@@ -2737,4 +2737,24 @@ mod tests {
         assert_eq!(output.rules.len(), 1);
         assert_eq!(output.text, "MyFunction( {\"HELLO\"} , 321 )\n");
     }
+
+    #[test]
+    fn reorders_multiline_optional_clauses_around_list_captures() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xcommand MYCOMMAND3 [<myList,...>] ;\n   [MYCLAUSE <myVal>] [MYOTHER <myOther>] => MyFunction3( {<myList>}, <myVal>, <myOther> )\nMYCOMMAND3 MYCLAUSE 322 \"Hello\" MYOTHER 1\nMYCOMMAND3 MYOTHER 1 MYCLAUSE 322 \"Hello\"\nMYCOMMAND3 \"Hello\" MYOTHER 1 MYCLAUSE 322\nMYCOMMAND3 MYOTHER 1 \"Hello\" MYCLAUSE 322\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(
+            output.text,
+            "MyFunction3( {\"Hello\"}, 322, 1 )\nMyFunction3( {\"Hello\"}, 322, 1 )\nMyFunction3( {\"Hello\"}, 322, 1 )\nMyFunction3( {\"Hello\"}, 322, 1 )\n"
+        );
+    }
 }
