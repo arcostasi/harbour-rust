@@ -4,6 +4,10 @@ use harbour_rust_hir::lower_program;
 use harbour_rust_parser::parse;
 use harbour_rust_sema::{Binding, LocalSymbolKind, analyze_program};
 
+fn normalize_newlines(text: &str) -> String {
+    text.replace("\r\n", "\n").replace('\r', "\n")
+}
+
 fn workspace_fixture(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -30,8 +34,13 @@ fn analyze_fixture(path: &str) -> harbour_rust_sema::Analysis {
 
 fn assert_fixture_errors(source_path: &str, expected_path: &str) {
     let analysis = analyze_fixture(source_path);
-    let expected = fs::read_to_string(workspace_fixture(expected_path)).expect("fixture snapshot");
-    assert_eq!(harbour_rust_sema::render_errors(&analysis), expected);
+    let expected = normalize_newlines(
+        &fs::read_to_string(workspace_fixture(expected_path)).expect("fixture snapshot"),
+    );
+    assert_eq!(
+        normalize_newlines(&harbour_rust_sema::render_errors(&analysis)),
+        expected
+    );
 }
 
 #[test]
