@@ -2808,6 +2808,27 @@ mod tests {
     }
 
     #[test]
+    fn matches_marker_followed_by_literal_paren_in_xtranslate_rules() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate XTRANS(<x>( => normal( <(x)> )\n#xtranslate XTRANS(<x:&>( => macro( <(x)> )\nXTRANS( cVar (\nXTRANS( &cVar (\nXTRANS( &cVar+1 (\nXTRANS( &(cVar) (\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 2);
+        assert_eq!(
+            output.text,
+            "normal( \"cVar\" )\nmacro( cVar )\nnormal( \"&cVar+1\" )\nmacro( (cVar) )\n"
+        );
+    }
+
+    #[test]
     fn reorders_multiline_optional_clauses_around_list_captures() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

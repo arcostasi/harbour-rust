@@ -1,0 +1,6 @@
+PROCEDURE Main()
+   normal( "cVar" )
+   macro( cVar )
+   normal( "&cVar+1" )
+   macro( (cVar) )
+RETURN
