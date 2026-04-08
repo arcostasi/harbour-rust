@@ -2,6 +2,10 @@ use std::{fs, path::PathBuf};
 
 use harbour_rust_compat::render_parsed;
 
+fn normalize_newlines(text: &str) -> String {
+    text.replace("\r\n", "\n").replace('\r', "\n")
+}
+
 fn workspace_fixture(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -10,8 +14,12 @@ fn workspace_fixture(path: &str) -> PathBuf {
 }
 
 fn assert_fixture_ast(source_path: &str, expected_path: &str) {
-    let source = fs::read_to_string(workspace_fixture(source_path)).expect("fixture source");
-    let expected = fs::read_to_string(workspace_fixture(expected_path)).expect("fixture snapshot");
+    let source = normalize_newlines(
+        &fs::read_to_string(workspace_fixture(source_path)).expect("fixture source"),
+    );
+    let expected = normalize_newlines(
+        &fs::read_to_string(workspace_fixture(expected_path)).expect("fixture snapshot"),
+    );
     assert_eq!(render_parsed(&source), expected);
 }
 
