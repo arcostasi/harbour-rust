@@ -491,6 +491,7 @@ fn phase15_multiline_result_fixture_matches_curated_upstream_subset() {
         upstream_hbpptest
             .contains("#command MYCOMMAND3 [<mylist,...>] [MYCLAUSE <myval>] [<all:ALL>] =>")
     );
+    assert!(upstream_hbpptest.contains("in := 'MYCOMMAND2 MYCLAUSE 321 ALL \"HELLO\"'"));
     assert!(upstream_hbpptest.contains("pre := 'MyFunction({\"HELLO\"} ,321  )'"));
     assert!(upstream_hbpptest.contains("pre := 'MyFunction({\"HELLO\",\"WORLD\"} ,321  ,.T.  )'"));
 

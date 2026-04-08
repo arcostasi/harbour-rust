@@ -2739,6 +2739,24 @@ mod tests {
     }
 
     #[test]
+    fn expands_multiline_result_rule_with_optional_keyword_before_list_capture() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command MYCOMMAND2 [<mylist,...>] [MYCLAUSE <myval>] [ALL] =>\n   MyFunction( {<mylist>} [, <myval>] )\nMYCOMMAND2 MYCLAUSE 321 ALL \"HELLO\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(output.text, "MyFunction( {\"HELLO\"} , 321 )\n");
+    }
+
+    #[test]
     fn reorders_multiline_optional_clauses_around_list_captures() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
