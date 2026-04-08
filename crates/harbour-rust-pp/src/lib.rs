@@ -1153,6 +1153,16 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
         logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
     }
 
+    while directive_starts_rule_pattern_continuation(&logical)
+        && index + 1 < lines.len()
+        && !is_directive_start(lines[index + 1])
+        && starts_with_inline_whitespace(lines[index + 1])
+    {
+        index += 1;
+        logical.push(' ');
+        logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
+    }
+
     if directive_starts_rule_with_continued_result(&logical)
         && index + 1 < lines.len()
         && !is_directive_start(lines[index + 1])
@@ -1175,6 +1185,29 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
     }
 
     (logical, index)
+}
+
+fn directive_starts_rule_pattern_continuation(line: &str) -> bool {
+    let trimmed =
+        line.trim_start_matches(|ch: char| ch.is_whitespace() && ch != '\n' && ch != '\r');
+    if !trimmed.starts_with('#') {
+        return false;
+    }
+
+    let after_hash = &trimmed[1..];
+    let keyword_length = after_hash
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphabetic())
+        .count();
+    if keyword_length == 0 {
+        return false;
+    }
+
+    let keyword = after_hash[..keyword_length].to_ascii_lowercase();
+    matches!(
+        keyword.as_str(),
+        "command" | "xcommand" | "translate" | "xtranslate"
+    ) && !trimmed.contains("=>")
 }
 
 fn directive_starts_rule_with_continued_result(line: &str) -> bool {
@@ -2754,6 +2787,24 @@ mod tests {
         );
         assert_eq!(output.rules.len(), 1);
         assert_eq!(output.text, "MyFunction( {\"HELLO\"} , 321 )\n");
+    }
+
+    #[test]
+    fn collects_multiline_rule_pattern_without_sentinel_before_arrow() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command MYCOMMAND2 [<myList,...>]\n   [MYCLAUSE <myVal>] [MYOTHER <myOther>] => MyFunction( {<myList>}, <myVal>, <myOther> )\nMYCOMMAND2 MYCLAUSE 322 \"Hello\" MYOTHER 1\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(output.text, "MyFunction( {\"Hello\"}, 322, 1 )\n");
     }
 
     #[test]

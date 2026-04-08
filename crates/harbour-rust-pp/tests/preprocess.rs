@@ -398,6 +398,22 @@ fn preprocesses_multiline_result_rule_fixture() {
 }
 
 #[test]
+fn preprocesses_multiline_pattern_rule_fixture() {
+    let root = fixture_path("multiline_pattern_rule_root.prg");
+    let expected = fs::read_to_string(fixture_path("multiline_pattern_rule_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 1);
+}
+
+#[test]
 fn preprocesses_optional_reorder_fixture() {
     let root = fixture_path("optional_reorder_root.prg");
     let expected = fs::read_to_string(fixture_path("optional_reorder_root.out")).unwrap();

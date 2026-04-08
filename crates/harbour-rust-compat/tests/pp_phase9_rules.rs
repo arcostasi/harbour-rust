@@ -511,6 +511,39 @@ fn phase15_multiline_result_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_multiline_pattern_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/multiline_pattern_rule_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#command MYCOMMAND2 [<myList,...>]"));
+    assert!(upstream_hbpptest.contains(
+        "[MYCLAUSE <myVal>] [MYOTHER <myOther>] => MyFunction( {<myList>}, <myVal>, <myOther> )"
+    ));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/multiline_pattern_rule_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_optional_reorder_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpp) =
         read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")

@@ -1,0 +1,3 @@
+PROCEDURE Main()
+   MyFunction( {"Hello"}, 322, 1 )
+RETURN
