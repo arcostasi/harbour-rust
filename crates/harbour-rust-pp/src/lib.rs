@@ -1997,38 +1997,38 @@ fn render_result_part(
     match part {
         ResultPart::Literal(text) => output.push_str(text),
         ResultPart::Marker(name) => {
-            if let Some(value) = captures.values.get(name) {
-                if let Some(text) = value.render_text(repeat_index) {
-                    output.push_str(text);
-                }
+            if let Some(value) = captures.values.get(name)
+                && let Some(text) = value.render_text(repeat_index)
+            {
+                output.push_str(text);
             }
         }
         ResultPart::Stringify(name) => {
-            if let Some(value) = captures.values.get(name) {
-                if let Some(text) = value.render_text(repeat_index) {
-                    push_quoted_capture(text, output);
-                }
+            if let Some(value) = captures.values.get(name)
+                && let Some(text) = value.render_text(repeat_index)
+            {
+                push_quoted_capture(text, output);
             }
         }
         ResultPart::Blockify(name) => {
-            if let Some(value) = captures.values.get(name) {
-                if let Some(text) = value.render_text(repeat_index) {
-                    render_blockify_capture(text, output);
-                }
+            if let Some(value) = captures.values.get(name)
+                && let Some(text) = value.render_text(repeat_index)
+            {
+                render_blockify_capture(text, output);
             }
         }
         ResultPart::Smart(name) => {
-            if let Some(value) = captures.values.get(name) {
-                if let Some(text) = value.render_text(repeat_index) {
-                    render_smart_capture(text, output);
-                }
+            if let Some(value) = captures.values.get(name)
+                && let Some(text) = value.render_text(repeat_index)
+            {
+                render_smart_capture(text, output);
             }
         }
         ResultPart::Quoted(name) => {
-            if let Some(value) = captures.values.get(name) {
-                if let Some(text) = value.render_text(repeat_index) {
-                    render_quoted_capture(text, output);
-                }
+            if let Some(value) = captures.values.get(name)
+                && let Some(text) = value.render_text(repeat_index)
+            {
+                render_quoted_capture(text, output);
             }
         }
         ResultPart::Logical(name) => {
