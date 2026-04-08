@@ -2,6 +2,10 @@ use std::{fs, path::PathBuf};
 
 use harbour_rust_pp::{FileSystemIncludeResolver, Preprocessor, SourceFile};
 
+fn normalize_newlines(text: &str) -> String {
+    text.replace("\r\n", "\n").replace('\r', "\n")
+}
+
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -110,7 +114,10 @@ fn reports_cyclic_object_like_define_fixture() {
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
-    assert_eq!(output.text, "PROCEDURE Main()\n   ? A\nRETURN\n");
+    assert_eq!(
+        normalize_newlines(&output.text),
+        "PROCEDURE Main()\n   ? A\nRETURN\n"
+    );
     assert_eq!(output.errors.len(), 1);
     assert_eq!(
         output.errors[0].message,
@@ -428,7 +435,10 @@ fn reports_malformed_rule_fixture() {
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
-    assert_eq!(output.text, "PROCEDURE Main()\n   BAD 1\nRETURN\n");
+    assert_eq!(
+        normalize_newlines(&output.text),
+        "PROCEDURE Main()\n   BAD 1\nRETURN\n"
+    );
     assert_eq!(output.errors.len(), 1);
     assert_eq!(
         output.errors[0].message,
