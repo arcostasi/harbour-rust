@@ -1153,7 +1153,61 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
         logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
     }
 
+    if directive_starts_rule_with_continued_result(&logical)
+        && index + 1 < lines.len()
+        && !is_directive_start(lines[index + 1])
+    {
+        index += 1;
+        logical.push(' ');
+        logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
+
+        while index + 1 < lines.len() && !is_directive_start(lines[index + 1]) {
+            let current = trim_line_ending(lines[index]).trim_end();
+            let next = lines[index + 1];
+            if !current.ends_with(';') && !starts_with_inline_whitespace(next) {
+                break;
+            }
+
+            index += 1;
+            logical.push(' ');
+            logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
+        }
+    }
+
     (logical, index)
+}
+
+fn directive_starts_rule_with_continued_result(line: &str) -> bool {
+    let trimmed =
+        line.trim_start_matches(|ch: char| ch.is_whitespace() && ch != '\n' && ch != '\r');
+    if !trimmed.starts_with('#') {
+        return false;
+    }
+
+    let after_hash = &trimmed[1..];
+    let keyword_length = after_hash
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphabetic())
+        .count();
+    if keyword_length == 0 {
+        return false;
+    }
+
+    let keyword = after_hash[..keyword_length].to_ascii_lowercase();
+    if !matches!(
+        keyword.as_str(),
+        "command" | "xcommand" | "translate" | "xtranslate"
+    ) {
+        return false;
+    }
+
+    trimmed.split_once("=>").is_some_and(|(_, replacement)| {
+        trim_inline_whitespace(trim_line_ending(replacement)).is_empty()
+    })
+}
+
+fn starts_with_inline_whitespace(line: &str) -> bool {
+    line.starts_with(' ') || line.starts_with('\t')
 }
 
 fn collect_normal_line(lines: &[&str], start_index: usize) -> (String, usize) {
@@ -2664,5 +2718,23 @@ mod tests {
             output.text,
             "if test->( dbappend() ) test->FIRST := \"first\"  test->LAST := \"last\" ;  test->STREET := \"street\" ;  test->( dbunlock() ) endif\n"
         );
+    }
+
+    #[test]
+    fn collects_multiline_rule_result_without_directive_sentinel() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command MYCOMMAND2 [<mylist,...>] [MYCLAUSE <myval>] [ALL] =>\n   MyFunction( {<mylist>} [, <myval>] )\nMYCOMMAND2 ALL MYCLAUSE 321 \"HELLO\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(output.text, "MyFunction( {\"HELLO\"} , 321 )\n");
     }
 }

@@ -468,3 +468,43 @@ fn phase15_insert_fixture_matches_curated_upstream_subset() {
     );
     assert_eq!(output.text, expected);
 }
+
+#[test]
+fn phase15_multiline_result_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/multiline_result_rule_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#xcommand INSERT2 INTO <table> ( <uField1> [, <uFieldN> ] ) VALUES ( <uVal1> [, <uValN> ] ) =>"));
+    assert!(
+        upstream_hbpptest
+            .contains("#command MYCOMMAND2 [<mylist,...>] [MYCLAUSE <myval>] [ALL] =>")
+    );
+    assert!(
+        upstream_hbpptest
+            .contains("#command MYCOMMAND3 [<mylist,...>] [MYCLAUSE <myval>] [<all:ALL>] =>")
+    );
+    assert!(upstream_hbpptest.contains("pre := 'MyFunction({\"HELLO\"} ,321  )'"));
+    assert!(upstream_hbpptest.contains("pre := 'MyFunction({\"HELLO\",\"WORLD\"} ,321  ,.T.  )'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/multiline_result_rule_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}

@@ -67,6 +67,7 @@ Recorte atual já implementado:
 - cláusulas opcionais `[ ... ]` no padrão e no resultado
 - stringify `#<id>` no resultado
 - continuação de diretiva em múltiplas linhas com `;`
+- corpo de resultado multi-linha quando a regra termina a linha exatamente em `=>`
 
 Limitações ainda abertas nesta fase:
 
@@ -125,6 +126,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/macro_pattern_command_root.prg` | golden do subset mínimo de pattern marker de macro `<id:&>` em `#command` |
 | `tests/fixtures/pp/nested_optional_list_root.prg` | golden do subset focado de expansão de resultado com opcionais/listas (`SET`/`AVG`) |
 | `tests/fixtures/pp/insert_rule_root.prg` | golden do subset focado de cláusulas opcionais repetidas e continuação de source line (`INSERT`/`INSERT2`) |
+| `tests/fixtures/pp/multiline_result_rule_root.prg` | golden do subset focado de corpo multi-linha após `=>` (`INSERT2`/`MYCOMMAND2`/`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
 | `tests/fixtures/pp/malformed_rule_root.prg` | erro explícito de regra malformada |
@@ -138,7 +140,8 @@ Fases 6, 9 e 13 concluídas:
 - `#define` objeto com expansão recursiva e detecção de ciclo
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
-- `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify e continuação por `;`
+- `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`
 - baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, um subset focado `AAA`/`SET`/`AVG`/`INSERT`/`INSERT2` para nested optional/list e cláusulas repetidas, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset macro-orientado de `<"id">`, um subset macro-orientado de `<(id)>` e um subset expandido de pattern marker `<id:&>` com spillover em operadores, cadeias longas multi-segmento e misturas selecionadas com `&(expr)`
+- baseline de compatibilidade focado contra `doc/pp.txt`, `tests/hbpp/_pp_test.prg` e `tests/hbpp/hbpptest.prg`, incluindo replacements com `\[`/`\]`, reordenação selecionada de cláusulas opcionais contíguas, um subset focado `AAA`/`SET`/`AVG`/`INSERT`/`INSERT2` para nested optional/list e cláusulas repetidas, um subset focado de corpo multi-linha após `=>` derivado de `INSERT2`/`MYCOMMAND2`/`MYCOMMAND3`, result markers lógicos `<.id.>`, um subset mínimo de `<{id}>`, um subset macro-orientado de `<"id">`, um subset macro-orientado de `<(id)>` e um subset expandido de pattern marker `<id:&>` com spillover em operadores, cadeias longas multi-segmento e misturas selecionadas com `&(expr)`
 - fixture executável `tests/fixtures/pp/phase9_acceptance.prg` já valida o caminho completo `pp -> parser -> runtime`
 - semântica mais ampla de markers/result markers avançados e compatibilidade com corpus maior do `tests/hbpp/_pp_test.prg` continuam pendentes
