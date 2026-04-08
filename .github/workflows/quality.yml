@@ -9,6 +9,7 @@ on:
 
 jobs:
   quality:
+    name: quality (ubuntu)
     runs-on: ubuntu-latest
 
     steps:
@@ -43,3 +44,30 @@ jobs:
         with:
           name: benchmark-smoke
           path: benchmark-smoke.md
+
+  platform-validation:
+    name: platform validation (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-14
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run workspace tests
+        run: cargo test --workspace
+
+      - name: Smoke test CLI help
+        run: cargo run -p harbour-rust-cli -- help

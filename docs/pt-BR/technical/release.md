@@ -36,6 +36,12 @@ O workflow de release do repositório atualmente valida:
 - empacotamento de assets da GitHub Release para Windows, Linux e macOS;
 - publicação de assets `.zip` mais `SHA256SUMS.txt` quando o workflow roda a partir de uma tag.
 
+O workflow público de quality agora também valida:
+
+- `cargo test --workspace` em Ubuntu, Windows e macOS;
+- um smoke run de `harbour-rust-cli help` nessas mesmas três plataformas;
+- o baseline mais pesado de `fmt`/`clippy`/fuzz/benchmark no Ubuntu como gate canônico de qualidade.
+
 ## Disciplina de Release
 
 - toda release precisa apontar para um baseline de compatibilidade documentado;

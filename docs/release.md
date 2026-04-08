@@ -38,6 +38,12 @@ O workflow `.github/workflows/release.yml` executa:
 - geração de `SHA256SUMS.txt`
 - publicação automática dos assets na GitHub Release da tag
 
+Além disso, o workflow `.github/workflows/quality.yml` passa a validar:
+
+- `cargo test --workspace` em Ubuntu, Windows e macOS
+- smoke run de `harbour-rust-cli -- help` nas três plataformas
+- baseline canônico de `fmt`, `clippy`, fuzz e benchmark smoke no Ubuntu
+
 ## Artefatos atuais
 
 - assets `.zip` do `harbour-rust-cli` para Windows, Linux e macOS

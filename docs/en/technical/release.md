@@ -36,6 +36,12 @@ The repository release workflow currently validates:
 - packaging of GitHub release assets for Windows, Linux, and macOS;
 - publication of `.zip` assets plus `SHA256SUMS.txt` when the workflow runs from a tag.
 
+The public quality workflow now also validates:
+
+- `cargo test --workspace` on Ubuntu, Windows, and macOS;
+- a `harbour-rust-cli help` smoke run on the same three platforms;
+- the heavier `fmt`/`clippy`/fuzz/benchmark baseline on Ubuntu as the canonical quality gate.
+
 ## Release Discipline
 
 - every release must point to a documented compatibility baseline;

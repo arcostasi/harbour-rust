@@ -251,6 +251,7 @@ cargo check --manifest-path fuzz/Cargo.toml
 - `crates/harbour-rust-tests/tests/golden_cli.rs` -> golden snapshots de stdout para `hello`, `phase7_acceptance`, `phase8_acceptance` e `phase9_acceptance`
 - `crates/harbour-rust-tests/tests/compare_harbour.rs` -> comparador operacional inicial com runner Harbour externo fake cobrindo caso feliz e mismatch
 - `crates/harbour-rust-tests/tests/benchmark_suite.rs` -> smoke test do benchmark runner com relatório markdown para `examples/hello.prg`
+- `.github/workflows/quality.yml` -> `cargo test --workspace` e smoke de `harbour-rust-cli -- help` em Ubuntu, Windows e macOS, mantendo `fmt`, `clippy`, fuzz e benchmark smoke no Ubuntu como gate canônico
 
 ## Critérios por PR
 

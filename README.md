@@ -35,7 +35,7 @@ Current highlights:
 - parser, HIR, sema, runtime, IR, and the current executable C backend are implemented;
 - procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected advanced preprocessor markers are available;
 - DBF/RDD groundwork is present;
-- CLI, regression harnesses, benchmarks, fuzz scaffolding, and release workflows are in place.
+- CLI, regression harnesses, benchmarks, fuzz scaffolding, release workflows, and cross-platform CI validation are in place.
 
 ## Releases
 

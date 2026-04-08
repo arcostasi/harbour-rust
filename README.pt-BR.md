@@ -35,7 +35,7 @@ Destaques atuais:
 - pipelines de parser, HIR, sema, runtime, IR e backend C executável atual implementados;
 - compatibilidade procedural, arrays, `STATIC`, memvars, codeblocks e marcadores avançados selecionados do pré-processador disponíveis;
 - base inicial de DBF/RDD presente;
-- CLI, harnesses de regressão, benchmarks, scaffold de fuzzing e workflows de release configurados.
+- CLI, harnesses de regressão, benchmarks, scaffold de fuzzing, workflows de release e validação de CI multiplataforma configurados.
 
 ## Releases
 
