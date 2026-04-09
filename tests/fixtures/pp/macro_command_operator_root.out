@@ -1,0 +1,8 @@
+PROCEDURE Main()
+   normal_c( "&cVar.+1" )
+   normal_c( "&cVar. .AND.  .T." )
+   normal_c( "&cVar.++" )
+   normal_c( "&cVar.-=2" )
+   normal_c( "&cVar .AND.  .T." )
+   normal_c( (cVar) +1 )
+RETURN

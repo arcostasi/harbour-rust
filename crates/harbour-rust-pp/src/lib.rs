@@ -3030,6 +3030,27 @@ mod tests {
     }
 
     #[test]
+    fn expands_macro_command_operator_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command MCOMMAND <x> => normal_c( <\"x\"> )\n#command MCOMMAND <x:&> => macro_c( <(x)> )\nMCOMMAND &cVar.+1\nMCOMMAND &cVar. .AND.  .T.\nMCOMMAND &cVar.++\nMCOMMAND &cVar.-=2\nMCOMMAND &cVar .AND.  .T.\nMCOMMAND & (cVar) +1\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 2);
+        assert_eq!(
+            output.text,
+            "normal_c( \"&cVar.+1\" )\nnormal_c( \"&cVar. .AND.  .T.\" )\nnormal_c( \"&cVar.++\" )\nnormal_c( \"&cVar.-=2\" )\nnormal_c( \"&cVar .AND.  .T.\" )\nnormal_c( (cVar) +1 )\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

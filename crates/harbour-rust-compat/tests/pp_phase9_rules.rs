@@ -784,6 +784,47 @@ fn phase15_mxcall_post_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_macro_command_operator_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/macro_command_operator_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("in := \"MCOMMAND &cVar.+1\""));
+    assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar.+1\")'"));
+    assert!(upstream_hbpptest.contains("in := \"MCOMMAND &cVar. .AND.  .T.\""));
+    assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar. .AND.  .T.\")'"));
+    assert!(upstream_hbpptest.contains("in := \"MCOMMAND &cVar.++\""));
+    assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar.++\")'"));
+    assert!(upstream_hbpptest.contains("in := \"MCOMMAND &cVar.-=2\""));
+    assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar.-=2\")'"));
+    assert!(upstream_hbpptest.contains("in := \"MCOMMAND &cVar .AND.  .T.\""));
+    assert!(upstream_hbpptest.contains("pre :='normal_c(\"&cVar .AND.  .T.\")'"));
+    assert!(upstream_hbpptest.contains("in := \"MCOMMAND & (cVar) +1\""));
+    assert!(upstream_hbpptest.contains("pre :='normal_c( (cVar) +1)'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/macro_command_operator_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
