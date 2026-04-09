@@ -1,0 +1,8 @@
+PROCEDURE Main()
+   (&cVar)
+   (&cVar)++
+   &cVar( &cVar, 'mycall' )
+   &cVar( +1, 'mycall' ) &cVar
+   &cVar ++( cVar, "mzcall" )
+   &cVar+1( &cVar, "mzcall" )
+RETURN

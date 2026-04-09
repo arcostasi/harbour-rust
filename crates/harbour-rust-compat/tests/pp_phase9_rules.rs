@@ -669,6 +669,44 @@ fn phase15_xtrans_full_fixture_matches_upstream_pp_test_block() {
 }
 
 #[test]
+fn phase15_macro_call_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected =
+        fs::read_to_string(workspace_fixture("tests/fixtures/pp/macro_call_root.out"))
+            .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("in := \"MXCALL &cVar\""));
+    assert!(upstream_hbpptest.contains("pre := '(&cVar)'"));
+    assert!(upstream_hbpptest.contains("in := \"MXCALL &cVar++\""));
+    assert!(upstream_hbpptest.contains("pre := '(&cVar)++'"));
+    assert!(upstream_hbpptest.contains("in := \"MYCALL &cVar &cVar\""));
+    assert!(upstream_hbpptest.contains("pre := '&cVar(&cVar,\"mycall\" )'"));
+    assert!(upstream_hbpptest.contains("in := \"MYCALL &cVar+1 &cVar\""));
+    assert!(upstream_hbpptest.contains("pre := '&cVar(+1,\"mycall\" ) &cVar'"));
+    assert!(upstream_hbpptest.contains("in := \"MZCALL &cVar ++cVar\""));
+    assert!(upstream_hbpptest.contains("pre := '&cVar ++(cVar,\"mzcall\" )'"));
+    assert!(upstream_hbpptest.contains("in := \"MZCALL &cVar+1 &cVar\""));
+    assert!(upstream_hbpptest.contains("pre := '&cVar+1(&cVar,\"mzcall\" )'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/macro_call_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

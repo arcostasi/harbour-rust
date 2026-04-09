@@ -1619,25 +1619,34 @@ fn match_pattern_recursive(
                 )
             }
             MarkerKind::Macro => {
-                let end = match_macro_capture_end(tokens, token_index)?;
-                let capture = CaptureValue {
-                    raw: source[tokens[token_index].start..tokens[end - 1].end].to_owned(),
-                    list_items: None,
-                };
-                let captures = merge_capture(captures, &marker.name, capture)?;
-                match_pattern_recursive(
-                    pattern,
-                    pattern_index + 1,
-                    tokens,
-                    source,
-                    end,
-                    required_end,
-                    captures,
-                )
+                for end in macro_candidate_ends(tokens, token_index)? {
+                    let capture = CaptureValue {
+                        raw: source[tokens[token_index].start..tokens[end - 1].end].to_owned(),
+                        list_items: None,
+                    };
+                    let next_captures = merge_capture(captures.clone(), &marker.name, capture)?;
+                    if let Some(matched) = match_pattern_recursive(
+                        pattern,
+                        pattern_index + 1,
+                        tokens,
+                        source,
+                        end,
+                        required_end,
+                        next_captures,
+                    ) {
+                        return Some(matched);
+                    }
+                }
+                None
             }
             MarkerKind::Regular | MarkerKind::List => {
                 let minimum_end = token_index + 1;
-                for end in marker_candidate_ends(pattern, pattern_index, tokens, minimum_end) {
+                let mut candidate_ends =
+                    marker_candidate_ends(pattern, pattern_index, tokens, minimum_end);
+                if required_end.is_none() && pattern_index + 1 == pattern.len() {
+                    candidate_ends.reverse();
+                }
+                for end in candidate_ends {
                     if marker.kind == MarkerKind::Regular
                         && regular_capture_starts_with_paren_before_literal_paren(
                             pattern,
@@ -1648,6 +1657,9 @@ fn match_pattern_recursive(
                             end,
                         )
                     {
+                        continue;
+                    }
+                    if !regular_capture_can_match(tokens, token_index, end) {
                         continue;
                     }
                     let capture =
@@ -1793,35 +1805,38 @@ fn optional_clause_priority(part: &PatternPart) -> usize {
     }
 }
 
-fn match_macro_capture_end(tokens: &[SourceToken], start: usize) -> Option<usize> {
+fn macro_candidate_ends(tokens: &[SourceToken], start: usize) -> Option<Vec<usize>> {
     if tokens.get(start)?.text != "&" {
         return None;
     }
 
     let next = tokens.get(start + 1)?;
     if next.text == "(" {
-        return match_parenthesized_macro_end(tokens, start + 1);
+        return match_parenthesized_macro_end(tokens, start + 1).map(|end| vec![end]);
     }
 
     if !is_macro_identifier_token(&next.text) {
         return None;
     }
 
+    let mut candidates = vec![start + 2];
     let mut end = start + 2;
     while tokens.get(end).is_some_and(|token| token.text == "&") {
         let Some(next_part) = tokens.get(end + 1) else {
             break;
         };
         if next_part.text == "(" {
-            return Some(end + 1);
+            candidates.push(end + 1);
+            return Some(candidates);
         }
         if !is_macro_identifier_token(&next_part.text) {
             break;
         }
         end += 2;
+        candidates.push(end);
     }
 
-    Some(end)
+    Some(candidates)
 }
 
 fn match_parenthesized_macro_end(tokens: &[SourceToken], open_index: usize) -> Option<usize> {
@@ -1847,6 +1862,44 @@ fn is_macro_identifier_token(text: &str) -> bool {
     }
 
     identifier_length(text) == text.len()
+}
+
+fn regular_capture_can_match(tokens: &[SourceToken], start: usize, end: usize) -> bool {
+    if start >= end {
+        return false;
+    }
+
+    let first = tokens[start].text.as_str();
+    let len = end - start;
+
+    let starts_valid = match first {
+        "&" => {
+            if len < 2 {
+                false
+            } else {
+                let second = tokens[start + 1].text.as_str();
+                second == "(" || is_macro_identifier_token(second)
+            }
+        }
+        "+" | "-" | "!" => len >= 2,
+        _ => true,
+    };
+    if !starts_valid {
+        return false;
+    }
+
+    let last = tokens[end - 1].text.as_str();
+    match last {
+        "&" | "!" => false,
+        "+" | "-" => {
+            if len < 2 {
+                return false;
+            }
+            let previous = tokens[end - 2].text.as_str();
+            previous == last
+        }
+        _ => true,
+    }
 }
 
 fn optional_parts_priority(parts: &[PatternPart]) -> usize {
@@ -2903,6 +2956,27 @@ mod tests {
         assert_eq!(
             output.text,
             "normal( \"cVar\" )\nmacro( cVar )\nnormal( \"&cVar+1\" )\nmacro( cVar )\nmacro( \"&cVar&cVar\" )\nmacro( \"&cVar.&cVar\" )\nmacro( \"&cVar.&cVar.\" )\nXTRANS( (&cVar.) (\nmacro( (cVar) )\nnormal( \"&cVar[3]\" )\nnormal( \"&cVar.  [3]\" )\nmacro( (cVar  [3],&cvar) )\nXTRANS( (&cVar.  [3],&cvar) (\nnormal( \"&cVar.1+5\" )\nnormal( \"&cVar .AND. cVar\" )\nnormal( \"&cVar. .AND. cVar\" )\n"
+        );
+    }
+
+    #[test]
+    fn expands_macro_call_translate_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate MXCALL <x:&> => (<x>)\n#xtranslate MYCALL <x:&> <y> => <x>( <y>, 'mycall' )\n#xtranslate MZCALL <x> <y> => <x>( <y>, \"mzcall\" )\nMXCALL &cVar\nMXCALL &cVar++\nMYCALL &cVar &cVar\nMYCALL &cVar+1 &cVar\nMZCALL &cVar ++cVar\nMZCALL &cVar+1 &cVar\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 3);
+        assert_eq!(
+            output.text,
+            "(&cVar)\n(&cVar)++\n&cVar( &cVar, 'mycall' )\n&cVar( +1, 'mycall' ) &cVar\n&cVar ++( cVar, \"mzcall\" )\n&cVar+1( &cVar, \"mzcall\" )\n"
         );
     }
 
