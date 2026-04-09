@@ -628,6 +628,47 @@ fn phase15_xtrans_macro_chain_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_xtrans_full_fixture_matches_upstream_pp_test_block() {
+    let Some(upstream_hbpp) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let expected =
+        fs::read_to_string(workspace_fixture("tests/fixtures/pp/xtrans_full_root.out"))
+            .expect("fixture snapshot");
+
+    assert!(upstream_hbpp.contains("XTRANS( cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar+1 ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar. ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar&cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar.&cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar.&cVar. ("));
+    assert!(upstream_hbpp.contains("XTRANS( (&cVar.) ("));
+    assert!(upstream_hbpp.contains("XTRANS( &(cVar) ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar[3] ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar.  [3] ("));
+    assert!(upstream_hbpp.contains("XTRANS( &(cVar  [3],&cvar) ("));
+    assert!(upstream_hbpp.contains("XTRANS( (&cVar.  [3],&cvar) ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar.1+5 ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar .AND. cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar. .AND. cVar ("));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/xtrans_full_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

@@ -131,6 +131,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/multiline_pattern_rule_root.prg` | golden do subset focado de padrão multi-linha antes do `=>` (`MYCOMMAND2`) |
 | `tests/fixtures/pp/xtrans_match_root.prg` | golden do subset focado de `XTRANS(<x>(` / `XTRANS(<x:&>(`, incluindo variantes com ponto, indexação, operadores lógicos e preservação literal |
 | `tests/fixtures/pp/xtrans_macro_chain_root.prg` | golden do subset focado de `XTRANS(<x:&>(` com cadeias concatenadas `&id&id` e `&id.&id[.]` |
+| `tests/fixtures/pp/xtrans_full_root.prg` | golden consolidado do bloco completo `XTRANS` do `_pp_test.prg` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |

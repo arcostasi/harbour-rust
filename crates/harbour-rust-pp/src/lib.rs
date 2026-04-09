@@ -2886,6 +2886,27 @@ mod tests {
     }
 
     #[test]
+    fn matches_full_xtrans_subset_from_upstream_pp_test() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate XTRANS(<x>( => normal( <(x)> )\n#xtranslate XTRANS(<x:&>( => macro( <(x)> )\nXTRANS( cVar (\nXTRANS( &cVar (\nXTRANS( &cVar+1 (\nXTRANS( &cVar. (\nXTRANS( &cVar&cVar (\nXTRANS( &cVar.&cVar (\nXTRANS( &cVar.&cVar. (\nXTRANS( (&cVar.) (\nXTRANS( &(cVar) (\nXTRANS( &cVar[3] (\nXTRANS( &cVar.  [3] (\nXTRANS( &(cVar  [3],&cvar) (\nXTRANS( (&cVar.  [3],&cvar) (\nXTRANS( &cVar.1+5 (\nXTRANS( &cVar .AND. cVar (\nXTRANS( &cVar. .AND. cVar (\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 2);
+        assert_eq!(
+            output.text,
+            "normal( \"cVar\" )\nmacro( cVar )\nnormal( \"&cVar+1\" )\nmacro( cVar )\nmacro( \"&cVar&cVar\" )\nmacro( \"&cVar.&cVar\" )\nmacro( \"&cVar.&cVar.\" )\nXTRANS( (&cVar.) (\nmacro( (cVar) )\nnormal( \"&cVar[3]\" )\nnormal( \"&cVar.  [3]\" )\nmacro( (cVar  [3],&cvar) )\nXTRANS( (&cVar.  [3],&cvar) (\nnormal( \"&cVar.1+5\" )\nnormal( \"&cVar .AND. cVar\" )\nnormal( \"&cVar. .AND. cVar\" )\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
