@@ -2829,6 +2829,27 @@ mod tests {
     }
 
     #[test]
+    fn expands_multiline_repeated_optional_list_rules() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xcommand SET <var1> [, <varN>] WITH <val> =>\n<var1>:=<val> [; <varN>:=<val>]\n#command AVG <x1> [, <xn>] TO <v1> [, <vn>]  =>\n   AVERAGE( {||<v1>:=<v1>+<x1>} [, {||<vn>:=<vn>+<xn>} ] )\nSET v1 WITH 0\nSET v1, v2, v3, v4 WITH 0\nAVG f1, f2, f3 TO s1, s2, s3\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 2);
+        assert_eq!(
+            output.text,
+            "v1:=0 \nv1:=0 ; v2:=0; v3:=0; v4:=0\nAVERAGE( {||s1:=s1+f1} , {||s2:=s2+f2} , {||s3:=s3+f3}  )\n"
+        );
+    }
+
+    #[test]
     fn reorders_multiline_optional_clauses_around_list_captures() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
