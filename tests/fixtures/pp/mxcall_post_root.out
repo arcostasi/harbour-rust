@@ -1,0 +1,11 @@
+PROCEDURE Main()
+   (&cVar)()
+   (&cVar)++
+   ((&cVar))++
+   (&cVar.)()
+   (&cVar.)++
+   ((&cVar.))++
+   (&cVar.1) ()
+   (&cVar.1) ++
+   ((&cVar.1)) ++
+RETURN

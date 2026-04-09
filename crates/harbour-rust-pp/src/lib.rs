@@ -1861,6 +1861,13 @@ fn is_macro_identifier_token(text: &str) -> bool {
         return !base.is_empty() && identifier_length(base) == base.len();
     }
 
+    if let Some((base, suffix)) = text.split_once('.') {
+        return !base.is_empty()
+            && identifier_length(base) == base.len()
+            && !suffix.is_empty()
+            && suffix.chars().all(|ch| ch.is_ascii_digit());
+    }
+
     identifier_length(text) == text.len()
 }
 
@@ -2998,6 +3005,27 @@ mod tests {
         assert_eq!(
             output.text,
             "cVar+var\ncVar+var\nFOO &cVar FOO &var.+1\ncVar+var+1\n"
+        );
+    }
+
+    #[test]
+    fn expands_post_macro_call_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate MXCALL <x:&> => (<x>)\nMXCALL &cVar()\nMXCALL &cVar++\n(MXCALL &cVar)++\nMXCALL &cVar.()\nMXCALL &cVar.++\n(MXCALL &cVar.)++\nMXCALL &cVar.1 ()\nMXCALL &cVar.1 ++\n(MXCALL &cVar.1) ++\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "(&cVar)()\n(&cVar)++\n((&cVar))++\n(&cVar.)()\n(&cVar.)++\n((&cVar.))++\n(&cVar.1) ()\n(&cVar.1) ++\n((&cVar.1)) ++\n"
         );
     }
 
