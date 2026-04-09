@@ -1143,7 +1143,10 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
     let mut logical = trim_line_ending(lines[start_index]).to_owned();
     let mut index = start_index;
 
-    while trim_inline_whitespace(logical.trim_end()).ends_with(';') && index + 1 < lines.len() {
+    while trim_inline_whitespace(logical.trim_end()).ends_with(';')
+        && index + 1 < lines.len()
+        && !is_directive_start(lines[index + 1])
+    {
         logical = trim_inline_whitespace(logical.trim_end())
             .trim_end_matches(';')
             .trim_end()
@@ -1871,8 +1874,19 @@ fn is_macro_identifier_token(text: &str) -> bool {
     identifier_length(text) == text.len()
 }
 
+fn is_dotted_identifier_token(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .split('.')
+            .all(|part| !part.is_empty() && identifier_length(part) == part.len())
+}
+
 fn regular_capture_can_match(tokens: &[SourceToken], start: usize, end: usize) -> bool {
     if start >= end {
+        return false;
+    }
+
+    if tokens[start..end].iter().any(|token| token.text == ";") {
         return false;
     }
 
@@ -1885,7 +1899,9 @@ fn regular_capture_can_match(tokens: &[SourceToken], start: usize, end: usize) -
                 false
             } else {
                 let second = tokens[start + 1].text.as_str();
-                second == "(" || is_macro_identifier_token(second)
+                second == "("
+                    || is_macro_identifier_token(second)
+                    || is_dotted_identifier_token(second)
             }
         }
         "+" | "-" | "!" => len >= 2,
@@ -3047,6 +3063,27 @@ mod tests {
         assert_eq!(
             output.text,
             "normal_c( \"&cVar.+1\" )\nnormal_c( \"&cVar. .AND.  .T.\" )\nnormal_c( \"&cVar.++\" )\nnormal_c( \"&cVar.-=2\" )\nnormal_c( \"&cVar .AND.  .T.\" )\nnormal_c( (cVar) +1 )\n"
+        );
+    }
+
+    #[test]
+    fn expands_define_window_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xcommand DECLARE WINDOW <w> ;\n=>;\n#xtranslate <w> . <p:Name,Title,f1,f2,f3,f4,f5,f6,f7,f8,f9> := <n> => SProp( <\"w\">, <\"p\"> , <n> )\n#xcommand DEFINE WINDOW <w> [ON INIT <IProc>] =>;\n      DECLARE WINDOW <w>  ; _DW( <\"w\">, <{IProc}> )\nDEFINE WINDOW &oW\nDEFINE WINDOW &oW ON INIT &oW.Title:= \"My title\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 3);
+        assert_eq!(
+            output.text,
+            "DECLARE WINDOW &oW  ; _DW( oW,  )\nDECLARE WINDOW &oW  ; _DW( oW, {|| &oW.Title:= \"My title\"} )\n"
         );
     }
 

@@ -1,0 +1,5 @@
+
+PROCEDURE Main()
+   DECLARE WINDOW &oW  ; _DW( oW,  )
+   DECLARE WINDOW &oW  ; _DW( oW, {|| &oW.Title:= "My title"} )
+RETURN
