@@ -566,7 +566,16 @@ fn phase15_xtrans_match_fixture_matches_curated_upstream_subset() {
     assert!(upstream_hbpptest.contains("pre := 'normal(\"cVar\" )'"));
     assert!(upstream_hbpptest.contains("pre := 'macro(cVar )'"));
     assert!(upstream_hbpptest.contains("pre := 'normal(\"&cVar+1\" )'"));
+    assert!(upstream_hbpptest.contains("pre := 'macro(cVar )'"));
+    assert!(upstream_hbpptest.contains("pre := 'XTRANS( (&cVar.) ('"));
     assert!(upstream_hbpptest.contains("pre := 'macro((cVar) )'"));
+    assert!(upstream_hbpptest.contains("pre := 'normal(\"&cVar[3]\" )'"));
+    assert!(upstream_hbpptest.contains("pre := 'normal(\"&cVar.  [3]\" )'"));
+    assert!(upstream_hbpptest.contains("pre := 'macro((cVar  [3],&cvar) )'"));
+    assert!(upstream_hbpptest.contains("pre := 'XTRANS( (&cVar.  [3],&cvar) ('"));
+    assert!(upstream_hbpptest.contains("pre := 'normal(\"&cVar.1+5\" )'"));
+    assert!(upstream_hbpptest.contains("pre := 'normal(\"&cVar .AND. cVar\" )'"));
+    assert!(upstream_hbpptest.contains("pre := 'normal(\"&cVar. .AND. cVar\" )'"));
 
     let output = Preprocessor::default().preprocess(
         SourceFile::from_path(workspace_fixture("tests/fixtures/pp/xtrans_match_root.prg"))

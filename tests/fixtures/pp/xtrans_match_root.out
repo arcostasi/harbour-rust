@@ -2,5 +2,14 @@ PROCEDURE Main()
    normal( "cVar" )
    macro( cVar )
    normal( "&cVar+1" )
+   macro( cVar )
+   XTRANS( (&cVar.) (
    macro( (cVar) )
+   normal( "&cVar[3]" )
+   normal( "&cVar.  [3]" )
+   macro( (cVar  [3],&cvar) )
+   XTRANS( (&cVar.  [3],&cvar) (
+   normal( "&cVar.1+5" )
+   normal( "&cVar .AND. cVar" )
+   normal( "&cVar. .AND. cVar" )
 RETURN

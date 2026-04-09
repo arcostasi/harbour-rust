@@ -1638,6 +1638,18 @@ fn match_pattern_recursive(
             MarkerKind::Regular | MarkerKind::List => {
                 let minimum_end = token_index + 1;
                 for end in marker_candidate_ends(pattern, pattern_index, tokens, minimum_end) {
+                    if marker.kind == MarkerKind::Regular
+                        && regular_capture_starts_with_paren_before_literal_paren(
+                            pattern,
+                            pattern_index,
+                            source,
+                            tokens,
+                            token_index,
+                            end,
+                        )
+                    {
+                        continue;
+                    }
                     let capture =
                         match build_capture(&marker.kind, tokens, source, token_index, end) {
                             Some(capture) => capture,
@@ -1962,6 +1974,30 @@ fn build_capture(
         MarkerKind::Macro => None,
         MarkerKind::Restricted(_) => None,
     }
+}
+
+fn regular_capture_starts_with_paren_before_literal_paren(
+    pattern: &[PatternPart],
+    pattern_index: usize,
+    source: &str,
+    tokens: &[SourceToken],
+    start: usize,
+    end: usize,
+) -> bool {
+    if start >= end {
+        return false;
+    }
+
+    let Some(PatternPart::Literal(literal)) = pattern.get(pattern_index + 1) else {
+        return false;
+    };
+    if literal != "(" {
+        return false;
+    }
+
+    source[tokens[start].start..tokens[end - 1].end]
+        .trim_start_matches([' ', '\t'])
+        .starts_with('(')
 }
 
 fn split_list_capture(
@@ -2811,7 +2847,7 @@ mod tests {
     fn matches_marker_followed_by_literal_paren_in_xtranslate_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
-            "#xtranslate XTRANS(<x>( => normal( <(x)> )\n#xtranslate XTRANS(<x:&>( => macro( <(x)> )\nXTRANS( cVar (\nXTRANS( &cVar (\nXTRANS( &cVar+1 (\nXTRANS( &(cVar) (\n",
+            "#xtranslate XTRANS(<x>( => normal( <(x)> )\n#xtranslate XTRANS(<x:&>( => macro( <(x)> )\nXTRANS( cVar (\nXTRANS( &cVar (\nXTRANS( &cVar+1 (\nXTRANS( &cVar. (\nXTRANS( (&cVar.) (\nXTRANS( &(cVar) (\nXTRANS( &cVar[3] (\nXTRANS( &cVar.  [3] (\nXTRANS( &(cVar  [3],&cvar) (\nXTRANS( (&cVar.  [3],&cvar) (\nXTRANS( &cVar.1+5 (\nXTRANS( &cVar .AND. cVar (\nXTRANS( &cVar. .AND. cVar (\n",
         );
 
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
@@ -2824,7 +2860,7 @@ mod tests {
         assert_eq!(output.rules.len(), 2);
         assert_eq!(
             output.text,
-            "normal( \"cVar\" )\nmacro( cVar )\nnormal( \"&cVar+1\" )\nmacro( (cVar) )\n"
+            "normal( \"cVar\" )\nmacro( cVar )\nnormal( \"&cVar+1\" )\nmacro( cVar )\nXTRANS( (&cVar.) (\nmacro( (cVar) )\nnormal( \"&cVar[3]\" )\nnormal( \"&cVar.  [3]\" )\nmacro( (cVar  [3],&cvar) )\nXTRANS( (&cVar.  [3],&cvar) (\nnormal( \"&cVar.1+5\" )\nnormal( \"&cVar .AND. cVar\" )\nnormal( \"&cVar. .AND. cVar\" )\n"
         );
     }
 
