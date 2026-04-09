@@ -1,0 +1,7 @@
+
+PROCEDURE Main()
+   SProp( "oW", "Title" , "title" )
+   SProp( "oW", "f9" , 9 )
+   SProp( oW, "Title" , "macro" )
+   SProp( oW, "f9" , 10 )
+RETURN

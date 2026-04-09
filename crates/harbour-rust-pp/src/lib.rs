@@ -3188,6 +3188,27 @@ mod tests {
     }
 
     #[test]
+    fn expands_property_translate_subset_without_define_window_wrapper() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate <w> . <p:Name,Title,f9> := <n> => SProp( <\"w\">, <\"p\"> , <n> )\noW.Title := \"title\"\noW . f9 := 9\n&oW.Title := \"macro\"\n&oW . f9 := 10\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "SProp( \"oW\", \"Title\" , \"title\" )\nSProp( \"oW\", \"f9\" , 9 )\nSProp( oW, \"Title\" , \"macro\" )\nSProp( oW, \"f9\" , 10 )\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
