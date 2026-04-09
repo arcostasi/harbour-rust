@@ -707,6 +707,39 @@ fn phase15_macro_call_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_macro_pair_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected =
+        fs::read_to_string(workspace_fixture("tests/fixtures/pp/macro_pair_root.out"))
+            .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("in := \"FOO &cVar FOO &var.\""));
+    assert!(upstream_hbpptest.contains("pre := 'cVar+var'"));
+    assert!(upstream_hbpptest.contains("in := \"BAR &cVar BAR &var.\""));
+    assert!(upstream_hbpptest.contains("in := \"FOO &cVar FOO &var.+1\""));
+    assert!(upstream_hbpptest.contains("pre := 'FOO &cVar FOO &var.+1'"));
+    assert!(upstream_hbpptest.contains("in := \"BAR &cVar BAR &var.+1\""));
+    assert!(upstream_hbpptest.contains("pre := 'cVar+var+1'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/macro_pair_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

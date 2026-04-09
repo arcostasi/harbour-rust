@@ -2981,6 +2981,27 @@ mod tests {
     }
 
     #[test]
+    fn expands_adjacent_macro_pair_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command FOO <x:&> FOO <y:&> => <(x)>+<(y)>\n#translate BAR <x:&> BAR <y:&> => <(x)>+<(y)>\nFOO &cVar FOO &var.\nBAR &cVar BAR &var.\nFOO &cVar FOO &var.+1\nBAR &cVar BAR &var.+1\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 2);
+        assert_eq!(
+            output.text,
+            "cVar+var\ncVar+var\nFOO &cVar FOO &var.+1\ncVar+var+1\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

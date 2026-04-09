@@ -1,0 +1,6 @@
+PROCEDURE Main()
+   cVar+var
+   cVar+var
+   FOO &cVar FOO &var.+1
+   cVar+var+1
+RETURN
