@@ -842,6 +842,8 @@ fn phase15_define_window_fixture_matches_curated_upstream_subset() {
     assert!(upstream_pp_test.contains("#xcommand DEFINE WINDOW <w> [ON INIT <IProc>] =>;"));
     assert!(upstream_pp_test.contains("DEFINE WINDOW &oW"));
     assert!(upstream_pp_test.contains("DEFINE WINDOW &oW ON INIT &oW.Title:= \"My title\""));
+    assert!(upstream_pp_test.contains("&oW.Title := \"title\""));
+    assert!(upstream_pp_test.contains("&oW.f9 := 9"));
 
     let output = Preprocessor::default().preprocess(
         SourceFile::from_path(workspace_fixture("tests/fixtures/pp/define_window_root.prg"))

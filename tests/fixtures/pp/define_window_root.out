@@ -1,5 +1,7 @@
 
 PROCEDURE Main()
    DECLARE WINDOW &oW  ; _DW( oW,  )
-   DECLARE WINDOW &oW  ; _DW( oW, {|| &oW.Title:= "My title"} )
+   DECLARE WINDOW &oW  ; _DW( oW, {|| SProp( oW, "Title" , "My title" )} )
+   SProp( oW, "Title" , "title" )
+   SProp( oW, "f9" , 9 )
 RETURN

@@ -7,4 +7,6 @@
 PROCEDURE Main()
    DEFINE WINDOW &oW
    DEFINE WINDOW &oW ON INIT &oW.Title:= "My title"
+   &oW.Title := "title"
+   &oW.f9 := 9
 RETURN

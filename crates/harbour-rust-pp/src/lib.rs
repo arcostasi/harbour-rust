@@ -1366,7 +1366,7 @@ fn apply_translate_rules(line: &str, rules: &[RuleDirective]) -> (String, bool) 
     let mut changed = false;
 
     loop {
-        let tokens = tokenize_source_line(&current);
+        let tokens = tokenize_translate_line(&current);
         let mut replaced = None;
 
         'outer: for start in 0..tokens.len() {
@@ -1441,6 +1441,14 @@ impl CaptureValue {
 }
 
 fn tokenize_source_line(text: &str) -> Vec<SourceToken> {
+    tokenize_source_line_with_options(text, false)
+}
+
+fn tokenize_translate_line(text: &str) -> Vec<SourceToken> {
+    tokenize_source_line_with_options(text, true)
+}
+
+fn tokenize_source_line_with_options(text: &str, split_identifier_dots: bool) -> Vec<SourceToken> {
     let mut tokens = Vec::new();
     let mut cursor = 0;
 
@@ -1475,14 +1483,68 @@ fn tokenize_source_line(text: &str) -> Vec<SourceToken> {
                 cursor += current.len_utf8();
             }
         }
-        tokens.push(SourceToken {
-            text: text[start..cursor].to_owned(),
-            start,
-            end: cursor,
-        });
+        let token = &text[start..cursor];
+        if split_identifier_dots && should_split_dotted_property_token(token) {
+            push_split_dotted_token(&mut tokens, token, start);
+        } else {
+            tokens.push(SourceToken {
+                text: token.to_owned(),
+                start,
+                end: cursor,
+            });
+        }
     }
 
     tokens
+}
+
+fn should_split_dotted_property_token(text: &str) -> bool {
+    if text.is_empty() || !text.contains('.') || text.ends_with('.') {
+        return false;
+    }
+
+    let parts = text.split('.').collect::<Vec<_>>();
+    if parts.len() < 2
+        || parts
+            .iter()
+            .any(|part| part.is_empty() || identifier_length(part) != part.len())
+    {
+        return false;
+    }
+
+    !parts.last().is_some_and(|part| part.chars().all(|ch| ch.is_ascii_digit()))
+}
+
+fn push_split_dotted_token(tokens: &mut Vec<SourceToken>, text: &str, start_offset: usize) {
+    let mut segment_start = 0usize;
+
+    for (index, ch) in text.char_indices() {
+        if ch != '.' {
+            continue;
+        }
+
+        if segment_start < index {
+            tokens.push(SourceToken {
+                text: text[segment_start..index].to_owned(),
+                start: start_offset + segment_start,
+                end: start_offset + index,
+            });
+        }
+        tokens.push(SourceToken {
+            text: ".".to_owned(),
+            start: start_offset + index,
+            end: start_offset + index + 1,
+        });
+        segment_start = index + 1;
+    }
+
+    if segment_start < text.len() {
+        tokens.push(SourceToken {
+            text: text[segment_start..].to_owned(),
+            start: start_offset + segment_start,
+            end: start_offset + text.len(),
+        });
+    }
 }
 
 fn is_symbol_like(ch: char) -> bool {
@@ -1622,7 +1684,11 @@ fn match_pattern_recursive(
                 )
             }
             MarkerKind::Macro => {
-                for end in macro_candidate_ends(tokens, token_index)? {
+                let mut candidate_ends = macro_candidate_ends(tokens, token_index)?;
+                if required_end.is_none() && pattern_index + 1 == pattern.len() {
+                    candidate_ends.reverse();
+                }
+                for end in candidate_ends {
                     let capture = CaptureValue {
                         raw: source[tokens[token_index].start..tokens[end - 1].end].to_owned(),
                         list_items: None,
@@ -1663,6 +1729,15 @@ fn match_pattern_recursive(
                         continue;
                     }
                     if !regular_capture_can_match(tokens, token_index, end) {
+                        continue;
+                    }
+                    if !regular_capture_can_match_property_access(
+                        pattern,
+                        pattern_index,
+                        tokens,
+                        token_index,
+                        end,
+                    ) {
                         continue;
                     }
                     let capture =
@@ -1907,6 +1982,9 @@ fn regular_capture_can_match(tokens: &[SourceToken], start: usize, end: usize) -
         "+" | "-" | "!" => len >= 2,
         _ => true,
     };
+    if first.chars().all(|ch| ch == '|') {
+        return false;
+    }
     if !starts_valid {
         return false;
     }
@@ -1923,6 +2001,28 @@ fn regular_capture_can_match(tokens: &[SourceToken], start: usize, end: usize) -
         }
         _ => true,
     }
+}
+
+fn regular_capture_can_match_property_access(
+    pattern: &[PatternPart],
+    pattern_index: usize,
+    tokens: &[SourceToken],
+    start: usize,
+    end: usize,
+) -> bool {
+    let Some(PatternPart::Literal(literal)) = pattern.get(pattern_index + 1) else {
+        return true;
+    };
+    if literal != "." {
+        return true;
+    }
+
+    !tokens[start..end].iter().any(|token| {
+        matches!(
+            token.text.as_str(),
+            "(" | ")" | "{" | "}" | "[" | "]" | "," | "||" | "|"
+        )
+    })
 }
 
 fn optional_parts_priority(parts: &[PatternPart]) -> usize {
@@ -3070,7 +3170,7 @@ mod tests {
     fn expands_define_window_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
-            "#xcommand DECLARE WINDOW <w> ;\n=>;\n#xtranslate <w> . <p:Name,Title,f1,f2,f3,f4,f5,f6,f7,f8,f9> := <n> => SProp( <\"w\">, <\"p\"> , <n> )\n#xcommand DEFINE WINDOW <w> [ON INIT <IProc>] =>;\n      DECLARE WINDOW <w>  ; _DW( <\"w\">, <{IProc}> )\nDEFINE WINDOW &oW\nDEFINE WINDOW &oW ON INIT &oW.Title:= \"My title\"\n",
+            "#xcommand DECLARE WINDOW <w> ;\n=>;\n#xtranslate <w> . <p:Name,Title,f1,f2,f3,f4,f5,f6,f7,f8,f9> := <n> => SProp( <\"w\">, <\"p\"> , <n> )\n#xcommand DEFINE WINDOW <w> [ON INIT <IProc>] =>;\n      DECLARE WINDOW <w>  ; _DW( <\"w\">, <{IProc}> )\nDEFINE WINDOW &oW\nDEFINE WINDOW &oW ON INIT &oW.Title:= \"My title\"\n&oW.Title := \"title\"\n&oW.f9 := 9\n",
         );
 
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
@@ -3083,7 +3183,7 @@ mod tests {
         assert_eq!(output.rules.len(), 3);
         assert_eq!(
             output.text,
-            "DECLARE WINDOW &oW  ; _DW( oW,  )\nDECLARE WINDOW &oW  ; _DW( oW, {|| &oW.Title:= \"My title\"} )\n"
+            "DECLARE WINDOW &oW  ; _DW( oW,  )\nDECLARE WINDOW &oW  ; _DW( oW, {|| SProp( oW, \"Title\" , \"My title\" )} )\nSProp( oW, \"Title\" , \"title\" )\nSProp( oW, \"f9\" , 9 )\n"
         );
     }
 
