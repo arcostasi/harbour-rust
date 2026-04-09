@@ -1,0 +1,5 @@
+PROCEDURE Main()
+   macro( "&cVar&cVar" )
+   macro( "&cVar.&cVar" )
+   macro( "&cVar.&cVar." )
+RETURN

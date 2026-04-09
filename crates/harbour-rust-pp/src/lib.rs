@@ -2865,6 +2865,27 @@ mod tests {
     }
 
     #[test]
+    fn matches_concatenated_macro_chains_in_xtranslate_rules() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate XTRANS(<x>( => normal( <(x)> )\n#xtranslate XTRANS(<x:&>( => macro( <(x)> )\nXTRANS( &cVar&cVar (\nXTRANS( &cVar.&cVar (\nXTRANS( &cVar.&cVar. (\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 2);
+        assert_eq!(
+            output.text,
+            "macro( \"&cVar&cVar\" )\nmacro( \"&cVar.&cVar\" )\nmacro( \"&cVar.&cVar.\" )\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

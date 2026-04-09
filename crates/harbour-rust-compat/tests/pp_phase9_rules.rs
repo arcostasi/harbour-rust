@@ -591,6 +591,43 @@ fn phase15_xtrans_match_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_xtrans_macro_chain_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpp) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/xtrans_macro_chain_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpp.contains("XTRANS( &cVar&cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar.&cVar ("));
+    assert!(upstream_hbpp.contains("XTRANS( &cVar.&cVar. ("));
+    assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar&cVar\")'"));
+    assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar.&cVar.\")'"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/xtrans_macro_chain_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
