@@ -3209,6 +3209,27 @@ mod tests {
     }
 
     #[test]
+    fn expands_constructor_translate_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate ( <name>{ [<p,...>] } => (<name>():New(<p>)\n? ( TEST{ 1,2,3} )\n? ( a+3{ 11,2,3} )\n? ( a(){ 11,2,3} )\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "? (TEST():New(1,2,3) )\n? (a+3():New(11,2,3) )\n? (a()():New(11,2,3) )\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
