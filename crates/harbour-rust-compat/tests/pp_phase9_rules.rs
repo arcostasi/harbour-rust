@@ -1029,6 +1029,46 @@ fn phase15_normal_marker_compound_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_smart_marker_compound_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/smart_marker_compound_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_pp_test.contains("#command _SMART_M(<z>) => sm( <(z)> )"));
+    assert!(upstream_pp_test.contains("_SMART_M(a)"));
+    assert!(upstream_pp_test.contains("_SMART_M(\"a\")"));
+    assert!(upstream_pp_test.contains("_SMART_M('a')"));
+    assert!(upstream_pp_test.contains("_SMART_M([\"'a'\"])"));
+    assert!(upstream_pp_test.contains("_SMART_M(&a.1)"));
+    assert!(upstream_pp_test.contains("_SMART_M(&a)"));
+    assert!(upstream_pp_test.contains("_SMART_M(&a.)"));
+    assert!(upstream_pp_test.contains("_SMART_M(&(a))"));
+    assert!(upstream_pp_test.contains("_SMART_M(&a[1])"));
+    assert!(upstream_pp_test.contains("_SMART_M(a[1])"));
+    assert!(upstream_pp_test.contains("_SMART_M(\"['']\")"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/smart_marker_compound_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

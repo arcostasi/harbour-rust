@@ -2506,10 +2506,13 @@ fn capture_starts_with_codeblock(raw: &str) -> bool {
 
 fn render_smart_capture(raw: &str, output: &mut String) {
     let trimmed = raw.trim_start();
-    if matches!(trimmed.chars().next(), Some('('))
-        || matches!(trimmed.chars().next(), Some(ch) if is_string_delimiter(ch))
-    {
+    if matches!(trimmed.chars().next(), Some('(')) {
         output.push_str(raw);
+        return;
+    }
+
+    if let Some(rendered) = render_literal_aware_smart_capture(raw) {
+        output.push_str(&rendered);
         return;
     }
 
@@ -2543,6 +2546,11 @@ fn render_literal_aware_quoted_capture(raw: &str) -> Option<String> {
     }
 
     Some(format!("'{}'", normalized))
+}
+
+fn render_literal_aware_smart_capture(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    normalize_string_literal_source(trimmed)
 }
 
 fn normalize_string_literal_source(raw: &str) -> Option<String> {
@@ -3371,6 +3379,27 @@ mod tests {
         assert_eq!(
             output.text,
             "nm( \"a\" )\nnm( '\"a\"' )\nnm( '\"a\"' )\nnm( [[\"'a'\"]] )\nnm( \"&a.1\" )\nnm( a )\nnm( a )\nnm( (a) )\nnm( \"&a[1]\" )\nnm( \"a[1]\" )\nnm( [\"['']\"] )\n"
+        );
+    }
+
+    #[test]
+    fn expands_compound_smart_marker_pattern_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _SMART_M(<z>) => sm( <(z)> )\n_SMART_M(a)\n_SMART_M(\"a\")\n_SMART_M('a')\n_SMART_M([\"'a'\"])\n_SMART_M(&a.1)\n_SMART_M(&a)\n_SMART_M(&a.)\n_SMART_M(&(a))\n_SMART_M(&a[1])\n_SMART_M(a[1])\n_SMART_M(\"['']\")\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "sm( \"a\" )\nsm( \"a\" )\nsm( \"a\" )\nsm( [\"'a'\"] )\nsm( \"&a.1\" )\nsm( a )\nsm( a )\nsm( (a) )\nsm( \"&a[1]\" )\nsm( \"a[1]\" )\nsm( \"['']\" )\n"
         );
     }
 

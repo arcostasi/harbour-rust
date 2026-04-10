@@ -1,0 +1,13 @@
+PROCEDURE Main()
+   sm( "a" )
+   sm( "a" )
+   sm( "a" )
+   sm( ["'a'"] )
+   sm( "&a.1" )
+   sm( a )
+   sm( a )
+   sm( (a) )
+   sm( "&a[1]" )
+   sm( "a[1]" )
+   sm( "['']" )
+RETURN
