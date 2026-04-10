@@ -141,6 +141,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/constructor_translate_root.prg` | golden do subset focado de constructor-style `#xtranslate` com padrão composto `(<name>{ [<p,...>] }` |
 | `tests/fixtures/pp/constructor_identifier_translate_root.prg` | golden do subset Harbour-only de constructor-style `#xtranslate` com marker identificador `<!name!>` |
 | `tests/fixtures/pp/regular_marker_compound_root.prg` | golden do subset focado de padrão composto `_REGULAR_(<z>)` sem espaços ao redor dos delimitadores |
+| `tests/fixtures/pp/normal_marker_compound_root.prg` | golden do subset focado de normal stringify `_NORMAL_M(<z>)` sem espaços ao redor dos delimitadores |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |

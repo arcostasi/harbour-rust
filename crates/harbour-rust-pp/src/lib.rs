@@ -3318,6 +3318,27 @@ mod tests {
     }
 
     #[test]
+    fn expands_compound_normal_marker_pattern_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _NORMAL_M(<z>) => nm( <\"z\"> )\n_NORMAL_M(a)\n_NORMAL_M(&a.1)\n_NORMAL_M(&a)\n_NORMAL_M(&a.)\n_NORMAL_M(&(a))\n_NORMAL_M(&a[1])\n_NORMAL_M(a[1])\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "nm( \"a\" )\nnm( \"&a.1\" )\nnm( a )\nnm( a )\nnm( (a) )\nnm( \"&a[1]\" )\nnm( \"a[1]\" )\n"
+        );
+    }
+
+    #[test]
     fn expands_multiline_repeated_optional_list_rules() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
