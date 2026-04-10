@@ -1,0 +1,7 @@
+PROCEDURE Main()
+   rm( a )
+   rm( "a" )
+   rm( &a.1 )
+   rm( &a )
+   rm( a[1] )
+RETURN
