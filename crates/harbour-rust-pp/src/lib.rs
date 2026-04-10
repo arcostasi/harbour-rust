@@ -2527,7 +2527,43 @@ fn render_quoted_capture(raw: &str, output: &mut String) {
         return;
     }
 
+    if let Some(rendered) = render_literal_aware_quoted_capture(raw) {
+        output.push_str(&rendered);
+        return;
+    }
+
     push_quoted_capture(raw, output);
+}
+
+fn render_literal_aware_quoted_capture(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    let normalized = normalize_string_literal_source(trimmed)?;
+    if normalized.contains('\'') {
+        return Some(format!("[{}]", normalized));
+    }
+
+    Some(format!("'{}'", normalized))
+}
+
+fn normalize_string_literal_source(raw: &str) -> Option<String> {
+    if raw.len() < 2 {
+        return None;
+    }
+
+    if raw.starts_with('[') && raw.ends_with(']') {
+        return Some(raw.to_owned());
+    }
+
+    if raw.starts_with('"') && raw.ends_with('"') {
+        return Some(raw.to_owned());
+    }
+
+    if raw.starts_with('\'') && raw.ends_with('\'') {
+        let inner = &raw[1..raw.len() - 1];
+        return Some(format!("\"{}\"", inner.replace('"', "\\\"")));
+    }
+
+    None
 }
 
 fn render_macro_aware_stringify(raw: &str) -> Option<String> {
@@ -3321,7 +3357,7 @@ mod tests {
     fn expands_compound_normal_marker_pattern_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
-            "#command _NORMAL_M(<z>) => nm( <\"z\"> )\n_NORMAL_M(a)\n_NORMAL_M(&a.1)\n_NORMAL_M(&a)\n_NORMAL_M(&a.)\n_NORMAL_M(&(a))\n_NORMAL_M(&a[1])\n_NORMAL_M(a[1])\n",
+            "#command _NORMAL_M(<z>) => nm( <\"z\"> )\n_NORMAL_M(a)\n_NORMAL_M(\"a\")\n_NORMAL_M('a')\n_NORMAL_M([\"'a'\"])\n_NORMAL_M(&a.1)\n_NORMAL_M(&a)\n_NORMAL_M(&a.)\n_NORMAL_M(&(a))\n_NORMAL_M(&a[1])\n_NORMAL_M(a[1])\n_NORMAL_M(\"['']\")\n",
         );
 
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
@@ -3334,7 +3370,7 @@ mod tests {
         assert_eq!(output.rules.len(), 1);
         assert_eq!(
             output.text,
-            "nm( \"a\" )\nnm( \"&a.1\" )\nnm( a )\nnm( a )\nnm( (a) )\nnm( \"&a[1]\" )\nnm( \"a[1]\" )\n"
+            "nm( \"a\" )\nnm( '\"a\"' )\nnm( '\"a\"' )\nnm( [[\"'a'\"]] )\nnm( \"&a.1\" )\nnm( a )\nnm( a )\nnm( (a) )\nnm( \"&a[1]\" )\nnm( \"a[1]\" )\nnm( [\"['']\"] )\n"
         );
     }
 

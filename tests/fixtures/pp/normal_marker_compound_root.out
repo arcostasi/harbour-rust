@@ -1,9 +1,13 @@
 PROCEDURE Main()
    nm( "a" )
+   nm( '"a"' )
+   nm( '"a"' )
+   nm( [["'a'"]] )
    nm( "&a.1" )
    nm( a )
    nm( a )
    nm( (a) )
    nm( "&a[1]" )
    nm( "a[1]" )
+   nm( ["['']"] )
 RETURN
