@@ -2298,7 +2298,7 @@ fn render_result_part(
             if let Some(value) = captures.values.get(name)
                 && let Some(text) = value.render_text(repeat_index)
             {
-                push_quoted_capture(text, output);
+                render_stringify_capture(text, output);
             }
         }
         ResultPart::Blockify(name) => {
@@ -2517,6 +2517,15 @@ fn render_smart_capture(raw: &str, output: &mut String) {
     }
 
     if let Some(rendered) = render_macro_aware_stringify(raw) {
+        output.push_str(&rendered);
+        return;
+    }
+
+    push_quoted_capture(raw, output);
+}
+
+fn render_stringify_capture(raw: &str, output: &mut String) {
+    if let Some(rendered) = render_literal_aware_quoted_capture(raw) {
         output.push_str(&rendered);
         return;
     }
@@ -3400,6 +3409,27 @@ mod tests {
         assert_eq!(
             output.text,
             "sm( \"a\" )\nsm( \"a\" )\nsm( \"a\" )\nsm( [\"'a'\"] )\nsm( \"&a.1\" )\nsm( a )\nsm( a )\nsm( (a) )\nsm( \"&a[1]\" )\nsm( \"a[1]\" )\nsm( \"['']\" )\n"
+        );
+    }
+
+    #[test]
+    fn expands_compound_dumb_marker_pattern_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _DUMB_M(<z>) => dm( #<z> )\n_DUMB_M(a)\n_DUMB_M(\"a\")\n_DUMB_M('a')\n_DUMB_M([\"'a'\"])\n_DUMB_M(&a.1)\n_DUMB_M(&a)\n_DUMB_M(&a.)\n_DUMB_M(&(a))\n_DUMB_M(&a[1])\n_DUMB_M(a[1])\n_DUMB_M(\"['']\")\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "dm( \"a\" )\ndm( '\"a\"' )\ndm( '\"a\"' )\ndm( [[\"'a'\"]] )\ndm( \"&a.1\" )\ndm( \"&a\" )\ndm( \"&a.\" )\ndm( \"&(a)\" )\ndm( \"&a[1]\" )\ndm( \"a[1]\" )\ndm( [\"['']\"] )\n"
         );
     }
 

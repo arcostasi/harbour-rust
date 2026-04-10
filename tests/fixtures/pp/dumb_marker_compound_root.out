@@ -1,0 +1,13 @@
+PROCEDURE Main()
+   dm( "a" )
+   dm( '"a"' )
+   dm( '"a"' )
+   dm( [["'a'"]] )
+   dm( "&a.1" )
+   dm( "&a" )
+   dm( "&a." )
+   dm( "&(a)" )
+   dm( "&a[1]" )
+   dm( "a[1]" )
+   dm( ["['']"] )
+RETURN
