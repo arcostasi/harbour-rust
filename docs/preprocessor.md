@@ -139,6 +139,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/define_window_root.prg` | golden do subset focado de `DEFINE WINDOW` com `ON INIT` e property translation sem espaços ao redor de `.` |
 | `tests/fixtures/pp/property_translate_root.prg` | golden do subset focado do mesmo `#xtranslate` de propriedade fora do wrapper `DEFINE WINDOW` |
 | `tests/fixtures/pp/constructor_translate_root.prg` | golden do subset focado de constructor-style `#xtranslate` com padrão composto `(<name>{ [<p,...>] }` |
+| `tests/fixtures/pp/constructor_identifier_translate_root.prg` | golden do subset Harbour-only de constructor-style `#xtranslate` com marker identificador `<!name!>` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |

@@ -615,8 +615,10 @@ fn phase15_xtrans_macro_chain_fixture_matches_curated_upstream_subset() {
     assert!(upstream_hbpptest.contains("pre :='macro_t(\"&cVar.&cVar.\")'"));
 
     let output = Preprocessor::default().preprocess(
-        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/xtrans_macro_chain_root.prg"))
-            .expect("fixture"),
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/xtrans_macro_chain_root.prg",
+        ))
+        .expect("fixture"),
     );
 
     assert!(
@@ -634,9 +636,8 @@ fn phase15_xtrans_full_fixture_matches_upstream_pp_test_block() {
     else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/xtrans_full_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/xtrans_full_root.out"))
+        .expect("fixture snapshot");
 
     assert!(upstream_hbpp.contains("XTRANS( cVar ("));
     assert!(upstream_hbpp.contains("XTRANS( &cVar ("));
@@ -676,9 +677,8 @@ fn phase15_macro_call_fixture_matches_curated_upstream_subset() {
     ) else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/macro_call_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/macro_call_root.out"))
+        .expect("fixture snapshot");
 
     assert!(upstream_hbpptest.contains("in := \"MXCALL &cVar\""));
     assert!(upstream_hbpptest.contains("pre := '(&cVar)'"));
@@ -714,9 +714,8 @@ fn phase15_macro_pair_fixture_matches_curated_upstream_subset() {
     ) else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/macro_pair_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/macro_pair_root.out"))
+        .expect("fixture snapshot");
 
     assert!(upstream_hbpptest.contains("in := \"FOO &cVar FOO &var.\""));
     assert!(upstream_hbpptest.contains("pre := 'cVar+var'"));
@@ -747,9 +746,8 @@ fn phase15_mxcall_post_fixture_matches_curated_upstream_subset() {
     ) else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/mxcall_post_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/mxcall_post_root.out"))
+        .expect("fixture snapshot");
 
     assert!(upstream_hbpptest.contains("in := \"MXCALL &cVar()\""));
     assert!(upstream_hbpptest.contains("pre := '(&cVar)()'"));
@@ -831,9 +829,10 @@ fn phase15_define_window_fixture_matches_curated_upstream_subset() {
     else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/define_window_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/define_window_root.out",
+    ))
+    .expect("fixture snapshot");
 
     assert!(upstream_pp_test.contains("#xcommand DECLARE WINDOW <w> ;"));
     assert!(upstream_pp_test.contains(
@@ -846,8 +845,10 @@ fn phase15_define_window_fixture_matches_curated_upstream_subset() {
     assert!(upstream_pp_test.contains("&oW.f9 := 9"));
 
     let output = Preprocessor::default().preprocess(
-        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/define_window_root.prg"))
-            .expect("fixture"),
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/define_window_root.prg",
+        ))
+        .expect("fixture"),
     );
 
     assert!(
@@ -865,17 +866,20 @@ fn phase15_property_translate_fixture_matches_curated_rule_subset() {
     else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/property_translate_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/property_translate_root.out",
+    ))
+    .expect("fixture snapshot");
 
     assert!(upstream_pp_test.contains(
         "#xtranslate <w> . <p:Name,Title,f1,f2,f3,f4,f5,f6,f7,f8,f9> := <n> => SProp( <\"w\">, <\"p\"> , <n> )"
     ));
 
     let output = Preprocessor::default().preprocess(
-        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/property_translate_root.prg"))
-            .expect("fixture"),
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/property_translate_root.prg",
+        ))
+        .expect("fixture"),
     );
 
     assert!(
@@ -893,9 +897,10 @@ fn phase15_constructor_translate_fixture_matches_curated_upstream_subset() {
     else {
         return;
     };
-    let expected =
-        fs::read_to_string(workspace_fixture("tests/fixtures/pp/constructor_translate_root.out"))
-            .expect("fixture snapshot");
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/constructor_translate_root.out",
+    ))
+    .expect("fixture snapshot");
 
     assert!(upstream_pp_test.contains("#xtranslate ( <name>{ [<p,...>] } => (<name>():New(<p>)"));
     assert!(upstream_pp_test.contains("a :=clas( TEST{ 1,2,3} )"));
@@ -905,6 +910,38 @@ fn phase15_constructor_translate_fixture_matches_curated_upstream_subset() {
     let output = Preprocessor::default().preprocess(
         SourceFile::from_path(workspace_fixture(
             "tests/fixtures/pp/constructor_translate_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
+fn phase15_constructor_identifier_translate_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/constructor_identifier_translate_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_pp_test.contains("#xtranslate ( <!name!>{ [<p,...>] } => (<name>():New(<p>)"));
+    assert!(upstream_pp_test.contains("a :=clas( TesT{ 1,2,3} )"));
+    assert!(upstream_pp_test.contains("a :=clas( a+3{ 11,2,3} )"));
+    assert!(upstream_pp_test.contains("a :=clas( a(){ 11,2,3} )"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/constructor_identifier_translate_root.prg",
         ))
         .expect("fixture"),
     );

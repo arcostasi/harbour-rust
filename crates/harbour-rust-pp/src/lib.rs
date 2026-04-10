@@ -123,6 +123,7 @@ pub struct PatternMarker {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MarkerKind {
     Regular,
+    IdentifierOnly,
     List,
     Macro,
     Restricted(Vec<String>),
@@ -787,6 +788,13 @@ fn parse_marker(
         });
     }
 
+    if let Some(identifier_name) = parse_identifier_only_marker_name(text) {
+        return Ok(PatternMarker {
+            name: validate_marker_name(identifier_name, path, line_number, column)?,
+            kind: MarkerKind::IdentifierOnly,
+        });
+    }
+
     if let Some((name, restriction_text)) = text.split_once(':') {
         let name = validate_marker_name(name, path, line_number, column)?;
         if restriction_text.trim() == "&" {
@@ -819,6 +827,13 @@ fn parse_marker(
         name: validate_marker_name(text, path, line_number, column)?,
         kind: MarkerKind::Regular,
     })
+}
+
+fn parse_identifier_only_marker_name(text: &str) -> Option<&str> {
+    text.strip_prefix('!')
+        .and_then(|rest| rest.strip_suffix('!'))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
 }
 
 fn validate_marker_name(
@@ -1512,7 +1527,9 @@ fn should_split_dotted_property_token(text: &str) -> bool {
         return false;
     }
 
-    !parts.last().is_some_and(|part| part.chars().all(|ch| ch.is_ascii_digit()))
+    !parts
+        .last()
+        .is_some_and(|part| part.chars().all(|ch| ch.is_ascii_digit()))
 }
 
 fn push_split_dotted_token(tokens: &mut Vec<SourceToken>, text: &str, start_offset: usize) {
@@ -1666,6 +1683,26 @@ fn match_pattern_recursive(
                     .iter()
                     .any(|entry| token_matches_text(&token.text, entry))
                 {
+                    return None;
+                }
+                let capture = CaptureValue {
+                    raw: token.text.clone(),
+                    list_items: None,
+                };
+                let captures = merge_capture(captures, &marker.name, capture)?;
+                match_pattern_recursive(
+                    pattern,
+                    pattern_index + 1,
+                    tokens,
+                    source,
+                    token_index + 1,
+                    required_end,
+                    captures,
+                )
+            }
+            MarkerKind::IdentifierOnly => {
+                let token = tokens.get(token_index)?;
+                if identifier_length(&token.text) != token.text.len() {
                     return None;
                 }
                 let capture = CaptureValue {
@@ -1876,6 +1913,10 @@ fn optional_clause_priority(part: &PatternPart) -> usize {
             ..
         }) => 1,
         PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::IdentifierOnly,
+            ..
+        }) => 1,
+        PatternPart::Marker(PatternMarker {
             kind: MarkerKind::Macro,
             ..
         }) => 1,
@@ -2072,6 +2113,10 @@ fn collect_leading_stop_tokens(pattern: &[PatternPart], stops: &mut Vec<String>)
             kind: MarkerKind::Restricted(allowed),
             ..
         }) => stops.extend(allowed.iter().cloned()),
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::IdentifierOnly,
+            name,
+        }) => stops.push(name.clone()),
         PatternPart::Optional(parts) => {
             collect_leading_stop_tokens(parts, stops);
             collect_leading_stop_tokens(&pattern[1..], stops);
@@ -2141,6 +2186,7 @@ fn build_capture(
             list_items: split_list_capture(tokens, source, start, end)
                 .filter(|entries| entries.len() > 1),
         }),
+        MarkerKind::IdentifierOnly => None,
         MarkerKind::List => {
             split_list_capture(tokens, source, start, end).map(|entries| CaptureValue {
                 raw,
@@ -3226,6 +3272,27 @@ mod tests {
         assert_eq!(
             output.text,
             "? (TEST():New(1,2,3) )\n? (a+3():New(11,2,3) )\n? (a()():New(11,2,3) )\n"
+        );
+    }
+
+    #[test]
+    fn expands_identifier_only_constructor_translate_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate ( <!name!>{ [<p,...>] } => (<name>():New(<p>)\n? ( TEST{ 1,2,3} )\n? ( a+3{ 11,2,3} )\n? ( a(){ 11,2,3} )\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "? (TEST():New(1,2,3) )\n? ( a+3{ 11,2,3} )\n? ( a(){ 11,2,3} )\n"
         );
     }
 

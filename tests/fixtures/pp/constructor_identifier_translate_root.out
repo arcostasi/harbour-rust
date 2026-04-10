@@ -1,0 +1,6 @@
+
+PROCEDURE Main()
+   ? (TEST():New(1,2,3) )
+   ? ( a+3{ 11,2,3} )
+   ? ( a(){ 11,2,3} )
+RETURN
