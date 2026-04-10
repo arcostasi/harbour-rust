@@ -2181,16 +2181,24 @@ fn build_capture(
     }
     let raw = source[tokens[start].start..tokens[end - 1].end].to_owned();
     match kind {
-        MarkerKind::Regular => Some(CaptureValue {
-            raw,
-            list_items: split_list_capture(tokens, source, start, end)
-                .filter(|entries| entries.len() > 1),
-        }),
+        MarkerKind::Regular => {
+            let normalized_list = split_list_capture(tokens, source, start, end)
+                .filter(|(_, entries)| entries.len() > 1);
+            Some(CaptureValue {
+                raw: normalized_list
+                    .as_ref()
+                    .map(|(normalized_raw, _)| normalized_raw.clone())
+                    .unwrap_or(raw),
+                list_items: normalized_list.map(|(_, entries)| entries),
+            })
+        }
         MarkerKind::IdentifierOnly => None,
         MarkerKind::List => {
-            split_list_capture(tokens, source, start, end).map(|entries| CaptureValue {
-                raw,
-                list_items: Some(entries),
+            split_list_capture(tokens, source, start, end).map(|(normalized_raw, entries)| {
+                CaptureValue {
+                    raw: normalized_raw,
+                    list_items: Some(entries),
+                }
             })
         }
         MarkerKind::Macro => None,
@@ -2227,8 +2235,9 @@ fn split_list_capture(
     source: &str,
     start: usize,
     end: usize,
-) -> Option<Vec<String>> {
+) -> Option<(String, Vec<String>)> {
     let mut entries = Vec::new();
+    let mut normalized_raw = String::new();
     let mut depth = 0i32;
     let mut entry_start = start;
 
@@ -2240,8 +2249,16 @@ fn split_list_capture(
                 if entry_start == index {
                     return None;
                 }
-                entries.push(source[tokens[entry_start].start..tokens[index - 1].end].to_owned());
+                let entry = normalize_list_capture_entry(
+                    &source[tokens[entry_start].start..tokens[index].start],
+                );
+                normalized_raw.push_str(&entry);
+                entries.push(entry);
                 entry_start = index + 1;
+                if entry_start >= end {
+                    return None;
+                }
+                normalized_raw.push_str(&source[tokens[index].start..tokens[entry_start].start]);
             }
             _ => {}
         }
@@ -2250,8 +2267,15 @@ fn split_list_capture(
     if entry_start >= end {
         return None;
     }
-    entries.push(source[tokens[entry_start].start..tokens[end - 1].end].to_owned());
-    Some(entries)
+    let entry =
+        normalize_list_capture_entry(&source[tokens[entry_start].start..tokens[end - 1].end]);
+    normalized_raw.push_str(&entry);
+    entries.push(entry);
+    Some((normalized_raw, entries))
+}
+
+fn normalize_list_capture_entry(raw: &str) -> String {
+    normalize_string_literal_source(raw.trim()).unwrap_or_else(|| raw.to_owned())
 }
 
 fn merge_capture(
@@ -2577,7 +2601,10 @@ fn normalize_string_literal_source(raw: &str) -> Option<String> {
 
     if raw.starts_with('\'') && raw.ends_with('\'') {
         let inner = &raw[1..raw.len() - 1];
-        return Some(format!("\"{}\"", inner.replace('"', "\\\"")));
+        if inner.contains('"') {
+            return Some(raw.to_owned());
+        }
+        return Some(format!("\"{}\"", inner));
     }
 
     None
@@ -3430,6 +3457,27 @@ mod tests {
         assert_eq!(
             output.text,
             "dm( \"a\" )\ndm( '\"a\"' )\ndm( '\"a\"' )\ndm( [[\"'a'\"]] )\ndm( \"&a.1\" )\ndm( \"&a\" )\ndm( \"&a.\" )\ndm( \"&(a)\" )\ndm( \"&a[1]\" )\ndm( \"a[1]\" )\ndm( [\"['']\"] )\n"
+        );
+    }
+
+    #[test]
+    fn expands_compound_regular_list_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _REGULAR_L(<z,...>) => rl( <z> )\n_REGULAR_L(a,\"a\",'a',[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &a.a,  a, a)\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "rl( a,\"a\",\"a\",[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &a.a,  a, a )\n"
         );
     }
 

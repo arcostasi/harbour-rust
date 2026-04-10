@@ -1109,6 +1109,38 @@ fn phase15_dumb_marker_compound_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_regular_list_compound_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/regular_list_compound_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_pp_test.contains("#command _REGULAR_L(<z,...>) => rl( <z> )"));
+    assert!(upstream_pp_test.contains(
+        "_REGULAR_L(a,\"a\",'a',[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &a.a,  a, a)"
+    ));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/regular_list_compound_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
