@@ -1,0 +1,6 @@
+
+PROCEDURE Main()
+   QOUT(a[1] )
+   QOUT()
+   QOUT(a[1]+2[1] )
+RETURN

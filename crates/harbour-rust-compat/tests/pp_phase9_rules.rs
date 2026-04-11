@@ -1424,6 +1424,35 @@ fn phase15_tooltip_command_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_zzz_escape_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/zzz_escape_root.out"))
+        .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#command ZZZ [<v>] => QOUT([<v>\\[1\\]])"));
+    assert!(upstream_hbpptest.contains("pre :=\"QOUT(a[1] )\""));
+    assert!(upstream_hbpptest.contains("pre :=\"QOUT()\""));
+    assert!(upstream_hbpptest.contains("pre := \"QOUT(a[1]+2[1] )\""));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/zzz_escape_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

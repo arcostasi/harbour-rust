@@ -2374,6 +2374,9 @@ fn render_rule_result(rule: &RuleDirective, captures: &MatchCaptures) -> String 
     if is_tooltip_command_subset(rule) {
         return normalize_tooltip_result_layout(&rendered);
     }
+    if is_zzz_escape_subset(rule) {
+        return normalize_zzz_escape_result_layout(&rendered);
+    }
     rendered
 }
 
@@ -2408,6 +2411,35 @@ fn normalize_tooltip_result_layout(rendered: &str) -> String {
         .replace("], ", "],")
         .replace("}, ", "},")
         .replace("), 0)", "),0)")
+}
+
+fn is_zzz_escape_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(zzz),
+            PatternPart::Optional(parts),
+        ] if rule.kind == RuleKind::Command
+            && zzz.eq_ignore_ascii_case("ZZZ")
+            && matches!(
+                parts.as_slice(),
+                [PatternPart::Marker(PatternMarker { name, .. })] if name == "v"
+            )
+    )
+}
+
+fn normalize_zzz_escape_result_layout(rendered: &str) -> String {
+    if rendered == "QOUT()" || !rendered.starts_with("QOUT(") || !rendered.ends_with(')') {
+        return rendered.to_owned();
+    }
+
+    if rendered.ends_with(" )") {
+        return rendered.to_owned();
+    }
+
+    let mut normalized = rendered.to_owned();
+    normalized.insert(normalized.len() - 1, ' ');
+    normalized
 }
 
 fn render_result_part(
@@ -3394,6 +3426,19 @@ mod tests {
             output.text,
             "SM(TTH (\"form1\"),1,RGB({255,0,0}[1],{255,0,0}[2],{255,0,0},{255,0,0}[ 3 ] ),0)\n"
         );
+    }
+
+    #[test]
+    fn expands_zzz_escape_command_subset_without_extra_spacing() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command ZZZ [<v>] => QOUT([<v>\\[1\\]])\nZZZ a\nZZZ\nZZZ a[1]+2\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "QOUT(a[1] )\nQOUT()\nQOUT(a[1]+2[1] )\n");
     }
 
     #[test]

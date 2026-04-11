@@ -153,6 +153,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/nested_function_like_define_root.prg` | golden do subset focado de `#define` parametrizado nested `datediff -> DATEOLD -> DATENEW` |
 | `tests/fixtures/pp/constructor_wrapper_function_like_define_root.prg` | golden do último caso do corredor `_pp_test` de `#define` parametrizado, com `clas( x )   (x)` antes do subset constructor-style |
 | `tests/fixtures/pp/tooltip_command_root.prg` | golden do subset focado de `SET TOOLTIP TO <color> OF <form>` com arrays escapados e cláusula opcional no replacement |
+| `tests/fixtures/pp/zzz_escape_root.prg` | golden do subset focado da regra exata `ZZZ [<v>] => QOUT([<v>\[1\]])` de `hbpptest.prg`, incluindo os casos `a`, vazio e `a[1]+2` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -167,6 +168,7 @@ Fases 6, 9 e 13 concluídas:
 - `#define` objeto com expansão recursiva e detecção de ciclo
 - subset focado de `#define` parametrizado que já satura o corredor correspondente do `_pp_test.prg` (`clas`, `DATEOLD`, `datediff`, `F1`, `F3`), com expansão só em call-site, passes focados repetidos, wrapper de construtor preservado e sensibilidade de maiúsculas/minúsculas preservada nos nomes de parâmetros
 - subset focado do comando `SET TOOLTIP TO <color> OF <form>` de `hbpptest.prg`, cobrindo arrays escapados `\[...\]` no replacement e a cláusula opcional final do `RGB(...)`
+- subset focado da regra exata `ZZZ [<v>] => QOUT([<v>\[1\]])` de `hbpptest.prg`, alinhando os casos `a`, vazio e `a[1]+2` sem os espaços extras do fixture antigo de `optional_stringify`
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`
