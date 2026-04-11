@@ -1430,28 +1430,50 @@ struct MatchCaptures {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct ListCapture {
+    items: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct CaptureValue {
     raw: String,
-    list_items: Option<Vec<String>>,
+    list: Option<ListCapture>,
 }
 
 impl CaptureValue {
     fn render_text(&self, repeat_index: Option<usize>) -> Option<&str> {
-        match (&self.list_items, repeat_index) {
-            (Some(items), Some(index)) => items.get(index).map(String::as_str),
+        match (&self.list, repeat_index) {
+            (Some(list), Some(index)) => list.items.get(index).map(String::as_str),
             _ => Some(self.raw.as_str()),
         }
     }
 
     fn repeat_count(&self) -> usize {
-        self.list_items.as_ref().map_or(1, Vec::len)
+        self.list.as_ref().map_or(1, |list| list.items.len())
     }
 
     fn has_value_at(&self, repeat_index: usize) -> bool {
-        match &self.list_items {
-            Some(items) => repeat_index < items.len(),
+        match &self.list {
+            Some(list) => repeat_index < list.items.len(),
             None => true,
         }
+    }
+
+    fn render_list<F>(&self, output: &mut String, mut render_item: F) -> bool
+    where
+        F: FnMut(&str, &mut String),
+    {
+        let Some(list) = &self.list else {
+            return false;
+        };
+
+        for (index, item) in list.items.iter().enumerate() {
+            if index > 0 {
+                output.push(',');
+            }
+            render_item(item, output);
+        }
+        true
     }
 }
 
@@ -1687,7 +1709,7 @@ fn match_pattern_recursive(
                 }
                 let capture = CaptureValue {
                     raw: token.text.clone(),
-                    list_items: None,
+                    list: None,
                 };
                 let captures = merge_capture(captures, &marker.name, capture)?;
                 match_pattern_recursive(
@@ -1707,7 +1729,7 @@ fn match_pattern_recursive(
                 }
                 let capture = CaptureValue {
                     raw: token.text.clone(),
-                    list_items: None,
+                    list: None,
                 };
                 let captures = merge_capture(captures, &marker.name, capture)?;
                 match_pattern_recursive(
@@ -1728,7 +1750,7 @@ fn match_pattern_recursive(
                 for end in candidate_ends {
                     let capture = CaptureValue {
                         raw: source[tokens[token_index].start..tokens[end - 1].end].to_owned(),
-                        list_items: None,
+                        list: None,
                     };
                     let next_captures = merge_capture(captures.clone(), &marker.name, capture)?;
                     if let Some(matched) = match_pattern_recursive(
@@ -2183,21 +2205,21 @@ fn build_capture(
     match kind {
         MarkerKind::Regular => {
             let normalized_list = split_list_capture(tokens, source, start, end)
-                .filter(|(_, entries)| entries.len() > 1);
+                .filter(|(_, list)| list.items.len() > 1);
             Some(CaptureValue {
                 raw: normalized_list
                     .as_ref()
                     .map(|(normalized_raw, _)| normalized_raw.clone())
                     .unwrap_or(raw),
-                list_items: normalized_list.map(|(_, entries)| entries),
+                list: normalized_list.map(|(_, list)| list),
             })
         }
         MarkerKind::IdentifierOnly => None,
         MarkerKind::List => {
-            split_list_capture(tokens, source, start, end).map(|(normalized_raw, entries)| {
+            split_list_capture(tokens, source, start, end).map(|(normalized_raw, list)| {
                 CaptureValue {
                     raw: normalized_raw,
-                    list_items: Some(entries),
+                    list: Some(list),
                 }
             })
         }
@@ -2235,7 +2257,7 @@ fn split_list_capture(
     source: &str,
     start: usize,
     end: usize,
-) -> Option<(String, Vec<String>)> {
+) -> Option<(String, ListCapture)> {
     let mut entries = Vec::new();
     let mut normalized_raw = String::new();
     let mut depth = 0i32;
@@ -2249,16 +2271,17 @@ fn split_list_capture(
                 if entry_start == index {
                     return None;
                 }
-                let entry = normalize_list_capture_entry(
+                let (raw_entry, entry) = normalize_list_capture_entry(
                     &source[tokens[entry_start].start..tokens[index].start],
                 );
-                normalized_raw.push_str(&entry);
+                normalized_raw.push_str(&raw_entry);
                 entries.push(entry);
                 entry_start = index + 1;
                 if entry_start >= end {
                     return None;
                 }
-                normalized_raw.push_str(&source[tokens[index].start..tokens[entry_start].start]);
+                let separator = source[tokens[index].start..tokens[entry_start].start].to_owned();
+                normalized_raw.push_str(&separator);
             }
             _ => {}
         }
@@ -2267,15 +2290,20 @@ fn split_list_capture(
     if entry_start >= end {
         return None;
     }
-    let entry =
+    let (raw_entry, entry) =
         normalize_list_capture_entry(&source[tokens[entry_start].start..tokens[end - 1].end]);
-    normalized_raw.push_str(&entry);
+    normalized_raw.push_str(&raw_entry);
     entries.push(entry);
-    Some((normalized_raw, entries))
+    Some((normalized_raw, ListCapture { items: entries }))
 }
 
-fn normalize_list_capture_entry(raw: &str) -> String {
-    normalize_string_literal_source(raw.trim()).unwrap_or_else(|| raw.to_owned())
+fn normalize_list_capture_entry(raw: &str) -> (String, String) {
+    let trimmed = raw.trim();
+    if let Some(normalized) = normalize_string_literal_source(trimmed) {
+        return (normalized.clone(), normalized);
+    }
+
+    (raw.to_owned(), trimmed.to_owned())
 }
 
 fn merge_capture(
@@ -2319,10 +2347,13 @@ fn render_result_part(
             }
         }
         ResultPart::Stringify(name) => {
-            if let Some(value) = captures.values.get(name)
-                && let Some(text) = value.render_text(repeat_index)
-            {
-                render_stringify_capture(text, output);
+            if let Some(value) = captures.values.get(name) {
+                if repeat_index.is_none() && render_stringify_list_capture(value, output) {
+                    return;
+                }
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_stringify_capture(text, output);
+                }
             }
         }
         ResultPart::Blockify(name) => {
@@ -2333,17 +2364,23 @@ fn render_result_part(
             }
         }
         ResultPart::Smart(name) => {
-            if let Some(value) = captures.values.get(name)
-                && let Some(text) = value.render_text(repeat_index)
-            {
-                render_smart_capture(text, output);
+            if let Some(value) = captures.values.get(name) {
+                if repeat_index.is_none() && value.render_list(output, render_smart_capture) {
+                    return;
+                }
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_smart_capture(text, output);
+                }
             }
         }
         ResultPart::Quoted(name) => {
-            if let Some(value) = captures.values.get(name)
-                && let Some(text) = value.render_text(repeat_index)
-            {
-                render_quoted_capture(text, output);
+            if let Some(value) = captures.values.get(name) {
+                if repeat_index.is_none() && value.render_list(output, render_quoted_capture) {
+                    return;
+                }
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_quoted_capture(text, output);
+                }
             }
         }
         ResultPart::Logical(name) => {
@@ -2555,6 +2592,21 @@ fn render_stringify_capture(raw: &str, output: &mut String) {
     }
 
     push_quoted_capture(raw, output);
+}
+
+fn render_stringify_list_capture(value: &CaptureValue, output: &mut String) -> bool {
+    if value.list.is_none() {
+        return false;
+    }
+
+    if value.raw.contains('"') {
+        output.push('[');
+        output.push_str(&value.raw);
+        output.push(']');
+    } else {
+        push_quoted_capture(&value.raw, output);
+    }
+    true
 }
 
 fn render_quoted_capture(raw: &str, output: &mut String) {
@@ -3478,6 +3530,69 @@ mod tests {
         assert_eq!(
             output.text,
             "rl( a,\"a\",\"a\",[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &a.a,  a, a )\n"
+        );
+    }
+
+    #[test]
+    fn expands_compound_normal_list_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _NORMAL_L(<z,...>) => nl( <\"z\"> )\n_NORMAL_L(n,\"n\",'a',[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &.a, &a.a,  a, a)\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "nl( \"n\",'\"n\"','\"a\"',[[\"'a'\"]],[\"['a']\"],['[\"a\"]'],\"&a.1\",a,a,a,(a),\"&a[1]\",\"&a.[1]\",\"&a.  [2]\",\"&a&a\",\"&.a\",\"&a.a\",\"a\",\"a\" )\n"
+        );
+    }
+
+    #[test]
+    fn expands_compound_smart_list_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _SMART_L(<z,...>) => sl( <(z)> )\n_SMART_L(a,\"a\",'a',[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &.a, &a.a,  a, a)\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "sl( \"a\",\"a\",\"a\",[\"'a'\"],\"['a']\",'[\"a\"]',\"&a.1\",a,a,a,(a),\"&a[1]\",\"&a.[1]\",\"&a.  [2]\",\"&a&a\",\"&.a\",\"&a.a\",\"a\",\"a\" )\n"
+        );
+    }
+
+    #[test]
+    fn expands_compound_dumb_list_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command _DUMB_L(<z,...>) => dl( #<z> )\n_DUMB_L(a,\"a\",'a',[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &.a, &a.a,  a, a)\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "dl( [a,\"a\",\"a\",[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &.a, &a.a,  a, a] )\n"
         );
     }
 

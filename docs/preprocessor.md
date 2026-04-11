@@ -145,6 +145,9 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/smart_marker_compound_root.prg` | golden do subset focado de smart stringify `_SMART_M(<z>)` sem espaços ao redor dos delimitadores, incluindo strings e quoted literals |
 | `tests/fixtures/pp/dumb_marker_compound_root.prg` | golden do subset focado de dumb stringify `_DUMB_M(<z>)` sem espaços ao redor dos delimitadores, incluindo strings e quoted literals |
 | `tests/fixtures/pp/regular_list_compound_root.prg` | golden do subset focado de `_REGULAR_L(<z,...>)` com normalização de item literal e preservação de whitespace na lista recomposta |
+| `tests/fixtures/pp/normal_list_compound_root.prg` | golden do subset focado de `_NORMAL_L(<z,...>)` com renderização quoted por item e separadores preservados |
+| `tests/fixtures/pp/smart_list_compound_root.prg` | golden do subset focado de `_SMART_L(<z,...>)` com renderização smart por item e separadores preservados |
+| `tests/fixtures/pp/dumb_list_compound_root.prg` | golden do subset focado de `_DUMB_L(<z,...>)` com stringify da lista inteira e separadores preservados |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
