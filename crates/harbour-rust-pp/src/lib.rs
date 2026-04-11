@@ -3509,6 +3509,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_copy_structure_extended_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command COPY [STRUCTURE] [EXTENDED] [TO <(f)>] => __dbCopyXStruct( <(f)> )\nCOPY STRUCTURE EXTENDED TO teststru\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "__dbCopyXStruct( \"teststru\" )\n");
+    }
+
+    #[test]
     fn reports_cycles_in_recursive_object_like_define_expansion() {
         let source = SourceFile::new(PathBuf::from("main.prg"), "#define A B\n#define B A\n? A\n");
 
