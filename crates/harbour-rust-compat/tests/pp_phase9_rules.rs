@@ -1386,6 +1386,44 @@ fn phase15_constructor_wrapper_function_like_define_fixture_matches_curated_upst
 }
 
 #[test]
+fn phase15_tooltip_command_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/tooltip_command_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#xcommand SET TOOLTIP TO <color> OF <form> => SM("));
+    assert!(
+        upstream_hbpptest
+            .contains("RGB(<color>\\[1], <color>\\[2\\], <color>[, <color>\\[ 3 \\] ]), 0)")
+    );
+    assert!(upstream_hbpptest.contains("SET TOOLTIP TO RED OF form1"));
+    assert!(upstream_hbpptest.contains(
+        "SM(TTH (\"form1\"),1,RGB({255,0,0}[1],{255,0,0}[2],{255,0,0},{255,0,0}[ 3 ] ),0)"
+    ));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/tooltip_command_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

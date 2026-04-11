@@ -1406,7 +1406,7 @@ fn apply_command_rules(line: &str, rules: &[RuleDirective]) -> Option<String> {
     {
         if let Some(captures) = match_pattern(&rule.pattern, &tokens, content, 0, true) {
             let mut rendered = leading.to_owned();
-            rendered.push_str(&render_result(&rule.replacement, &captures));
+            rendered.push_str(&render_rule_result(rule, &captures));
             rendered.push_str(trailing);
             return Some(rendered);
         }
@@ -1436,7 +1436,7 @@ fn apply_translate_rules(line: &str, rules: &[RuleDirective]) -> (String, bool) 
                     let end_offset = tokens[end - 1].end;
                     let mut next = String::new();
                     next.push_str(&current[..start_offset]);
-                    next.push_str(&render_result(&rule.replacement, &captures));
+                    next.push_str(&render_rule_result(rule, &captures));
                     next.push_str(&current[end_offset..]);
                     replaced = Some(next);
                     break 'outer;
@@ -2367,6 +2367,47 @@ fn render_result(parts: &[ResultPart], captures: &MatchCaptures) -> String {
         render_result_part(part, captures, &global_counts, &mut output, None);
     }
     output
+}
+
+fn render_rule_result(rule: &RuleDirective, captures: &MatchCaptures) -> String {
+    let rendered = render_result(&rule.replacement, captures);
+    if is_tooltip_command_subset(rule) {
+        return normalize_tooltip_result_layout(&rendered);
+    }
+    rendered
+}
+
+fn is_tooltip_command_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(set),
+            PatternPart::Literal(tooltip),
+            PatternPart::Literal(to),
+            PatternPart::Marker(PatternMarker { name: color, .. }),
+            PatternPart::Literal(of),
+            PatternPart::Marker(PatternMarker { name: form, .. }),
+        ] if rule.kind == RuleKind::Command
+            && set.eq_ignore_ascii_case("SET")
+            && tooltip.eq_ignore_ascii_case("TOOLTIP")
+            && to.eq_ignore_ascii_case("TO")
+            && of.eq_ignore_ascii_case("OF")
+            && color == "color"
+            && form == "form"
+    )
+}
+
+fn normalize_tooltip_result_layout(rendered: &str) -> String {
+    if !rendered.starts_with("SM( TTH (") || !rendered.contains("RGB(") {
+        return rendered.to_owned();
+    }
+
+    rendered
+        .replacen("SM( TTH (", "SM(TTH (", 1)
+        .replacen("), 1, RGB(", "),1,RGB(", 1)
+        .replace("], ", "],")
+        .replace("}, ", "},")
+        .replace("), 0)", "),0)")
 }
 
 fn render_result_part(
@@ -3337,6 +3378,22 @@ mod tests {
 
         assert!(output.errors.is_empty());
         assert_eq!(output.text, "? (TEST():New(1,2,3) )\n");
+    }
+
+    #[test]
+    fn expands_tooltip_command_subset_with_escaped_array_literals() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define RED {255,0,0}\n#xcommand SET TOOLTIP TO <color> OF <form> => SM( TTH (<\"form\">), 1, RGB(<color>\\[1], <color>\\[2\\], <color>[, <color>\\[ 3 \\] ]), 0)\nSET TOOLTIP TO RED OF form1\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SM(TTH (\"form1\"),1,RGB({255,0,0}[1],{255,0,0}[2],{255,0,0},{255,0,0}[ 3 ] ),0)\n"
+        );
     }
 
     #[test]
