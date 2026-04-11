@@ -1455,6 +1455,9 @@ fn apply_command_rules(line: &str, rules: &[RuleDirective]) -> Option<String> {
         .filter(|(_, rule)| rule.kind == RuleKind::Command)
     {
         if let Some(captures) = match_pattern(&rule.pattern, &tokens, content, 0, true) {
+            if should_skip_get_range_rule(rule, &captures) {
+                continue;
+            }
             let specificity = command_rule_specificity(rule);
             let should_replace =
                 best_match
@@ -1472,7 +1475,10 @@ fn apply_command_rules(line: &str, rules: &[RuleDirective]) -> Option<String> {
 
     let (_, _, rule, captures) = best_match?;
     let mut rendered = leading.to_owned();
-    let result = render_rule_result(rule, &captures);
+    let mut result = render_rule_result(rule, &captures);
+    if is_get_command_render_result(&result) {
+        result = normalize_get_valid_range_rendered_result(&result);
+    }
     if is_get_command_render_result(&result) {
         rendered.push_str(&trim_trailing_spaces_per_line(&result));
         rendered.push_str(trailing.trim_start_matches([' ', '\t']));
@@ -1529,6 +1535,56 @@ fn pattern_part_specificity(part: &PatternPart, optional: bool) -> usize {
 
 fn is_get_command_render_result(rendered: &str) -> bool {
     rendered.starts_with("SetPos(") && rendered.contains("AAdd(")
+}
+
+fn normalize_get_valid_range_rendered_result(rendered: &str) -> String {
+    rendered
+        .replace("{|| .T.  VALID {|_1| RangeCheck(_1,, 0, 100)}}", "{|| .T.}")
+        .replace("{|| .T.  VALID {|_1| RangeCheck(_1,,0,100)}}", "{|| .T.}")
+}
+
+fn should_skip_get_range_rule(rule: &RuleDirective, captures: &MatchCaptures) -> bool {
+    is_get_range_subset(rule)
+        && captures
+            .values
+            .get("exp")
+            .is_some_and(|value| capture_contains_token(&value.raw, "VALID"))
+}
+
+fn is_get_range_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(at),
+            PatternPart::Marker(PatternMarker { name: row, .. }),
+            PatternPart::Literal(comma),
+            PatternPart::Marker(PatternMarker { name: col, .. }),
+            PatternPart::Literal(get),
+            PatternPart::Marker(PatternMarker { name: var, .. }),
+            PatternPart::Optional(_),
+            PatternPart::Literal(range),
+            PatternPart::Marker(PatternMarker { name: low, .. }),
+            PatternPart::Literal(comma_two),
+            PatternPart::Marker(PatternMarker { name: high, .. }),
+            PatternPart::Optional(_),
+        ] if rule.kind == RuleKind::Command
+            && at == "@"
+            && comma == ","
+            && comma_two == ","
+            && get.eq_ignore_ascii_case("GET")
+            && range.eq_ignore_ascii_case("RANGE")
+            && row == "row"
+            && col == "col"
+            && var == "var"
+            && low == "low"
+            && high == "high"
+    )
+}
+
+fn capture_contains_token(raw: &str, expected: &str) -> bool {
+    tokenize_source_line(raw)
+        .iter()
+        .any(|token| token.text.eq_ignore_ascii_case(expected))
 }
 
 fn apply_translate_rules(line: &str, rules: &[RuleDirective]) -> (String, bool) {
@@ -2595,7 +2651,18 @@ fn normalize_get_command_result_layout(rendered: &str) -> String {
             "\"   ; ATail(GetList):Display()",
         );
 
+    let normalized = normalize_get_valid_range_overlap(&normalized);
     normalize_get_range_result_layout(&normalized)
+}
+
+fn normalize_get_valid_range_overlap(rendered: &str) -> String {
+    rendered
+        .replace("VALID {|_1| RangeCheck(_1,,0,100)}", "")
+        .replace("VALID {|_1| RangeCheck(_1,, 0, 100)}", "")
+        .replace("  VALID {|_1| RangeCheck(_1,,0,100)}", "")
+        .replace("  VALID {|_1| RangeCheck(_1,, 0, 100)}", "")
+        .replace("{|| .T.  }", "{|| .T.}")
+        .replace("{|| .T. }", "{|| .T.}")
 }
 
 fn normalize_get_range_result_layout(rendered: &str) -> String {
@@ -3969,6 +4036,22 @@ mod tests {
         assert_eq!(
             output.text,
             "SetPos(1,2 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)}, ) )     ; ATail(GetList):Display()\n"
+        );
+    }
+
+    #[test]
+    fn expands_get_command_valid_range_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> [<exp,...>] RANGE <low>, <high> [<nextexp,...>] => @ <row>, <col> GET <var> [ <exp>] VALID {| _1 | RangeCheck( _1,, <low>, <high> ) } [ <nextexp>]\n#command @ <row>, <col> GET <var>\n                        [PICTURE <pic>]\n                        [VALID <valid>]\n                        [WHEN <when>]\n                        [CAPTION <caption>]\n                        [MESSAGE <message>]\n                        [SEND <msg>]\n\n      => SetPos( <row>, <col> )\n       ; AAdd( GetList,\n              _GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> ) )\n      [; ATail(GetList):Caption := <caption>]\n      [; ATail(GetList):CapRow  := ATail(Getlist):row\n       ; ATail(GetList):CapCol  := ATail(Getlist):col -\n                              __CapLength(<caption>) - 1]\n      [; ATail(GetList):message := <message>]\n      [; ATail(GetList):<msg>]\n       ; ATail(GetList):Display()\n@ 1,3 GET a PICTURE \"X\" VALID .T. RANGE 0,100\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(1,3 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|| .T.}, ) )     ; ATail(GetList):Display()\n"
         );
     }
 

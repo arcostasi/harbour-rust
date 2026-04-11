@@ -166,6 +166,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/get_command_send_root.prg` | golden do sétimo subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,7 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget" MESSAGE "mymess" SEND send()` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_range_root.prg` | golden do primeiro recorte maior adjacente do bloco `GET`, cobrindo `@ 1,1 GET a RANGE 0,100` com composição entre as regras `RANGE` e `GET` de `std.ch` |
 | `tests/fixtures/pp/get_command_picture_range_root.prg` | golden do segundo recorte maior adjacente do bloco `GET`, cobrindo `@ 1,2 GET a PICTURE "X" RANGE 0,100` com composição entre as regras `RANGE` e `GET` de `std.ch` |
+| `tests/fixtures/pp/get_command_valid_range_root.prg` | golden do terceiro recorte maior adjacente do bloco `GET`, cobrindo o caso observável `@ 1,3 GET a PICTURE "X" VALID .T. RANGE 0,100` onde o `RANGE` não sobrevive na expansão final do `hbpptest.prg` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -193,6 +194,7 @@ Fases 6, 9 e 13 concluídas:
 - sétimo subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,7 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget" MESSAGE "mymess" SEND send()` antes de ampliar o bloco `GET`
 - primeiro recorte maior adjacente do mesmo bloco `GET`, cobrindo `@ 1,1 GET a RANGE 0,100` e validando a composição da regra `RANGE` com a regra `GET` já curada
 - segundo recorte maior adjacente do mesmo bloco `GET`, cobrindo `@ 1,2 GET a PICTURE "X" RANGE 0,100` e confirmando a mesma composição `RANGE + GET` com `PICTURE`
+- terceiro recorte maior adjacente do mesmo bloco `GET`, cobrindo `@ 1,3 GET a PICTURE "X" VALID .T. RANGE 0,100` e registrando o comportamento observável do upstream em que o `RANGE` deixa de surtir efeito na expansão final
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`
