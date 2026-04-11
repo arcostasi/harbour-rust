@@ -1447,20 +1447,88 @@ fn apply_command_rules(line: &str, rules: &[RuleDirective]) -> Option<String> {
         return None;
     }
 
-    for rule in rules
+    let mut best_match: Option<(usize, usize, &RuleDirective, MatchCaptures)> = None;
+
+    for (index, rule) in rules
         .iter()
-        .rev()
-        .filter(|rule| rule.kind == RuleKind::Command)
+        .enumerate()
+        .filter(|(_, rule)| rule.kind == RuleKind::Command)
     {
         if let Some(captures) = match_pattern(&rule.pattern, &tokens, content, 0, true) {
-            let mut rendered = leading.to_owned();
-            rendered.push_str(&render_rule_result(rule, &captures));
-            rendered.push_str(trailing);
-            return Some(rendered);
+            let specificity = command_rule_specificity(rule);
+            let should_replace =
+                best_match
+                    .as_ref()
+                    .is_none_or(|(best_specificity, best_index, _, _)| {
+                        specificity > *best_specificity
+                            || (specificity == *best_specificity && index > *best_index)
+                    });
+
+            if should_replace {
+                best_match = Some((specificity, index, rule, captures));
+            }
         }
     }
 
-    None
+    let (_, _, rule, captures) = best_match?;
+    let mut rendered = leading.to_owned();
+    let result = render_rule_result(rule, &captures);
+    if is_get_command_render_result(&result) {
+        rendered.push_str(&trim_trailing_spaces_per_line(&result));
+        rendered.push_str(trailing.trim_start_matches([' ', '\t']));
+    } else {
+        rendered.push_str(&result);
+        rendered.push_str(trailing);
+    }
+    Some(rendered)
+}
+
+fn command_rule_specificity(rule: &RuleDirective) -> usize {
+    pattern_specificity(&rule.pattern, false)
+}
+
+fn pattern_specificity(parts: &[PatternPart], optional: bool) -> usize {
+    parts
+        .iter()
+        .map(|part| pattern_part_specificity(part, optional))
+        .sum()
+}
+
+fn pattern_part_specificity(part: &PatternPart, optional: bool) -> usize {
+    let weight = match part {
+        PatternPart::Literal(_) => 10,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Restricted(_),
+            ..
+        }) => 8,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::IdentifierOnly,
+            ..
+        }) => 8,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Macro,
+            ..
+        }) => 8,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::List,
+            ..
+        }) => 4,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Regular,
+            ..
+        }) => 3,
+        PatternPart::Marker(PatternMarker {
+            kind: MarkerKind::Extended,
+            ..
+        }) => 3,
+        PatternPart::Optional(parts) => return pattern_specificity(parts, true),
+    };
+
+    if optional { weight / 4 } else { weight }
+}
+
+fn is_get_command_render_result(rendered: &str) -> bool {
+    rendered.starts_with("SetPos(") && rendered.contains("AAdd(")
 }
 
 fn apply_translate_rules(line: &str, rules: &[RuleDirective]) -> (String, bool) {
@@ -2498,7 +2566,7 @@ fn normalize_get_command_result_layout(rendered: &str) -> String {
         return rendered.to_owned();
     }
 
-    rendered
+    let normalized = rendered
         .replacen("SetPos( ", "SetPos(", 1)
         .replacen(" ) ; AAdd( GetList, _GET_( ", " ) ; AAdd(GetList,_GET_(", 1)
         .replace(", ", ",")
@@ -2525,7 +2593,134 @@ fn normalize_get_command_result_layout(rendered: &str) -> String {
         .replace(
             "\"  ; ATail(GetList):Display()",
             "\"   ; ATail(GetList):Display()",
-        )
+        );
+
+    normalize_get_range_result_layout(&normalized)
+}
+
+fn normalize_get_range_result_layout(rendered: &str) -> String {
+    let mut normalized = rendered.to_owned();
+    let mut search_start = 0usize;
+
+    while let Some(relative_start) = normalized[search_start..].find("{| _1 | RangeCheck") {
+        let codeblock_start = search_start + relative_start;
+        let range_check_start = codeblock_start + "{| _1 | ".len();
+        let Some((call_end, args)) =
+            parse_named_call_arguments(&normalized, range_check_start, "RangeCheck")
+        else {
+            search_start = range_check_start;
+            continue;
+        };
+
+        let brace_end = normalized[call_end..]
+            .find('}')
+            .map(|relative| call_end + relative);
+        let Some(brace_end) = brace_end else {
+            search_start = call_end;
+            continue;
+        };
+
+        if normalized[call_end..brace_end].trim().is_empty() {
+            let replacement = format!("{{|_1| {}}}", normalize_range_check_arguments(args));
+            normalized.replace_range(codeblock_start..=brace_end, &replacement);
+            search_start = codeblock_start + replacement.len();
+        } else {
+            search_start = call_end;
+        }
+    }
+
+    trim_trailing_spaces_per_line(&normalized)
+}
+
+fn parse_named_call_arguments<'a>(
+    source: &'a str,
+    call_start: usize,
+    name: &str,
+) -> Option<(usize, &'a str)> {
+    let rest = source.get(call_start..)?;
+    let after_name = rest.strip_prefix(name)?;
+    let after_name = after_name.strip_prefix('(')?;
+    let args_start = call_start + name.len() + 1;
+    let mut depth = 1usize;
+    let mut in_string = false;
+
+    for (offset, ch) in after_name.char_indices() {
+        match ch {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth += 1,
+            ')' if !in_string => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    let args_end = args_start + offset;
+                    let call_end = args_end + 1;
+                    return Some((call_end, &source[args_start..args_end]));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn normalize_range_check_arguments(args: &str) -> String {
+    let mut parts = Vec::new();
+    let mut start = 0usize;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut in_string = false;
+
+    for (index, ch) in args.char_indices() {
+        match ch {
+            '"' => in_string = !in_string,
+            '(' if !in_string => paren_depth += 1,
+            ')' if !in_string => paren_depth = paren_depth.saturating_sub(1),
+            '[' if !in_string => bracket_depth += 1,
+            ']' if !in_string => bracket_depth = bracket_depth.saturating_sub(1),
+            '{' if !in_string => brace_depth += 1,
+            '}' if !in_string => brace_depth = brace_depth.saturating_sub(1),
+            ',' if !in_string && paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+                parts.push(args[start..index].trim().to_owned());
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+
+    parts.push(args[start..].trim().to_owned());
+
+    let mut normalized = String::from("RangeCheck(");
+    for (index, part) in parts.iter().enumerate() {
+        if index == 0 {
+            normalized.push_str(part);
+            continue;
+        }
+
+        if part.is_empty() {
+            normalized.push(',');
+        } else {
+            normalized.push_str(", ");
+            normalized.push_str(part);
+        }
+    }
+    normalized.push(')');
+    normalized
+}
+
+fn trim_trailing_spaces_per_line(text: &str) -> String {
+    let mut normalized = String::with_capacity(text.len());
+
+    for segment in text.split_inclusive('\n') {
+        if let Some(line) = segment.strip_suffix('\n') {
+            normalized.push_str(line.trim_end_matches([' ', '\t']));
+            normalized.push('\n');
+        } else {
+            normalized.push_str(segment.trim_end_matches([' ', '\t']));
+        }
+    }
+
+    normalized
 }
 
 fn is_set_filter_macro_subset(rule: &RuleDirective) -> bool {
@@ -3742,6 +3937,22 @@ mod tests {
         assert_eq!(
             output.text,
             "SetPos(0,7 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|| .T.},{|| .T.} ) ) ; ATail(GetList):Caption := \"myget\"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength(\"myget\") - 1  ; ATail(GetList):message := \"mymess\"  ; ATail(GetList):send()  ; ATail(GetList):Display()\n"
+        );
+    }
+
+    #[test]
+    fn expands_get_command_range_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> [<exp,...>] RANGE <low>, <high> [<nextexp,...>] => @ <row>, <col> GET <var> [ <exp>] VALID {| _1 | RangeCheck( _1,, <low>, <high> ) } [ <nextexp>]\n#command @ <row>, <col> GET <var>\n                        [PICTURE <pic>]\n                        [VALID <valid>]\n                        [WHEN <when>]\n                        [CAPTION <caption>]\n                        [MESSAGE <message>]\n                        [SEND <msg>]\n\n      => SetPos( <row>, <col> )\n       ; AAdd( GetList,\n              _GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> ) )\n      [; ATail(GetList):Caption := <caption>]\n      [; ATail(GetList):CapRow  := ATail(Getlist):row\n       ; ATail(GetList):CapCol  := ATail(Getlist):col -\n                              __CapLength(<caption>) - 1]\n      [; ATail(GetList):message := <message>]\n      [; ATail(GetList):<msg>]\n       ; ATail(GetList):Display()\n@ 1,1 GET a RANGE 0,100\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(1,1 ) ; AAdd(GetList,_GET_(a,\"a\",,{|_1| RangeCheck(_1,, 0, 100)}, ) )     ; ATail(GetList):Display()\n"
         );
     }
 
