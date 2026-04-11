@@ -1453,6 +1453,38 @@ fn phase15_zzz_escape_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_hmg_escape_translate_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/hmg_escape_translate_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#xtranslate _HMG_a  =>  _HMG\\[137\\]"));
+    assert!(upstream_hbpptest.contains("v:= _bro[ a( _HMG_a [i] ) ]"));
+    assert!(upstream_hbpptest.contains("pre :=\"v:= _bro[ a( _HMG[137] [i] ) ]\""));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/hmg_escape_translate_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

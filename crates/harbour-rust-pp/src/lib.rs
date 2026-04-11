@@ -3442,6 +3442,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_hmg_escaped_translate_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#xtranslate _HMG_a => _HMG\\[137\\]\nv:= _bro[ a( _HMG_a [i] ) ]\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "v:= _bro[ a( _HMG[137] [i] ) ]\n");
+    }
+
+    #[test]
     fn reports_cycles_in_recursive_object_like_define_expansion() {
         let source = SourceFile::new(PathBuf::from("main.prg"), "#define A B\n#define B A\n? A\n");
 
