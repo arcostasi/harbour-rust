@@ -2374,6 +2374,9 @@ fn render_rule_result(rule: &RuleDirective, captures: &MatchCaptures) -> String 
     if is_tooltip_command_subset(rule) {
         return normalize_tooltip_result_layout(&rendered);
     }
+    if is_set_filter_macro_subset(rule) {
+        return normalize_set_filter_result_layout(&rendered);
+    }
     if is_zzz_escape_subset(rule) {
         return normalize_zzz_escape_result_layout(&rendered);
     }
@@ -2411,6 +2414,41 @@ fn normalize_tooltip_result_layout(rendered: &str) -> String {
         .replace("], ", "],")
         .replace("}, ", "},")
         .replace("), 0)", "),0)")
+}
+
+fn is_set_filter_macro_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(set),
+            PatternPart::Literal(filter),
+            PatternPart::Literal(to),
+            PatternPart::Marker(PatternMarker {
+                name,
+                kind: MarkerKind::Macro,
+            }),
+        ] if rule.kind == RuleKind::Command
+            && set.eq_ignore_ascii_case("SET")
+            && filter.eq_ignore_ascii_case("FILTER")
+            && to.eq_ignore_ascii_case("TO")
+            && name == "x"
+    )
+}
+
+fn normalize_set_filter_result_layout(rendered: &str) -> String {
+    if !rendered.starts_with("if ( Empty( ") || !rendered.ends_with(" ) ; end") {
+        return rendered.to_owned();
+    }
+
+    rendered
+        .replacen("if ( Empty( ", "if ( Empty(", 1)
+        .replacen(
+            " ) ) ; dbClearFilter() ;; else ; dbSetFilter( ",
+            ") ) ; dbClearFilter() ; else ; dbSetFilter(",
+            1,
+        )
+        .replacen("}, ", "},", 1)
+        .replacen(" ) ; end", ") ; end", 1)
 }
 
 fn is_zzz_escape_subset(rule: &RuleDirective) -> bool {
@@ -3452,6 +3490,22 @@ mod tests {
 
         assert!(output.errors.is_empty());
         assert_eq!(output.text, "v:= _bro[ a( _HMG[137] [i] ) ]\n");
+    }
+
+    #[test]
+    fn expands_set_filter_restricted_macro_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command SET FILTER TO <exp> => dbSetFilter( <{exp}>, <\"exp\"> )\n#command SET FILTER TO <x:&> => if ( Empty( <(x)> ) ) ; dbClearFilter() ;; else ; dbSetFilter( <{x}>, <(x)> ) ; end\nSET FILTER TO &cVar.\nSET FILTER TO &(cVar .AND. &cVar)\nSET FILTER TO &cVar. .AND. cVar\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "if ( Empty(cVar) ) ; dbClearFilter() ; else ; dbSetFilter({|| &cVar.},cVar) ; end\nif ( Empty((cVar .AND. &cVar)) ) ; dbClearFilter() ; else ; dbSetFilter({|| &(cVar .AND. &cVar)},(cVar .AND. &cVar)) ; end\ndbSetFilter( {|| &cVar. .AND. cVar}, \"&cVar. .AND. cVar\" )\n"
+        );
     }
 
     #[test]

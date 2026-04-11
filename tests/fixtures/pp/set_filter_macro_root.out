@@ -1,0 +1,6 @@
+
+PROCEDURE Main()
+   if ( Empty(cVar) ) ; dbClearFilter() ; else ; dbSetFilter({|| &cVar.},cVar) ; end
+   if ( Empty((cVar .AND. &cVar)) ) ; dbClearFilter() ; else ; dbSetFilter({|| &(cVar .AND. &cVar)},(cVar .AND. &cVar)) ; end
+   dbSetFilter( {|| &cVar. .AND. cVar}, "&cVar. .AND. cVar" )
+RETURN

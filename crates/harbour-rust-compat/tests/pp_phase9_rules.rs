@@ -1485,6 +1485,56 @@ fn phase15_hmg_escape_translate_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_set_filter_macro_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let Some(upstream_std) =
+        read_upstream_or_skip("harbour-core/include/std.ch", "upstream std.ch")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/set_filter_macro_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(
+        upstream_std
+            .contains("#command SET FILTER TO <exp>     => dbSetFilter( <{exp}>, <\"exp\"> )")
+    );
+    assert!(upstream_std.contains(
+        "#command SET FILTER TO <x:&>     => if ( Empty( <(x)> ) ) ; dbClearFilter() ;;"
+    ));
+    assert!(upstream_hbpptest.contains("in := \"SET FILTER TO &cVar.\""));
+    assert!(upstream_hbpptest.contains("dbSetFilter({|| &cVar.},cVar)"));
+    assert!(upstream_hbpptest.contains("in := \"SET FILTER TO &(cVar .AND. &cVar)\""));
+    assert!(upstream_hbpptest.contains("dbSetFilter({|| &(cVar .AND. &cVar)},(cVar .AND. &cVar))"));
+    assert!(upstream_hbpptest.contains("in := \"SET FILTER TO &cVar. .AND. cVar\""));
+    assert!(
+        upstream_hbpptest
+            .contains("pre := 'dbSetFilter( {|| &cVar. .AND. cVar}, \"&cVar. .AND. cVar\" )'")
+    );
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/set_filter_macro_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
