@@ -159,6 +159,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/copy_structure_extended_root.prg` | golden do subset focado de `COPY [STRUCTURE] [EXTENDED] [TO <(f)>]` com o caso adjacente `COPY STRUCTURE EXTENDED TO teststru` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_base_root.prg` | golden do primeiro subset focado de `@ <row>, <col> GET <var>` com o caso-base `@ 0,1 GET a` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_picture_root.prg` | golden do segundo subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,2 GET a PICTURE "X"` de `hbpptest.prg` |
+| `tests/fixtures/pp/get_command_valid_root.prg` | golden do terceiro subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,3 GET a PICTURE "X" VALID .T.` de `hbpptest.prg` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -179,6 +180,7 @@ Fases 6, 9 e 13 concluídas:
 - subset focado de `COPY [STRUCTURE] [EXTENDED] [TO <(f)>]` derivado de `std.ch`, cobrindo o caso adjacente `COPY STRUCTURE EXTENDED TO teststru` observado em `hbpptest.prg`
 - primeiro subset focado do bloco maior `@ <row>, <col> GET <var>` de `hbpptest.prg`, cobrindo apenas o caso-base `@ 0,1 GET a` antes das variantes com `PICTURE`, `VALID` e `WHEN`
 - segundo subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,2 GET a PICTURE "X"` antes de abrir `VALID` e `WHEN`
+- terceiro subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,3 GET a PICTURE "X" VALID .T.` antes de combinar `WHEN`
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`
