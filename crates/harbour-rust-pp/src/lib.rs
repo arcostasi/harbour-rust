@@ -3327,6 +3327,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_function_like_define_before_constructor_translate_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define clas( x )   (x)\n#xtranslate ( <name>{ [<p,...>] } => (<name>():New(<p>)\n? clas( TEST{ 1,2,3} )\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "? (TEST():New(1,2,3) )\n");
+    }
+
+    #[test]
     fn reports_cycles_in_recursive_object_like_define_expansion() {
         let source = SourceFile::new(PathBuf::from("main.prg"), "#define A B\n#define B A\n? A\n");
 

@@ -46,7 +46,7 @@ O PP opera antes do lexer principal. O handoff é:
 - Expansão recursiva: `A -> B -> "x"` resolve até o valor final
 - Detecção de ciclo: `A -> B -> A` gera diagnóstico explícito
 - Não expande dentro de strings e comentários
-- **Macros parametrizadas:** subset focado de call-site em linhas normais já cobre os casos adjacentes `F1`/`F3` do `_pp_test.prg` e a cadeia nested `datediff -> DATEOLD -> DATENEW`, com nome da macro case-insensitive, passes focados repetidos e substituição de parâmetros case-sensitive dentro do replacement
+- **Macros parametrizadas:** subset focado de call-site em linhas normais já satura o corredor correspondente do `_pp_test.prg` com `clas(x)`, `DATEOLD(x)`, `datediff(x,y)`, `F1` e `F3`, com nome da macro case-insensitive, passes focados repetidos, wrapper `clas( x )   (x)` antes de `#xtranslate` e substituição de parâmetros case-sensitive dentro do replacement
 
 ### `#include` (Fase 6)
 
@@ -151,6 +151,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/index_preserve_spaces_root.prg` | golden do subset focado de `INDEX ON <key> TO <(file)>` preservando espaços internos da expressão em `<"key">` e `<{key}>` |
 | `tests/fixtures/pp/function_like_define_case_root.prg` | golden do subset focado de `#define` parametrizado `F1`/`F3` com substituição case-sensitive dos parâmetros |
 | `tests/fixtures/pp/nested_function_like_define_root.prg` | golden do subset focado de `#define` parametrizado nested `datediff -> DATEOLD -> DATENEW` |
+| `tests/fixtures/pp/constructor_wrapper_function_like_define_root.prg` | golden do último caso do corredor `_pp_test` de `#define` parametrizado, com `clas( x )   (x)` antes do subset constructor-style |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -163,7 +164,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 Fases 6, 9 e 13 concluídas:
 
 - `#define` objeto com expansão recursiva e detecção de ciclo
-- subset focado de `#define` parametrizado em linhas normais para o bloco adjacente `F1`/`F3` do `_pp_test.prg` e para a cadeia nested `datediff -> DATEOLD -> DATENEW`, com expansão só em call-site, passes focados repetidos e sensibilidade de maiúsculas/minúsculas preservada nos nomes de parâmetros
+- subset focado de `#define` parametrizado que já satura o corredor correspondente do `_pp_test.prg` (`clas`, `DATEOLD`, `datediff`, `F1`, `F3`), com expansão só em call-site, passes focados repetidos, wrapper de construtor preservado e sensibilidade de maiúsculas/minúsculas preservada nos nomes de parâmetros
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`
