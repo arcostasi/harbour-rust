@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   x := (x - 1 )
+RETURN

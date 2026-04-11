@@ -1314,6 +1314,45 @@ fn phase15_function_like_define_case_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_nested_function_like_define_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/nested_function_like_define_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_pp_test.contains("#define DATENEW   1"));
+    assert!(upstream_pp_test.contains("#define DATEOLD(x)   x"));
+    assert!(upstream_pp_test.contains("#define datediff(x,y) ( DATEOLD(x) - DATENEW )"));
+    assert!(upstream_hbpptest.contains("x := datediff( x, y )"));
+    assert!(upstream_hbpptest.contains("pre := \"x := (x - 1 )\""));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/nested_function_like_define_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

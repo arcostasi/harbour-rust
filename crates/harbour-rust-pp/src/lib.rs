@@ -1323,17 +1323,22 @@ fn expand_define_directives(
     path: &Path,
     line_number: usize,
 ) -> (String, Vec<PreprocessError>) {
-    let (object_expanded, mut errors) =
-        expand_object_like_defines(line, defines, path, line_number);
-    let function_expanded = expand_function_like_defines(&object_expanded, defines);
-    if function_expanded == object_expanded {
-        return (object_expanded, errors);
+    let mut current = line.to_owned();
+    let mut errors = Vec::new();
+
+    for _ in 0..4 {
+        let (object_expanded, mut pass_errors) =
+            expand_object_like_defines(&current, defines, path, line_number);
+        errors.append(&mut pass_errors);
+
+        let function_expanded = expand_function_like_defines(&object_expanded, defines);
+        if function_expanded == current {
+            return (function_expanded, errors);
+        }
+        current = function_expanded;
     }
 
-    let (fully_expanded, mut final_errors) =
-        expand_object_like_defines(&function_expanded, defines, path, line_number);
-    errors.append(&mut final_errors);
-    (fully_expanded, errors)
+    (current, errors)
 }
 
 fn expand_rule_directives(
@@ -3306,6 +3311,19 @@ mod tests {
 
         assert!(output.errors.is_empty());
         assert_eq!(output.text, "? F2(1 ,N )\n? F2(1,2 ,NN,nn,N,n )\n");
+    }
+
+    #[test]
+    fn expands_nested_function_like_define_subset_with_object_like_tail() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define DATENEW   1\n#define DATEOLD(x)   x\n#define datediff(x,y) ( DATEOLD(x) - DATENEW )\nx := datediff( x, y )\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "x := (x - 1 )\n");
     }
 
     #[test]
