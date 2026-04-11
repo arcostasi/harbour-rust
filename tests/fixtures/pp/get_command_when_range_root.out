@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   SetPos(1,4 ) ; AAdd(GetList,_GET_(a,"a","X",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) )     ; ATail(GetList):Display()
+RETURN
