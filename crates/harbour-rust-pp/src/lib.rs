@@ -3626,6 +3626,22 @@ mod tests {
     }
 
     #[test]
+    fn expands_get_command_picture_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var>\n                        [PICTURE <pic>]\n                        [VALID <valid>]\n                        [WHEN <when>]\n                        [CAPTION <caption>]\n                        [MESSAGE <message>]\n                        [SEND <msg>]\n\n      => SetPos( <row>, <col> )\n       ; AAdd( GetList,\n              _GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> ) )\n      [; ATail(GetList):Caption := <caption>]\n      [; ATail(GetList):CapRow  := ATail(Getlist):row\n       ; ATail(GetList):CapCol  := ATail(Getlist):col -\n                              __CapLength(<caption>) - 1]\n      [; ATail(GetList):message := <message>]\n      [; ATail(GetList):<msg>]\n       ; ATail(GetList):Display()\n@ 0,2 GET a PICTURE \"X\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(0,2 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",, ) )     ; ATail(GetList):Display()\n"
+        );
+    }
+
+    #[test]
     fn reports_cycles_in_recursive_object_like_define_expansion() {
         let source = SourceFile::new(PathBuf::from("main.prg"), "#define A B\n#define B A\n? A\n");
 

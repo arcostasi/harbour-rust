@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   SetPos(0,2 ) ; AAdd(GetList,_GET_(a,"a","X",, ) )     ; ATail(GetList):Display()
+RETURN
