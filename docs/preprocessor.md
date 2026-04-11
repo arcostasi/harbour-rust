@@ -157,6 +157,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/hmg_escape_translate_root.prg` | golden do subset focado de `#xtranslate _HMG_a => _HMG\[137\]` em source indexado de `hbpptest.prg` |
 | `tests/fixtures/pp/set_filter_macro_root.prg` | golden do subset focado de `SET FILTER TO <x:&>` derivado de `std.ch` com os três casos observáveis de `hbpptest.prg` |
 | `tests/fixtures/pp/copy_structure_extended_root.prg` | golden do subset focado de `COPY [STRUCTURE] [EXTENDED] [TO <(f)>]` com o caso adjacente `COPY STRUCTURE EXTENDED TO teststru` de `hbpptest.prg` |
+| `tests/fixtures/pp/get_command_base_root.prg` | golden do primeiro subset focado de `@ <row>, <col> GET <var>` com o caso-base `@ 0,1 GET a` de `hbpptest.prg` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -175,6 +176,7 @@ Fases 6, 9 e 13 concluídas:
 - subset focado de `#xtranslate _HMG_a => _HMG\[137\]` de `hbpptest.prg`, cobrindo replacement escapado dentro do source indexado `v:= _bro[ a( _HMG_a [i] ) ]`
 - subset focado de `SET FILTER TO <x:&>` derivado de `std.ch`, cobrindo os casos adjacentes `&cVar.`, `&(cVar .AND. &cVar)` e fallback `&cVar. .AND. cVar` observados em `hbpptest.prg`
 - subset focado de `COPY [STRUCTURE] [EXTENDED] [TO <(f)>]` derivado de `std.ch`, cobrindo o caso adjacente `COPY STRUCTURE EXTENDED TO teststru` observado em `hbpptest.prg`
+- primeiro subset focado do bloco maior `@ <row>, <col> GET <var>` de `hbpptest.prg`, cobrindo apenas o caso-base `@ 0,1 GET a` antes das variantes com `PICTURE`, `VALID` e `WHEN`
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`

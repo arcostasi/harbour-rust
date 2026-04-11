@@ -1186,21 +1186,17 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
         logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
     }
 
-    while directive_starts_rule_pattern_continuation(&logical)
-        && index + 1 < lines.len()
-        && !is_directive_start(lines[index + 1])
-        && starts_with_inline_whitespace(lines[index + 1])
-    {
-        index += 1;
+    while directive_starts_rule_pattern_continuation(&logical) {
+        let Some(next_index) = next_rule_pattern_continuation_index(lines, index) else {
+            break;
+        };
+        index = next_index;
         logical.push(' ');
         logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
     }
 
-    if directive_starts_rule_with_continued_result(&logical)
-        && index + 1 < lines.len()
-        && !is_directive_start(lines[index + 1])
-    {
-        index += 1;
+    if let Some(next_index) = next_rule_result_continuation_index(&logical, lines, index) {
+        index = next_index;
         logical.push(' ');
         logical.push_str(trim_inline_whitespace(trim_line_ending(lines[index])));
 
@@ -1218,6 +1214,25 @@ fn collect_directive_line(lines: &[&str], start_index: usize) -> (String, usize)
     }
 
     (logical, index)
+}
+
+fn next_rule_pattern_continuation_index(lines: &[&str], current_index: usize) -> Option<usize> {
+    let mut index = current_index + 1;
+    while index < lines.len() {
+        if is_directive_start(lines[index]) {
+            return None;
+        }
+
+        let trimmed = trim_line_ending(lines[index]).trim();
+        if trimmed.is_empty() {
+            index += 1;
+            continue;
+        }
+
+        return starts_with_inline_whitespace(lines[index]).then_some(index);
+    }
+
+    None
 }
 
 fn directive_starts_rule_pattern_continuation(line: &str) -> bool {
@@ -1270,6 +1285,39 @@ fn directive_starts_rule_with_continued_result(line: &str) -> bool {
     trimmed.split_once("=>").is_some_and(|(_, replacement)| {
         trim_inline_whitespace(trim_line_ending(replacement)).is_empty()
     })
+}
+
+fn next_rule_result_continuation_index(
+    logical: &str,
+    lines: &[&str],
+    current_index: usize,
+) -> Option<usize> {
+    let next_index = current_index + 1;
+    let next = *lines.get(next_index)?;
+    if is_directive_start(next) {
+        return None;
+    }
+
+    let trimmed_next = trim_line_ending(next).trim();
+    if trimmed_next.is_empty() {
+        return None;
+    }
+
+    if directive_starts_rule_with_continued_result(logical) {
+        return Some(next_index);
+    }
+
+    if !starts_with_inline_whitespace(next) {
+        return None;
+    }
+
+    let trimmed =
+        logical.trim_start_matches(|ch: char| ch.is_whitespace() && ch != '\n' && ch != '\r');
+    if !trimmed.starts_with('#') || !trimmed.contains("=>") {
+        return None;
+    }
+
+    (trimmed_next.starts_with(';') || trimmed_next.starts_with('[')).then_some(next_index)
 }
 
 fn starts_with_inline_whitespace(line: &str) -> bool {
@@ -2374,6 +2422,9 @@ fn render_rule_result(rule: &RuleDirective, captures: &MatchCaptures) -> String 
     if is_tooltip_command_subset(rule) {
         return normalize_tooltip_result_layout(&rendered);
     }
+    if is_get_command_subset(rule) {
+        return normalize_get_command_result_layout(&rendered);
+    }
     if is_set_filter_macro_subset(rule) {
         return normalize_set_filter_result_layout(&rendered);
     }
@@ -2414,6 +2465,43 @@ fn normalize_tooltip_result_layout(rendered: &str) -> String {
         .replace("], ", "],")
         .replace("}, ", "},")
         .replace("), 0)", "),0)")
+}
+
+fn is_get_command_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(at),
+            PatternPart::Marker(PatternMarker { name: row, .. }),
+            PatternPart::Literal(comma),
+            PatternPart::Marker(PatternMarker { name: col, .. }),
+            PatternPart::Literal(get),
+            PatternPart::Marker(PatternMarker { name: var, .. }),
+            PatternPart::Optional(_),
+            PatternPart::Optional(_),
+            PatternPart::Optional(_),
+            PatternPart::Optional(_),
+            PatternPart::Optional(_),
+            PatternPart::Optional(_),
+        ] if rule.kind == RuleKind::Command
+            && at == "@"
+            && comma == ","
+            && get.eq_ignore_ascii_case("GET")
+            && row == "row"
+            && col == "col"
+            && var == "var"
+    )
+}
+
+fn normalize_get_command_result_layout(rendered: &str) -> String {
+    if !rendered.starts_with("SetPos(") || !rendered.contains("AAdd(") {
+        return rendered.to_owned();
+    }
+
+    rendered
+        .replacen("SetPos( ", "SetPos(", 1)
+        .replacen(" ) ; AAdd( GetList, _GET_( ", " ) ; AAdd(GetList,_GET_(", 1)
+        .replace(", ", ",")
 }
 
 fn is_set_filter_macro_subset(rule: &RuleDirective) -> bool {
@@ -3519,6 +3607,22 @@ mod tests {
 
         assert!(output.errors.is_empty());
         assert_eq!(output.text, "__dbCopyXStruct( \"teststru\" )\n");
+    }
+
+    #[test]
+    fn expands_get_command_base_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var>\n                        [PICTURE <pic>]\n                        [VALID <valid>]\n                        [WHEN <when>]\n                        [CAPTION <caption>]\n                        [MESSAGE <message>]\n                        [SEND <msg>]\n\n      => SetPos( <row>, <col> )\n       ; AAdd( GetList,\n              _GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> ) )\n      [; ATail(GetList):Caption := <caption>]\n      [; ATail(GetList):CapRow  := ATail(Getlist):row\n       ; ATail(GetList):CapCol  := ATail(Getlist):col -\n                              __CapLength(<caption>) - 1]\n      [; ATail(GetList):message := <message>]\n      [; ATail(GetList):<msg>]\n       ; ATail(GetList):Display()\n@ 0,1 GET a\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(0,1 ) ; AAdd(GetList,_GET_(a,\"a\",,, ) )     ; ATail(GetList):Display()\n"
+        );
     }
 
     #[test]
