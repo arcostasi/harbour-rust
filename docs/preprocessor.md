@@ -163,6 +163,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/get_command_when_root.prg` | golden do quarto subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,4 GET a PICTURE "X" VALID .T. WHEN .T.` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_caption_root.prg` | golden do quinto subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,5 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget"` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_message_root.prg` | golden do sexto subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,6 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget" MESSAGE "mymess"` de `hbpptest.prg` |
+| `tests/fixtures/pp/get_command_send_root.prg` | golden do sétimo subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,7 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget" MESSAGE "mymess" SEND send()` de `hbpptest.prg` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -187,6 +188,7 @@ Fases 6, 9 e 13 concluídas:
 - quarto subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,4 GET a PICTURE "X" VALID .T. WHEN .T.` antes de subir para `CAPTION`
 - quinto subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,5 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget"` antes de subir para `MESSAGE`
 - sexto subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,6 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget" MESSAGE "mymess"` antes de subir para `SEND`
+- sétimo subset focado do mesmo bloco `@ <row>, <col> GET <var>`, cobrindo `@ 0,7 GET a PICTURE "X" VALID .T. WHEN .T. CAPTION "myget" MESSAGE "mymess" SEND send()` antes de ampliar o bloco `GET`
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`
