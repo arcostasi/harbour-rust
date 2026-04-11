@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   SetPos(0,5 ) ; AAdd(GetList,_GET_(a,"a","X",{|| .T.},{|| .T.} ) ) ; ATail(GetList):Caption := "myget"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength("myget") - 1    ; ATail(GetList):Display()
+RETURN

@@ -1717,6 +1717,42 @@ fn phase15_get_command_when_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_get_command_caption_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/get_command_caption_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(
+        upstream_hbpptest
+            .contains("in := '@ 0,5 GET a PICTURE \"X\" VALID .T. WHEN .T. CAPTION \"myget\"'")
+    );
+    assert!(upstream_hbpptest.contains(
+        "pre := 'SetPos(0,5 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|| .T.},{|| .T.} ) ) ; ATail(GetList):Caption := \"myget\"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength(\"myget\") - 1    ; ATail(GetList):Display()'"
+    ));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/get_command_caption_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
