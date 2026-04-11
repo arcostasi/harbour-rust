@@ -1,0 +1,3 @@
+PROCEDURE Main()
+   dbCreateIndex( "_tst", "LEFT(   f1  ,  10   )", {|| LEFT(   f1  ,  10   )}, iif( .F., .t., NIL ) )
+RETURN

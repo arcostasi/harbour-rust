@@ -1237,6 +1237,45 @@ fn phase15_dumb_list_compound_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_index_preserve_spaces_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let Some(upstream_std_ch) =
+        read_upstream_or_skip("harbour-core/include/std.ch", "upstream std.ch")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/index_preserve_spaces_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_pp_test.contains("index on LEFT(   f1  ,  10   )      to _tst"));
+    assert!(upstream_std_ch.contains("#command INDEX ON <key> TO <(file)> [<u: UNIQUE>] => ;"));
+    assert!(
+        upstream_std_ch
+            .contains("dbCreateIndex( <(file)>, <\"key\">, <{key}>, iif( <.u.>, .t., NIL ) )")
+    );
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/index_preserve_spaces_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

@@ -123,6 +123,7 @@ pub struct PatternMarker {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MarkerKind {
     Regular,
+    Extended,
     IdentifierOnly,
     List,
     Macro,
@@ -788,6 +789,13 @@ fn parse_marker(
         });
     }
 
+    if let Some(extended_name) = parse_extended_pattern_marker_name(text) {
+        return Ok(PatternMarker {
+            name: validate_marker_name(extended_name, path, line_number, column)?,
+            kind: MarkerKind::Extended,
+        });
+    }
+
     if let Some(identifier_name) = parse_identifier_only_marker_name(text) {
         return Ok(PatternMarker {
             name: validate_marker_name(identifier_name, path, line_number, column)?,
@@ -832,6 +840,13 @@ fn parse_marker(
 fn parse_identifier_only_marker_name(text: &str) -> Option<&str> {
     text.strip_prefix('!')
         .and_then(|rest| rest.strip_suffix('!'))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+}
+
+fn parse_extended_pattern_marker_name(text: &str) -> Option<&str> {
+    text.strip_prefix('(')
+        .and_then(|rest| rest.strip_suffix(')'))
         .map(str::trim)
         .filter(|name| !name.is_empty())
 }
@@ -1767,7 +1782,7 @@ fn match_pattern_recursive(
                 }
                 None
             }
-            MarkerKind::Regular | MarkerKind::List => {
+            MarkerKind::Regular | MarkerKind::Extended | MarkerKind::List => {
                 let minimum_end = token_index + 1;
                 let mut candidate_ends =
                     marker_candidate_ends(pattern, pattern_index, tokens, minimum_end);
@@ -1775,7 +1790,7 @@ fn match_pattern_recursive(
                     candidate_ends.reverse();
                 }
                 for end in candidate_ends {
-                    if marker.kind == MarkerKind::Regular
+                    if matches!(marker.kind, MarkerKind::Regular | MarkerKind::Extended)
                         && regular_capture_starts_with_paren_before_literal_paren(
                             pattern,
                             pattern_index,
@@ -2203,7 +2218,7 @@ fn build_capture(
     }
     let raw = source[tokens[start].start..tokens[end - 1].end].to_owned();
     match kind {
-        MarkerKind::Regular => {
+        MarkerKind::Regular | MarkerKind::Extended => {
             let normalized_list = split_list_capture(tokens, source, start, end)
                 .filter(|(_, list)| list.items.len() > 1);
             Some(CaptureValue {
@@ -3593,6 +3608,27 @@ mod tests {
         assert_eq!(
             output.text,
             "dl( [a,\"a\",\"a\",[\"'a'\"],\"['a']\",'[\"a\"]',&a.1,&a,&a.,&a.  ,&(a),&a[1],&a.[1],&a.  [2],&a&a, &.a, &a.a,  a, a] )\n"
+        );
+    }
+
+    #[test]
+    fn preserves_spaces_in_index_expression_stringify_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command INDEX ON <key> TO <(file)> [<u: UNIQUE>] => dbCreateIndex( <(file)>, <\"key\">, <{key}>, iif( <.u.>, .t., NIL ) )\nindex on LEFT(   f1  ,  10   )      to _tst\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(
+            output.errors.is_empty(),
+            "unexpected errors: {:?}",
+            output.errors
+        );
+        assert_eq!(output.rules.len(), 1);
+        assert_eq!(
+            output.text,
+            "dbCreateIndex( \"_tst\", \"LEFT(   f1  ,  10   )\", {|| LEFT(   f1  ,  10   )}, iif( .F., .t., NIL ) )\n"
         );
     }
 

@@ -148,6 +148,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/normal_list_compound_root.prg` | golden do subset focado de `_NORMAL_L(<z,...>)` com renderização quoted por item e separadores preservados |
 | `tests/fixtures/pp/smart_list_compound_root.prg` | golden do subset focado de `_SMART_L(<z,...>)` com renderização smart por item e separadores preservados |
 | `tests/fixtures/pp/dumb_list_compound_root.prg` | golden do subset focado de `_DUMB_L(<z,...>)` com stringify da lista inteira e separadores preservados |
+| `tests/fixtures/pp/index_preserve_spaces_root.prg` | golden do subset focado de `INDEX ON <key> TO <(file)>` preservando espaços internos da expressão em `<"key">` e `<{key}>` |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
