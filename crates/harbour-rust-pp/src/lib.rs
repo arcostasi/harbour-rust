@@ -1304,7 +1304,7 @@ fn preprocess_normal_line(
     path: &Path,
     line_number: usize,
 ) -> (String, Vec<PreprocessError>) {
-    let (defined_once, mut errors) = expand_object_like_defines(line, defines, path, line_number);
+    let (defined_once, mut errors) = expand_define_directives(line, defines, path, line_number);
     let (rule_expanded, mut rule_errors) =
         expand_rule_directives(&defined_once, rules, path, line_number);
     errors.append(&mut rule_errors);
@@ -1312,9 +1312,28 @@ fn preprocess_normal_line(
         return (rule_expanded, errors);
     }
     let (defined_twice, mut final_errors) =
-        expand_object_like_defines(&rule_expanded, defines, path, line_number);
+        expand_define_directives(&rule_expanded, defines, path, line_number);
     errors.append(&mut final_errors);
     (defined_twice, errors)
+}
+
+fn expand_define_directives(
+    line: &str,
+    defines: &[DefineDirective],
+    path: &Path,
+    line_number: usize,
+) -> (String, Vec<PreprocessError>) {
+    let (object_expanded, mut errors) =
+        expand_object_like_defines(line, defines, path, line_number);
+    let function_expanded = expand_function_like_defines(&object_expanded, defines);
+    if function_expanded == object_expanded {
+        return (object_expanded, errors);
+    }
+
+    let (fully_expanded, mut final_errors) =
+        expand_object_like_defines(&function_expanded, defines, path, line_number);
+    errors.append(&mut final_errors);
+    (fully_expanded, errors)
 }
 
 fn expand_rule_directives(
@@ -2756,6 +2775,226 @@ fn expand_object_like_defines(
     (output, errors)
 }
 
+fn expand_function_like_defines(line: &str, defines: &[DefineDirective]) -> String {
+    let function_like_defines = defines
+        .iter()
+        .filter(|define| define.parameters.is_some())
+        .map(|define| (define.normalized_name.clone(), define))
+        .collect::<BTreeMap<_, _>>();
+
+    if function_like_defines.is_empty() {
+        return line.to_owned();
+    }
+
+    expand_function_like_text_segment(line, &function_like_defines)
+}
+
+fn expand_function_like_text_segment(
+    text: &str,
+    defines: &BTreeMap<String, &DefineDirective>,
+) -> String {
+    let mut output = String::with_capacity(text.len());
+    let mut cursor = 0;
+
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+        if is_string_delimiter(ch) {
+            cursor = copy_string_literal(text, cursor, ch, &mut output);
+            continue;
+        }
+
+        if starts_line_comment(text, cursor) {
+            output.push_str(&text[cursor..]);
+            break;
+        }
+
+        if is_identifier_start(ch) {
+            let end = advance_identifier(text, cursor);
+            let identifier = &text[cursor..end];
+            let normalized = identifier.to_ascii_uppercase();
+
+            if let Some(define) = defines.get(&normalized)
+                && end < text.len()
+                && char_at(text, end) == '('
+                && let Some((arguments, call_end)) = parse_function_like_define_call(text, end)
+                && define
+                    .parameters
+                    .as_ref()
+                    .is_some_and(|parameters| parameters.len() == arguments.len())
+            {
+                output.push_str(&expand_function_like_replacement(define, &arguments));
+                cursor = call_end;
+                continue;
+            }
+
+            output.push_str(identifier);
+            cursor = end;
+            continue;
+        }
+
+        output.push(ch);
+        cursor += ch.len_utf8();
+    }
+
+    output
+}
+
+fn parse_function_like_define_call(text: &str, open_paren: usize) -> Option<(Vec<String>, usize)> {
+    if char_at(text, open_paren) != '(' {
+        return None;
+    }
+
+    let mut arguments = Vec::new();
+    let mut cursor = open_paren + 1;
+    let mut argument_start = cursor;
+    let mut paren_depth = 1usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+
+        if is_string_delimiter(ch) {
+            cursor = advance_string_literal(text, cursor, ch);
+            continue;
+        }
+
+        if starts_line_comment(text, cursor) {
+            return None;
+        }
+
+        match ch {
+            '(' => {
+                paren_depth += 1;
+                cursor += ch.len_utf8();
+            }
+            ')' => {
+                if paren_depth == 1 && bracket_depth == 0 && brace_depth == 0 {
+                    let argument_text = &text[argument_start..cursor];
+                    if !arguments.is_empty() || !argument_text.trim().is_empty() {
+                        arguments.push(normalize_function_like_argument(argument_text));
+                    }
+                    return Some((arguments, cursor + ch.len_utf8()));
+                }
+                paren_depth -= 1;
+                cursor += ch.len_utf8();
+            }
+            '[' => {
+                bracket_depth += 1;
+                cursor += ch.len_utf8();
+            }
+            ']' => {
+                bracket_depth = bracket_depth.saturating_sub(1);
+                cursor += ch.len_utf8();
+            }
+            '{' => {
+                brace_depth += 1;
+                cursor += ch.len_utf8();
+            }
+            '}' => {
+                brace_depth = brace_depth.saturating_sub(1);
+                cursor += ch.len_utf8();
+            }
+            ',' if paren_depth == 1 && bracket_depth == 0 && brace_depth == 0 => {
+                arguments.push(normalize_function_like_argument(
+                    &text[argument_start..cursor],
+                ));
+                cursor += ch.len_utf8();
+                argument_start = cursor;
+            }
+            _ => {
+                cursor += ch.len_utf8();
+            }
+        }
+    }
+
+    None
+}
+
+fn normalize_function_like_argument(argument: &str) -> String {
+    argument.trim_start_matches([' ', '\t']).to_owned()
+}
+
+fn expand_function_like_replacement(define: &DefineDirective, arguments: &[String]) -> String {
+    let Some(parameters) = define.parameters.as_ref() else {
+        return define.replacement.clone();
+    };
+    if parameters.len() != arguments.len() {
+        return define.replacement.clone();
+    }
+
+    let substitutions = parameters
+        .iter()
+        .map(String::as_str)
+        .zip(arguments.iter().map(String::as_str))
+        .collect::<BTreeMap<_, _>>();
+
+    let mut output = String::with_capacity(define.replacement.len());
+    let mut cursor = 0;
+
+    while cursor < define.replacement.len() {
+        let ch = char_at(&define.replacement, cursor);
+        if is_string_delimiter(ch) {
+            cursor = copy_string_literal(&define.replacement, cursor, ch, &mut output);
+            continue;
+        }
+
+        if starts_line_comment(&define.replacement, cursor) {
+            output.push_str(&define.replacement[cursor..]);
+            break;
+        }
+
+        if matches!(ch, ' ' | '\t') {
+            let whitespace_end = advance_inline_whitespace(&define.replacement, cursor);
+            if whitespace_end < define.replacement.len()
+                && is_identifier_start(char_at(&define.replacement, whitespace_end))
+                && last_non_whitespace_char(&output)
+                    .is_some_and(|previous| matches!(previous, '(' | ','))
+            {
+                cursor = whitespace_end;
+                continue;
+            }
+
+            output.push_str(&define.replacement[cursor..whitespace_end]);
+            cursor = whitespace_end;
+            continue;
+        }
+
+        if is_identifier_start(ch) {
+            let end = advance_identifier(&define.replacement, cursor);
+            let identifier = &define.replacement[cursor..end];
+            if let Some(argument) = substitutions.get(identifier) {
+                output.push_str(argument);
+            } else {
+                output.push_str(identifier);
+            }
+            cursor = end;
+            continue;
+        }
+
+        output.push(ch);
+        cursor += ch.len_utf8();
+    }
+
+    output
+}
+
+fn advance_inline_whitespace(text: &str, start: usize) -> usize {
+    let mut cursor = start;
+    while cursor < text.len() {
+        let ch = char_at(text, cursor);
+        if !matches!(ch, ' ' | '\t') {
+            break;
+        }
+        cursor += ch.len_utf8();
+    }
+    cursor
+}
+
+fn last_non_whitespace_char(text: &str) -> Option<char> {
+    text.chars().rev().find(|ch| !matches!(ch, ' ' | '\t'))
+}
+
 fn expand_text_segment(
     text: &str,
     defines: &BTreeMap<String, &DefineDirective>,
@@ -2845,14 +3084,13 @@ fn is_string_delimiter(ch: char) -> bool {
     matches!(ch, '"' | '\'' | '`')
 }
 
-fn copy_string_literal(text: &str, start: usize, delimiter: char, output: &mut String) -> usize {
+fn advance_string_literal(text: &str, start: usize, delimiter: char) -> usize {
     let mut cursor = start;
     let mut escaped = false;
     let mut saw_opening_delimiter = false;
 
     while cursor < text.len() {
         let ch = char_at(text, cursor);
-        output.push(ch);
         cursor += ch.len_utf8();
 
         if !saw_opening_delimiter {
@@ -2876,6 +3114,12 @@ fn copy_string_literal(text: &str, start: usize, delimiter: char, output: &mut S
     }
 
     cursor
+}
+
+fn copy_string_literal(text: &str, start: usize, delimiter: char, output: &mut String) -> usize {
+    let end = advance_string_literal(text, start, delimiter);
+    output.push_str(&text[start..end]);
+    end
 }
 
 fn starts_line_comment(text: &str, start: usize) -> bool {
@@ -3042,13 +3286,26 @@ mod tests {
     }
 
     #[test]
-    fn does_not_expand_function_like_defines_in_normal_lines() {
+    fn does_not_expand_function_like_defines_without_call_syntax() {
         let source = SourceFile::new(PathBuf::from("main.prg"), "#define WRAP(x) x\n? WRAP\n");
 
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
 
         assert!(output.errors.is_empty());
         assert_eq!(output.text, "? WRAP\n");
+    }
+
+    #[test]
+    fn expands_focused_function_like_defines_with_case_sensitive_parameters() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#define F1( n ) F2( n, N )\n#define F3( nN, Nn ) F2( nN, Nn, NN, nn, N, n )\n? F1( 1 )\n? F3( 1, 2 )\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "? F2(1 ,N )\n? F2(1,2 ,NN,nn,N,n )\n");
     }
 
     #[test]

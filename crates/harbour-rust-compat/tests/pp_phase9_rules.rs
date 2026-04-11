@@ -1276,6 +1276,44 @@ fn phase15_index_preserve_spaces_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_function_like_define_case_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) =
+        read_upstream_or_skip("harbour-core/tests/hbpp/_pp_test.prg", "upstream hbpp test")
+    else {
+        return;
+    };
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/function_like_define_case_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_pp_test.contains("#define F1( n ) F2( n, N )"));
+    assert!(upstream_pp_test.contains("#define F3( nN, Nn ) F2( nN, Nn, NN, nn, N, n )"));
+    assert!(upstream_hbpptest.contains("pre := \"F2(1 ,N )\""));
+    assert!(upstream_hbpptest.contains("pre := \"F2(1,2 ,NN,nn,N,n )\""));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/function_like_define_case_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

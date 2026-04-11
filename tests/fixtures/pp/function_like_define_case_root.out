@@ -1,0 +1,5 @@
+
+PROCEDURE Main()
+   ? F2(1 ,N )
+   ? F2(1,2 ,NN,nn,N,n )
+RETURN

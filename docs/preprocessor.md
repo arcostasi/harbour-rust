@@ -46,7 +46,7 @@ O PP opera antes do lexer principal. O handoff é:
 - Expansão recursiva: `A -> B -> "x"` resolve até o valor final
 - Detecção de ciclo: `A -> B -> A` gera diagnóstico explícito
 - Não expande dentro de strings e comentários
-- **Macros parametrizadas:** pendente
+- **Macros parametrizadas:** subset focado de call-site em linhas normais já cobre os casos adjacentes `F1`/`F3` do `_pp_test.prg`, com nome da macro case-insensitive e substituição de parâmetros case-sensitive dentro do replacement
 
 ### `#include` (Fase 6)
 
@@ -149,6 +149,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/smart_list_compound_root.prg` | golden do subset focado de `_SMART_L(<z,...>)` com renderização smart por item e separadores preservados |
 | `tests/fixtures/pp/dumb_list_compound_root.prg` | golden do subset focado de `_DUMB_L(<z,...>)` com stringify da lista inteira e separadores preservados |
 | `tests/fixtures/pp/index_preserve_spaces_root.prg` | golden do subset focado de `INDEX ON <key> TO <(file)>` preservando espaços internos da expressão em `<"key">` e `<{key}>` |
+| `tests/fixtures/pp/function_like_define_case_root.prg` | golden do subset focado de `#define` parametrizado `F1`/`F3` com substituição case-sensitive dos parâmetros |
 | `tests/fixtures/pp/optional_reorder_root.prg` | golden do subset focado de reordenação de cláusulas opcionais multi-linha com lista (`MYCOMMAND3`) |
 | `tests/fixtures/pp/nested_optional_match_root.prg` | golden do subset focado de nested optional match (`AAA`) |
 | `tests/fixtures/pp/multiline_command_root.prg` | golden de diretiva multi-linha com `;` |
@@ -161,6 +162,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 Fases 6, 9 e 13 concluídas:
 
 - `#define` objeto com expansão recursiva e detecção de ciclo
+- subset focado de `#define` parametrizado em linhas normais para o bloco adjacente `F1`/`F3` do `_pp_test.prg`, com expansão só em call-site e sensibilidade de maiúsculas/minúsculas preservada nos nomes de parâmetros
 - `#include` com quoted e angle-bracket, search paths configuráveis
 - Handoff `pp -> parser` no CLI com `-I/--include-dir`
 - `#command`/`#translate` já cobrem o primeiro subset com marcadores regulares, listas, restrições, opcionais, stringify, continuação por `;` e um subset focado de corpo multi-linha quando o resultado começa na linha seguinte ao `=>`

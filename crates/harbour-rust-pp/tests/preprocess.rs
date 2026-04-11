@@ -735,6 +735,29 @@ fn preprocesses_index_preserve_spaces_fixture() {
 }
 
 #[test]
+fn preprocesses_function_like_define_case_fixture() {
+    let root = fixture_path("function_like_define_case_root.prg");
+    let expected = fs::read_to_string(fixture_path("function_like_define_case_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(
+        output
+            .defines
+            .iter()
+            .map(|define| define.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["F1", "F3"]
+    );
+}
+
+#[test]
 fn preprocesses_multiline_nested_optional_list_fixture() {
     let root = fixture_path("multiline_nested_optional_list_root.prg");
     let expected =
