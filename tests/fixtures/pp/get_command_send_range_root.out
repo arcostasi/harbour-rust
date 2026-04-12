@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   SetPos(1,7 ) ; AAdd(GetList,_GET_(a,"a","X",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) ) ; ATail(GetList):Caption := "myget"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength("myget") - 1  ; ATail(GetList):message := "mymess"  ; ATail(GetList):send()  ; ATail(GetList):Display()
+RETURN

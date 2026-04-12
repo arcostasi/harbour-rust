@@ -2026,6 +2026,41 @@ fn phase15_get_command_message_range_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_get_command_send_range_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/get_command_send_range_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains(
+        "in :='@ 1,7 GET a PICTURE \"X\" WHEN .T. CAPTION \"myget\" MESSAGE \"mymess\" SEND send() RANGE 0,100'"
+    ));
+    assert!(upstream_hbpptest.contains(
+        "pre := 'SetPos(1,7 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) ) ; ATail(GetList):Caption := \"myget\"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength(\"myget\") - 1  ; ATail(GetList):message := \"mymess\"  ; ATail(GetList):send()  ; ATail(GetList):Display()'"
+    ));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/get_command_send_range_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_multiline_nested_optional_list_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

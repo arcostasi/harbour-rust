@@ -158,6 +158,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/set_filter_macro_root.prg` | golden do subset focado de `SET FILTER TO <x:&>` derivado de `std.ch` com os três casos observáveis de `hbpptest.prg` |
 | `tests/fixtures/pp/copy_structure_extended_root.prg` | golden do subset focado de `COPY [STRUCTURE] [EXTENDED] [TO <(f)>]` com o caso adjacente `COPY STRUCTURE EXTENDED TO teststru` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_base_root.prg` | golden do primeiro subset focado de `@ <row>, <col> GET <var>` com o caso-base `@ 0,1 GET a` de `hbpptest.prg` |
+| `tests/fixtures/pp/get_command_send_range_root.prg` | golden do subset focado de `@ <row>, <col> GET <var>` com o caso `@ 1,7 GET a PICTURE "X" WHEN .T. CAPTION "myget" MESSAGE "mymess" SEND send() RANGE 0,100` |
 | `tests/fixtures/pp/get_command_picture_root.prg` | golden do segundo subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,2 GET a PICTURE "X"` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_valid_root.prg` | golden do terceiro subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,3 GET a PICTURE "X" VALID .T.` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_when_root.prg` | golden do quarto subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,4 GET a PICTURE "X" VALID .T. WHEN .T.` de `hbpptest.prg` |
