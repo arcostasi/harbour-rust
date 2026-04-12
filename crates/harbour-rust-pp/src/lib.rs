@@ -1581,6 +1581,7 @@ fn is_get_range_subset(rule: &RuleDirective) -> bool {
     )
 }
 
+
 fn capture_contains_token(raw: &str, expected: &str) -> bool {
     tokenize_source_line(raw)
         .iter()
@@ -2546,7 +2547,7 @@ fn render_rule_result(rule: &RuleDirective, captures: &MatchCaptures) -> String 
     if is_tooltip_command_subset(rule) {
         return normalize_tooltip_result_layout(&rendered);
     }
-    if is_get_command_subset(rule) {
+    if is_get_command_subset(rule) || is_get_range_picture_subset(rule) {
         return normalize_get_command_result_layout(&rendered);
     }
     if is_set_filter_macro_subset(rule) {
@@ -2617,6 +2618,38 @@ fn is_get_command_subset(rule: &RuleDirective) -> bool {
     )
 }
 
+fn is_get_range_picture_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(at),
+            PatternPart::Marker(PatternMarker { name: row, .. }),
+            PatternPart::Literal(comma),
+            PatternPart::Marker(PatternMarker { name: col, .. }),
+            PatternPart::Literal(get),
+            PatternPart::Marker(PatternMarker { name: var, .. }),
+            PatternPart::Literal(range),
+            PatternPart::Marker(PatternMarker { name: low, .. }),
+            PatternPart::Literal(comma_two),
+            PatternPart::Marker(PatternMarker { name: high, .. }),
+            PatternPart::Literal(picture),
+            PatternPart::Marker(PatternMarker { name: pic, .. }),
+        ] if rule.kind == RuleKind::Command
+            && at == "@"
+            && comma == ","
+            && get.eq_ignore_ascii_case("GET")
+            && range.eq_ignore_ascii_case("RANGE")
+            && comma_two == ","
+            && picture.eq_ignore_ascii_case("PICTURE")
+            && row == "row"
+            && col == "col"
+            && var == "var"
+            && low == "low"
+            && high == "high"
+            && pic == "pic"
+    )
+}
+
 fn normalize_get_command_result_layout(rendered: &str) -> String {
     if !rendered.starts_with("SetPos(") || !rendered.contains("AAdd(") {
         return rendered.to_owned();
@@ -2649,6 +2682,10 @@ fn normalize_get_command_result_layout(rendered: &str) -> String {
         .replace(
             "\"  ; ATail(GetList):Display()",
             "\"   ; ATail(GetList):Display()",
+        )
+        .replace(
+            "},) ) ; ATail(GetList):Display()",
+            "}, ) )     ; ATail(GetList):Display()",
         );
 
     let normalized = normalize_get_valid_range_overlap(&normalized);
@@ -4036,6 +4073,22 @@ mod tests {
         assert_eq!(
             output.text,
             "SetPos(1,2 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)}, ) )     ; ATail(GetList):Display()\n"
+        );
+    }
+
+    #[test]
+    fn expands_get_command_range_picture_reordered_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> RANGE <low>, <high> PICTURE <pic> => SetPos( <row>, <col> ) ; AAdd( GetList, _GET_( <var>, <\"var\">, <pic>, {| _1 | RangeCheck( _1,, <low>, <high> ) }, ) ) ; ATail(GetList):Display()\n#command @ <row>, <col> GET <var>\n                        [PICTURE <pic>]\n                        [VALID <valid>]\n                        [WHEN <when>]\n                        [CAPTION <caption>]\n                        [MESSAGE <message>]\n                        [SEND <msg>]\n\n      => SetPos( <row>, <col> )\n       ; AAdd( GetList,\n              _GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> ) )\n      [; ATail(GetList):Caption := <caption>]\n      [; ATail(GetList):CapRow  := ATail(Getlist):row\n       ; ATail(GetList):CapCol  := ATail(Getlist):col -\n                              __CapLength(<caption>) - 1]\n      [; ATail(GetList):message := <message>]\n      [; ATail(GetList):<msg>]\n       ; ATail(GetList):Display()\n@ 2,2 GET a RANGE 0,100 PICTURE \"X\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(2,2 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)}, ) )     ; ATail(GetList):Display()\n"
         );
     }
 
