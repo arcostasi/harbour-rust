@@ -1119,6 +1119,25 @@ fn preprocesses_get_command_picture_range_when_caption_reordered_fixture() {
 }
 
 #[test]
+fn preprocesses_get_command_picture_range_when_caption_message_reordered_fixture() {
+    let root = fixture_path("get_command_picture_range_when_caption_message_reordered_root.prg");
+    let expected = fs::read_to_string(fixture_path(
+        "get_command_picture_range_when_caption_message_reordered_root.out",
+    ))
+    .unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 2);
+}
+
+#[test]
 fn preprocesses_get_command_caption_range_fixture() {
     let root = fixture_path("get_command_caption_range_root.prg");
     let expected = fs::read_to_string(fixture_path("get_command_caption_range_root.out")).unwrap();
