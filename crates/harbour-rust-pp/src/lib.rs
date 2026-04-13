@@ -2550,6 +2550,7 @@ fn render_rule_result(rule: &RuleDirective, captures: &MatchCaptures) -> String 
     if is_get_command_subset(rule)
         || is_get_range_picture_subset(rule)
         || is_get_picture_range_when_reordered_subset(rule)
+        || is_get_picture_range_when_caption_reordered_subset(rule)
     {
         return normalize_get_command_result_layout(&rendered);
     }
@@ -2689,6 +2690,46 @@ fn is_get_picture_range_when_reordered_subset(rule: &RuleDirective) -> bool {
     )
 }
 
+fn is_get_picture_range_when_caption_reordered_subset(rule: &RuleDirective) -> bool {
+    matches!(
+        rule.pattern.as_slice(),
+        [
+            PatternPart::Literal(at),
+            PatternPart::Marker(PatternMarker { name: row, .. }),
+            PatternPart::Literal(comma),
+            PatternPart::Marker(PatternMarker { name: col, .. }),
+            PatternPart::Literal(get),
+            PatternPart::Marker(PatternMarker { name: var, .. }),
+            PatternPart::Literal(picture),
+            PatternPart::Marker(PatternMarker { name: pic, .. }),
+            PatternPart::Literal(range),
+            PatternPart::Marker(PatternMarker { name: low, .. }),
+            PatternPart::Literal(comma_two),
+            PatternPart::Marker(PatternMarker { name: high, .. }),
+            PatternPart::Literal(when),
+            PatternPart::Marker(PatternMarker { name: when_name, .. }),
+            PatternPart::Literal(caption),
+            PatternPart::Marker(PatternMarker { name: caption_name, .. }),
+        ] if rule.kind == RuleKind::Command
+            && at == "@"
+            && comma == ","
+            && get.eq_ignore_ascii_case("GET")
+            && picture.eq_ignore_ascii_case("PICTURE")
+            && range.eq_ignore_ascii_case("RANGE")
+            && comma_two == ","
+            && when.eq_ignore_ascii_case("WHEN")
+            && caption.eq_ignore_ascii_case("CAPTION")
+            && row == "row"
+            && col == "col"
+            && var == "var"
+            && pic == "pic"
+            && low == "low"
+            && high == "high"
+            && when_name == "when"
+            && caption_name == "caption"
+    )
+}
+
 fn normalize_get_command_result_layout(rendered: &str) -> String {
     if !rendered.starts_with("SetPos(") || !rendered.contains("AAdd(") {
         return rendered.to_owned();
@@ -2707,7 +2748,15 @@ fn normalize_get_command_result_layout(rendered: &str) -> String {
             " ; ATail(GetList):CapCol := ",
         )
         .replace(
+            "\" ; ATail(GetList):CapRow := ",
+            "\"  ; ATail(GetList):CapRow := ",
+        )
+        .replace(
             " - 1   ; ATail(GetList):Display()",
+            " - 1    ; ATail(GetList):Display()",
+        )
+        .replace(
+            " - 1 ; ATail(GetList):Display()",
             " - 1    ; ATail(GetList):Display()",
         )
         .replace(
@@ -4176,6 +4225,22 @@ mod tests {
         assert_eq!(
             output.text,
             "SetPos(2,4 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) )     ; ATail(GetList):Display()\n"
+        );
+    }
+
+    #[test]
+    fn expands_get_command_picture_range_when_caption_reordered_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> PICTURE <pic> RANGE <low>, <high> WHEN <when> CAPTION <caption> => SetPos( <row>, <col> ) ; AAdd( GetList, _GET_( <var>, <\"var\">, <pic>, {| _1 | RangeCheck( _1,, <low>, <high> ) }, <{when}> ) ) ; ATail(GetList):Caption := <caption> ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength(<caption>) - 1 ; ATail(GetList):Display()\n#command @ <row>, <col> GET <var>\n                        [PICTURE <pic>]\n                        [VALID <valid>]\n                        [WHEN <when>]\n                        [CAPTION <caption>]\n                        [MESSAGE <message>]\n                        [SEND <msg>]\n\n      => SetPos( <row>, <col> )\n       ; AAdd( GetList,\n              _GET_( <var>, <\"var\">, <pic>, <{valid}>, <{when}> ) )\n      [; ATail(GetList):Caption := <caption>]\n      [; ATail(GetList):CapRow  := ATail(Getlist):row\n       ; ATail(GetList):CapCol  := ATail(Getlist):col -\n                              __CapLength(<caption>) - 1]\n      [; ATail(GetList):message := <message>]\n      [; ATail(GetList):<msg>]\n       ; ATail(GetList):Display()\n@ 2,5 GET a PICTURE \"X\" RANGE 0,100 WHEN .T. CAPTION \"myget\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(2,5 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) ) ; ATail(GetList):Caption := \"myget\"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength(\"myget\") - 1    ; ATail(GetList):Display()\n"
         );
     }
 
