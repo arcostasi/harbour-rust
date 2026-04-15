@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   SetPos(4,1 ) ; AAdd(GetList,_GET_(a,"a",NIL,{|| valid()},{|| when()} ) ) ; ATail(GetList):Control := _PushButt_("cap",,,,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()
+RETURN
