@@ -4439,6 +4439,22 @@ mod tests {
     }
 
     #[test]
+    fn expands_get_command_pushbutton_message_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> PUSHBUTTON VALID <valid> WHEN <when> CAPTION <caption> MESSAGE <message> => SetPos(<row>,<col> ) ; AAdd(GetList,_GET_(<var>,<\"var\">,NIL,<{valid}>,<{when}> ) ) ; ATail(GetList):Control := _PushButt_(<caption>,<message>,,,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()\n@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when() CAPTION \"cap\" MESSAGE \"mes\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(4,1 ) ; AAdd(GetList,_GET_(a,\"a\",NIL,{|| valid()},{|| when()} ) ) ; ATail(GetList):Control := _PushButt_(\"cap\",\"mes\",,,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()\n"
+        );
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

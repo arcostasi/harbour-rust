@@ -167,6 +167,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/get_command_pushbutton_valid_root.prg` | golden do segundo subset focado do mesmo bloco `@ <row>, <col> GET <var> PUSHBUTTON`, cobrindo `@ 4,1 GET a PUSHBUTTON VALID valid()` |
 | `tests/fixtures/pp/get_command_pushbutton_when_root.prg` | golden do terceiro subset focado do mesmo bloco `@ <row>, <col> GET <var> PUSHBUTTON`, cobrindo `@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when()` |
 | `tests/fixtures/pp/get_command_pushbutton_caption_root.prg` | golden do quarto subset focado do mesmo bloco `@ <row>, <col> GET <var> PUSHBUTTON`, cobrindo `@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when() CAPTION "cap"` |
+| `tests/fixtures/pp/get_command_pushbutton_message_root.prg` | golden do quinto subset focado do mesmo bloco `@ <row>, <col> GET <var> PUSHBUTTON`, cobrindo `@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when() CAPTION "cap" MESSAGE "mes"` |
 | `tests/fixtures/pp/get_command_send_range_root.prg` | golden do subset focado de `@ <row>, <col> GET <var>` com o caso `@ 1,7 GET a PICTURE "X" WHEN .T. CAPTION "myget" MESSAGE "mymess" SEND send() RANGE 0,100` |
 | `tests/fixtures/pp/get_command_picture_root.prg` | golden do segundo subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,2 GET a PICTURE "X"` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_valid_root.prg` | golden do terceiro subset focado de `@ <row>, <col> GET <var>` com o caso `@ 0,3 GET a PICTURE "X" VALID .T.` de `hbpptest.prg` |
