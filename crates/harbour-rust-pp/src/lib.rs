@@ -4599,6 +4599,22 @@ mod tests {
     }
 
     #[test]
+    fn expands_get_command_pushbutton_bmpoff_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> PUSHBUTTON VALID <valid> WHEN <when> CAPTION <caption> MESSAGE <message> COLOR <color> FOCUS <focus> STATE <state> STYLE <style> SEND <msg> GUISEND <guimsg> SIZE X <sizex> Y <sizey> CAPOFF X <capxoff> Y <capyoff> BITMAP <bitmap> BMPOFF X <bmpxoff> Y <bmpyoff> => SetPos(<row>,<col> ) ; AAdd(GetList,_GET_(<var>,<\"var\">,NIL,<{valid}>,<{when}> ) ) ; ATail(GetList):Control := _PushButt_(<caption>,<message>,<color>,<{focus}>,<{state}>,<style>,<sizex>,<sizey>,<capxoff>,<capyoff>,<bitmap>,<bmpxoff>,<bmpyoff> ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) } ; ATail(GetList):<msg>  ; ATail(GetList):Control:<guimsg>  ; ATail(GetList):Control:Display()\n@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when() CAPTION \"cap\" MESSAGE \"mes\" COLOR color() FOCUS focus() STATE state() STYLE style() SEND send() GUISEND guisend() SIZE X 100 Y 100 CAPOFF X 10 Y 10 BITMAP bitmap() BMPOFF X 2 Y 2\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(4,1 ) ; AAdd(GetList,_GET_(a,\"a\",NIL,{|| valid()},{|| when()} ) ) ; ATail(GetList):Control := _PushButt_(\"cap\",\"mes\",color(),{|| focus()},{|| state()},style(),100,100,10,10,bitmap(),2,2 ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) } ; ATail(GetList):send()  ; ATail(GetList):Control:guisend()  ; ATail(GetList):Control:Display()\n"
+        );
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
