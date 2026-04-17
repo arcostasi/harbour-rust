@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   oC := TClipboard():New(UPPER("TEXT") ,oD )
+RETURN

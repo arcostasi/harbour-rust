@@ -4615,6 +4615,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_define_clipboard_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command DEFINE CLIPBOARD <oClp>\n   [ FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF> ]\n   [ OF <oWnd> ]\n   =>\n   <oClp> := TClipboard():New([UPPER(<(format)>)] [,<oWnd>] )\nDEFINE CLIPBOARD oC OF oD FORMAT TEXT\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "oC := TClipboard():New(UPPER(\"TEXT\") ,oD )\n");
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
