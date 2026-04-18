@@ -4615,6 +4615,22 @@ mod tests {
     }
 
     #[test]
+    fn expands_get_command_pushbutton_color_only_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command @ <row>, <col> GET <var> PUSHBUTTON COLOR <color> => SetPos(<row>,<col> ) ; AAdd(GetList,_GET_(<var>,<\"var\">,NIL,, ) ) ; ATail(GetList):Control := _PushButt_(,,<color>,,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()\n@ 4,1 GET a PUSHBUTTON COLOR \"W/N\"\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "SetPos(4,1 ) ; AAdd(GetList,_GET_(a,\"a\",NIL,, ) ) ; ATail(GetList):Control := _PushButt_(,,\"W/N\",,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()\n"
+        );
+    }
+
+    #[test]
     fn expands_define_clipboard_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
