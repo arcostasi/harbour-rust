@@ -1455,6 +1455,25 @@ fn preprocesses_get_command_pushbutton_reordered_sparse_color_tail_fixture() {
 }
 
 #[test]
+fn preprocesses_get_command_pushbutton_reordered_full_fixture() {
+    let root = fixture_path("get_command_pushbutton_reordered_full_root.prg");
+    let expected = fs::read_to_string(fixture_path(
+        "get_command_pushbutton_reordered_full_root.out",
+    ))
+    .unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 1);
+}
+
+#[test]
 fn preprocesses_define_clipboard_fixture() {
     let root = fixture_path("define_clipboard_root.prg");
     let expected = fs::read_to_string(fixture_path("define_clipboard_root.out")).unwrap();
