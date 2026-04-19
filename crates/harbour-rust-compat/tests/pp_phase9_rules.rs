@@ -2717,6 +2717,42 @@ fn phase15_get_command_pushbutton_reordered_sparse_fixture_matches_curated_upstr
 }
 
 #[test]
+fn phase15_get_command_pushbutton_reordered_sparse_color_tail_fixture_matches_curated_upstream_subset(
+) {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/get_command_pushbutton_reordered_sparse_color_tail_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains(
+        "in :='@ 4,1 GET a PUSHBUTTON SIZE X 100 Y 100 BMPOFF X 2 Y 2 VALID valid() GUISEND guisend() WHEN when() MESSAGE \"mes\" COLOR \"W/N\"'"
+    ));
+    assert!(upstream_hbpptest.contains(
+        "pre := 'SetPos(4,1 ) ; AAdd(GetList,_GET_(a,\"a\",NIL,{|| valid()},{|| when()} ) ) ; ATail(GetList):Control := _PushButt_(,\"mes\",\"W/N\",,,,100,100,,,,2,2 ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }  ; ATail(GetList):Control:guisend()  ; ATail(GetList):Control:Display()'"
+    ));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/get_command_pushbutton_reordered_sparse_color_tail_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_define_clipboard_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
