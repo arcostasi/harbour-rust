@@ -4788,6 +4788,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_save_all_except_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command SAVE ALL EXCEPT <p> TO <(f)> => __mvSave( <(f)>, <(p)>, .f. )\n#command SAVE TO <(f)> ALL EXCEPT <p> => __mvSave( <(f)>, <(p)>, .f. )\nSAVE ALL EXCEPT A TO A\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "__mvSave( \"A\", \"A\", .f. )\n");
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
