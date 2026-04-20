@@ -4775,6 +4775,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_save_to_all_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command SAVE [TO <(f)>] [ALL] => __mvSave( <(f)>, \"*\", .t. )\nSAVE TO A ALL\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "__mvSave( \"A\", \"*\", .t. )\n");
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

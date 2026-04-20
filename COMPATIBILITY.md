@@ -21,7 +21,7 @@ Harbour Rust aims for practical compatibility with CA-Clipper and Harbour, start
 | RDD/DBF | initial usable baseline | schema parsing, navigation, reads, append/update/delete/recall |
 | Regression tooling | present | golden tests, compare tool, benchmark smoke, fuzz scaffold |
 
-Recent focused PP additions in phase 15 include the adjacent `DEFINE CLIPBOARD` subset observed in `hbpptest.prg` for `FORMAT TEXT`, plus the sibling curated branch `FORMAT OEMTEXT` under the same inline `FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>` rule, and the first standard-command slices from `_pp_test.prg`, covering `RELEASE ALL`, `RELEASE ALL LIKE A`, `RELEASE ALL EXCEPT A`, `SAVE ALL LIKE A TO A`, and the reordered sibling `SAVE TO A ALL LIKE A` from `std.ch`, including the `#<p>` stringify branch, the `.f.` branch, and the paired smart-marker rendering of `<(f)>` / `<(p)>`.
+Recent focused PP additions in phase 15 include the adjacent `DEFINE CLIPBOARD` subset observed in `hbpptest.prg` for `FORMAT TEXT`, plus the sibling curated branch `FORMAT OEMTEXT` under the same inline `FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>` rule, and the first standard-command slices from `_pp_test.prg`, covering `RELEASE ALL`, `RELEASE ALL LIKE A`, `RELEASE ALL EXCEPT A`, `SAVE ALL LIKE A TO A`, the reordered sibling `SAVE TO A ALL LIKE A`, and the base `SAVE TO A ALL` branch from `std.ch`, including the `#<p>` stringify branch, the `.f.` branch, the paired smart-marker rendering of `<(f)>` / `<(p)>`, and the wildcard `"*"` branch.
 
 ## Known Limits
 

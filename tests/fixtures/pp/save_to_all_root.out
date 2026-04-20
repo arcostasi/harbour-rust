@@ -1,0 +1,4 @@
+
+PROCEDURE Main()
+   __mvSave( "A", "*", .t. )
+RETURN
