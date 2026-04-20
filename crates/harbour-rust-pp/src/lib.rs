@@ -4710,6 +4710,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_release_all_subset_with_specific_rule_precedence() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command RELEASE <v,...> => __mvXRelease( <\"v\"> )\n#command RELEASE ALL => __mvRelease( \"*\", .t. )\nRELEASE ALL\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "__mvRelease( \"*\", .t. )\n");
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
