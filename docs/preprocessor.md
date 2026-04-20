@@ -162,6 +162,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/release_all_root.prg` | golden do primeiro subconjunto de comandos padrão do `_pp_test.prg`, medindo a precedência de `RELEASE ALL` sobre a regra genérica `RELEASE <v,...>` de `std.ch` |
 | `tests/fixtures/pp/release_all_like_root.prg` | golden do degrau adjacente `RELEASE ALL LIKE A`, medindo a precedência da forma `RELEASE ALL LIKE <p>` e o stringify `#<p>` de `std.ch` |
 | `tests/fixtures/pp/release_all_except_root.prg` | golden do degrau adjacente `RELEASE ALL EXCEPT A`, medindo a precedência da forma `RELEASE ALL EXCEPT <p>` e o branch `.f.` de `std.ch` |
+| `tests/fixtures/pp/save_all_like_root.prg` | golden do primeiro degrau do bloco `SAVE`, cobrindo `SAVE ALL LIKE A TO A` e os dois smart markers `<(f)>` / `<(p)>` do `std.ch` |
 | `tests/fixtures/pp/get_command_base_root.prg` | golden do primeiro subset focado de `@ <row>, <col> GET <var>` com o caso-base `@ 0,1 GET a` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_range_picture_reordered_root.prg` | golden do subset focado de `@ <row>, <col> GET <var>` com o caso `@ 2,2 GET a RANGE 0,100 PICTURE "X"` e reordenação pequena de cláusulas |
 | `tests/fixtures/pp/get_command_picture_range_when_reordered_root.prg` | golden do subset focado de `@ <row>, <col> GET <var>` com o caso `@ 2,4 GET a PICTURE "X" RANGE 0,100 WHEN .T.` e `WHEN` após `RANGE` |

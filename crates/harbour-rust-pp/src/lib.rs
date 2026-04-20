@@ -4749,6 +4749,19 @@ mod tests {
     }
 
     #[test]
+    fn expands_save_all_like_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command SAVE TO <(f)> ALL LIKE <p> => __mvSave( <(f)>, <(p)>, .t. )\n#command SAVE ALL LIKE <p> TO <(f)> => __mvSave( <(f)>, <(p)>, .t. )\nSAVE ALL LIKE A TO A\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(output.text, "__mvSave( \"A\", \"A\", .t. )\n");
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
