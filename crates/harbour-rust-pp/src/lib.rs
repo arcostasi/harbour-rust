@@ -1581,7 +1581,6 @@ fn is_get_range_subset(rule: &RuleDirective) -> bool {
     )
 }
 
-
 fn capture_contains_token(raw: &str, expected: &str) -> bool {
     tokenize_source_line(raw)
         .iter()
@@ -4688,7 +4687,26 @@ mod tests {
         let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
 
         assert!(output.errors.is_empty());
-        assert_eq!(output.text, "oC := TClipboard():New(UPPER(\"TEXT\") ,oD )\n");
+        assert_eq!(
+            output.text,
+            "oC := TClipboard():New(UPPER(\"TEXT\") ,oD )\n"
+        );
+    }
+
+    #[test]
+    fn expands_define_clipboard_oemtext_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command DEFINE CLIPBOARD <oClp>\n   [ FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF> ]\n   [ OF <oWnd> ]\n   =>\n   <oClp> := TClipboard():New([UPPER(<(format)>)] [,<oWnd>] )\nDEFINE CLIPBOARD oC OF oD FORMAT OEMTEXT\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "oC := TClipboard():New(UPPER(\"OEMTEXT\") ,oD )\n"
+        );
     }
 
     #[test]

@@ -1139,7 +1139,8 @@ fn preprocesses_get_command_picture_range_when_caption_message_reordered_fixture
 
 #[test]
 fn preprocesses_get_command_picture_range_when_caption_message_send_reordered_fixture() {
-    let root = fixture_path("get_command_picture_range_when_caption_message_send_reordered_root.prg");
+    let root =
+        fixture_path("get_command_picture_range_when_caption_message_send_reordered_root.prg");
     let expected = fs::read_to_string(fixture_path(
         "get_command_picture_range_when_caption_message_send_reordered_root.out",
     ))
@@ -1159,7 +1160,8 @@ fn preprocesses_get_command_picture_range_when_caption_message_send_reordered_fi
 #[test]
 fn preprocesses_get_command_pushbutton_base_fixture() {
     let root = fixture_path("get_command_pushbutton_base_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_base_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_base_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1175,7 +1177,8 @@ fn preprocesses_get_command_pushbutton_base_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_valid_fixture() {
     let root = fixture_path("get_command_pushbutton_valid_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_valid_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_valid_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1191,7 +1194,8 @@ fn preprocesses_get_command_pushbutton_valid_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_when_fixture() {
     let root = fixture_path("get_command_pushbutton_when_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_when_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_when_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1207,7 +1211,8 @@ fn preprocesses_get_command_pushbutton_when_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_caption_fixture() {
     let root = fixture_path("get_command_pushbutton_caption_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_caption_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_caption_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1223,7 +1228,8 @@ fn preprocesses_get_command_pushbutton_caption_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_message_fixture() {
     let root = fixture_path("get_command_pushbutton_message_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_message_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_message_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1239,7 +1245,8 @@ fn preprocesses_get_command_pushbutton_message_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_color_fixture() {
     let root = fixture_path("get_command_pushbutton_color_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_color_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_color_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1255,7 +1262,8 @@ fn preprocesses_get_command_pushbutton_color_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_focus_fixture() {
     let root = fixture_path("get_command_pushbutton_focus_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_focus_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_focus_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1271,7 +1279,8 @@ fn preprocesses_get_command_pushbutton_focus_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_state_fixture() {
     let root = fixture_path("get_command_pushbutton_state_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_state_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_state_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1287,7 +1296,8 @@ fn preprocesses_get_command_pushbutton_state_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_style_fixture() {
     let root = fixture_path("get_command_pushbutton_style_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_style_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_style_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1303,7 +1313,8 @@ fn preprocesses_get_command_pushbutton_style_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_send_fixture() {
     let root = fixture_path("get_command_pushbutton_send_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_send_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_send_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1319,7 +1330,8 @@ fn preprocesses_get_command_pushbutton_send_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_guisend_fixture() {
     let root = fixture_path("get_command_pushbutton_guisend_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_guisend_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_guisend_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1335,7 +1347,8 @@ fn preprocesses_get_command_pushbutton_guisend_fixture() {
 #[test]
 fn preprocesses_get_command_pushbutton_size_fixture() {
     let root = fixture_path("get_command_pushbutton_size_root.prg");
-    let expected = fs::read_to_string(fixture_path("get_command_pushbutton_size_root.out")).unwrap();
+    let expected =
+        fs::read_to_string(fixture_path("get_command_pushbutton_size_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 
@@ -1477,6 +1490,22 @@ fn preprocesses_get_command_pushbutton_reordered_full_fixture() {
 fn preprocesses_define_clipboard_fixture() {
     let root = fixture_path("define_clipboard_root.prg");
     let expected = fs::read_to_string(fixture_path("define_clipboard_root.out")).unwrap();
+
+    let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+    assert_eq!(output.rules.len(), 1);
+}
+
+#[test]
+fn preprocesses_define_clipboard_oemtext_fixture() {
+    let root = fixture_path("define_clipboard_oemtext_root.prg");
+    let expected = fs::read_to_string(fixture_path("define_clipboard_oemtext_root.out")).unwrap();
 
     let output = Preprocessor::default().preprocess(SourceFile::from_path(&root).unwrap());
 

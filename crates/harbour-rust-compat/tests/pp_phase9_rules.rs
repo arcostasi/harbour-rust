@@ -2000,9 +2000,7 @@ fn phase15_get_command_picture_range_when_reordered_fixture_matches_curated_upst
     ))
     .expect("fixture snapshot");
 
-    assert!(upstream_hbpptest.contains(
-        "in :='@ 2,4 GET a PICTURE \"X\" RANGE 0,100 WHEN .T.'"
-    ));
+    assert!(upstream_hbpptest.contains("in :='@ 2,4 GET a PICTURE \"X\" RANGE 0,100 WHEN .T.'"));
     assert!(upstream_hbpptest.contains(
         "pre := 'SetPos(2,4 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) )     ; ATail(GetList):Display()'"
     ));
@@ -2023,7 +2021,8 @@ fn phase15_get_command_picture_range_when_reordered_fixture_matches_curated_upst
 }
 
 #[test]
-fn phase15_get_command_picture_range_when_caption_reordered_fixture_matches_curated_upstream_subset() {
+fn phase15_get_command_picture_range_when_caption_reordered_fixture_matches_curated_upstream_subset()
+ {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
         "upstream hbpp runtime test",
@@ -2035,9 +2034,10 @@ fn phase15_get_command_picture_range_when_caption_reordered_fixture_matches_cura
     ))
     .expect("fixture snapshot");
 
-    assert!(upstream_hbpptest.contains(
-        "in :='@ 2,5 GET a PICTURE \"X\" RANGE 0,100 WHEN .T. CAPTION \"myget\"'"
-    ));
+    assert!(
+        upstream_hbpptest
+            .contains("in :='@ 2,5 GET a PICTURE \"X\" RANGE 0,100 WHEN .T. CAPTION \"myget\"'")
+    );
     assert!(upstream_hbpptest.contains(
         "pre := 'SetPos(2,5 ) ; AAdd(GetList,_GET_(a,\"a\",\"X\",{|_1| RangeCheck(_1,, 0, 100)},{|| .T.} ) ) ; ATail(GetList):Caption := \"myget\"  ; ATail(GetList):CapRow := ATail(Getlist):row ; ATail(GetList):CapCol := ATail(Getlist):col - __CapLength(\"myget\") - 1    ; ATail(GetList):Display()'"
     ));
@@ -2058,7 +2058,8 @@ fn phase15_get_command_picture_range_when_caption_reordered_fixture_matches_cura
 }
 
 #[test]
-fn phase15_get_command_picture_range_when_caption_message_reordered_fixture_matches_curated_upstream_subset() {
+fn phase15_get_command_picture_range_when_caption_message_reordered_fixture_matches_curated_upstream_subset()
+ {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
         "upstream hbpp runtime test",
@@ -2093,7 +2094,8 @@ fn phase15_get_command_picture_range_when_caption_message_reordered_fixture_matc
 }
 
 #[test]
-fn phase15_get_command_picture_range_when_caption_message_send_reordered_fixture_matches_curated_upstream_subset() {
+fn phase15_get_command_picture_range_when_caption_message_send_reordered_fixture_matches_curated_upstream_subset()
+ {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
         "upstream hbpp runtime test",
@@ -2239,9 +2241,10 @@ fn phase15_get_command_pushbutton_caption_fixture_matches_curated_upstream_subse
     ))
     .expect("fixture snapshot");
 
-    assert!(upstream_hbpptest.contains(
-        "in :='@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when() CAPTION \"cap\"'"
-    ));
+    assert!(
+        upstream_hbpptest
+            .contains("in :='@ 4,1 GET a PUSHBUTTON VALID valid() WHEN when() CAPTION \"cap\"'")
+    );
     assert!(upstream_hbpptest.contains(
         "pre := 'SetPos(4,1 ) ; AAdd(GetList,_GET_(a,\"a\",NIL,{|| valid()},{|| when()} ) ) ; ATail(GetList):Control := _PushButt_(\"cap\",,,,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()'"
     ));
@@ -2659,9 +2662,7 @@ fn phase15_get_command_pushbutton_color_only_fixture_matches_curated_upstream_su
     ))
     .expect("fixture snapshot");
 
-    assert!(upstream_hbpptest.contains(
-        "in :='@ 4,1 GET a PUSHBUTTON COLOR \"W/N\"'"
-    ));
+    assert!(upstream_hbpptest.contains("in :='@ 4,1 GET a PUSHBUTTON COLOR \"W/N\"'"));
     assert!(upstream_hbpptest.contains(
         "pre := 'SetPos(4,1 ) ; AAdd(GetList,_GET_(a,\"a\",NIL,, ) ) ; ATail(GetList):Control := _PushButt_(,,\"W/N\",,,,,,,,,, ) ; ATail(GetList):reader := { | a,b,c,d | GuiReader(a,b,c,d ) }   ; ATail(GetList):Control:Display()'"
     ));
@@ -2717,8 +2718,8 @@ fn phase15_get_command_pushbutton_reordered_sparse_fixture_matches_curated_upstr
 }
 
 #[test]
-fn phase15_get_command_pushbutton_reordered_sparse_color_tail_fixture_matches_curated_upstream_subset(
-) {
+fn phase15_get_command_pushbutton_reordered_sparse_color_tail_fixture_matches_curated_upstream_subset()
+ {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
         "upstream hbpp runtime test",
@@ -2802,13 +2803,47 @@ fn phase15_define_clipboard_fixture_matches_curated_upstream_subset() {
 
     assert!(upstream_hbpptest.contains("#command DEFINE CLIPBOARD <oClp>"));
     assert!(upstream_hbpptest.contains("in:= \"DEFINE CLIPBOARD oC OF oD FORMAT TEXT\""));
-    assert!(upstream_hbpptest.contains(
-        "pre :='oC := TClipboard():New(UPPER(\"TEXT\") ,oD )'"
-    ));
+    assert!(upstream_hbpptest.contains("pre :='oC := TClipboard():New(UPPER(\"TEXT\") ,oD )'"));
 
     let output = Preprocessor::default().preprocess(
-        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/define_clipboard_root.prg"))
-            .expect("fixture"),
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/define_clipboard_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
+fn phase15_define_clipboard_oemtext_fixture_matches_curated_rule_subset() {
+    let Some(upstream_hbpptest) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/hbpptest.prg",
+        "upstream hbpp runtime test",
+    ) else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/define_clipboard_oemtext_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_hbpptest.contains("#command DEFINE CLIPBOARD <oClp>"));
+    assert!(upstream_hbpptest.contains("FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>"));
+    assert!(
+        upstream_hbpptest.contains("<oClp> := TClipboard():New( [UPPER(<(format)>)], <oWnd> )")
+    );
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/define_clipboard_oemtext_root.prg",
+        ))
+        .expect("fixture"),
     );
 
     assert!(
