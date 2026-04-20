@@ -2938,6 +2938,54 @@ fn phase15_release_all_like_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_release_all_except_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/_pp_test.prg",
+        "upstream _pp_test corpus",
+    ) else {
+        return;
+    };
+    let Some(upstream_std) =
+        read_upstream_or_skip("harbour-core/include/std.ch", "upstream std.ch")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/release_all_except_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(
+        upstream_std.contains("#command RELEASE <v,...>               => __mvXRelease( <\"v\"> )")
+    );
+    assert!(
+        upstream_std
+            .contains("#command RELEASE ALL                   => __mvRelease( \"*\", .t. )")
+    );
+    assert!(
+        upstream_std.contains("#command RELEASE ALL LIKE <p>          => __mvRelease( #<p>, .t. )")
+    );
+    assert!(
+        upstream_std.contains("#command RELEASE ALL EXCEPT <p>        => __mvRelease( #<p>, .f. )")
+    );
+    assert!(upstream_pp_test.contains("RELEASE ALL EXCEPT A"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/release_all_except_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_get_command_caption_range_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

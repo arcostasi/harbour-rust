@@ -21,7 +21,7 @@ Harbour Rust busca compatibilidade prática com CA-Clipper e Harbour, começando
 | RDD/DBF | baseline inicial utilizável | parsing de schema, navegação, leitura, append/update/delete/recall |
 | Tooling de regressão | presente | golden tests, compare tool, benchmark smoke, scaffold de fuzzing |
 
-As adições focadas mais recentes do PP na fase 15 incluem o subconjunto adjacente de `DEFINE CLIPBOARD` observado em `hbpptest.prg` para `FORMAT TEXT`, além do ramo irmão curado `FORMAT OEMTEXT` sob a mesma regra inline `FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>`, e os primeiros slices de comandos padrão vindos de `_pp_test.prg`, cobrindo `RELEASE ALL` e o caso adjacente `RELEASE ALL LIKE A` com precedência sobre a regra genérica `RELEASE <v,...>` de `std.ch`, incluindo o ramo de stringify `#<p>`.
+As adições focadas mais recentes do PP na fase 15 incluem o subconjunto adjacente de `DEFINE CLIPBOARD` observado em `hbpptest.prg` para `FORMAT TEXT`, além do ramo irmão curado `FORMAT OEMTEXT` sob a mesma regra inline `FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>`, e os primeiros slices de comandos padrão vindos de `_pp_test.prg`, cobrindo `RELEASE ALL`, `RELEASE ALL LIKE A` e o caso adjacente `RELEASE ALL EXCEPT A` com precedência sobre a regra genérica `RELEASE <v,...>` de `std.ch`, incluindo tanto o ramo de stringify `#<p>` quanto o branch `.f.`.
 
 ## Limites Conhecidos
 
