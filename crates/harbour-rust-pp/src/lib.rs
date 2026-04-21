@@ -3134,10 +3134,13 @@ fn render_result_part(
             }
         }
         ResultPart::Blockify(name) => {
-            if let Some(value) = captures.values.get(name)
-                && let Some(text) = value.render_text(repeat_index)
-            {
-                render_blockify_capture(text, output);
+            if let Some(value) = captures.values.get(name) {
+                if repeat_index.is_none() && value.render_list(output, render_blockify_capture) {
+                    return;
+                }
+                if let Some(text) = value.render_text(repeat_index) {
+                    render_blockify_capture(text, output);
+                }
             }
         }
         ResultPart::Smart(name) => {
@@ -4889,6 +4892,22 @@ mod tests {
         assert_eq!(
             output.text,
             "__dbList( .T., {  }, .t., , , , , .F., .F.,  )\n__dbList( .T., {  }, .t., , , , , .F., .T.,  )\n__dbList( .T., {  }, .t., , , , , .F., .F., \"a\" )\n"
+        );
+    }
+
+    #[test]
+    fn expands_list_fields_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command LIST [<v,...>] [<off:OFF>] [<prn:TO PRINTER>] [TO FILE <(f)>] ;\n              [FOR <for>] [WHILE <while>] [NEXT <next>] ;\n              [RECORD <rec>] [<rest:REST>] [ALL] => ;\n         __dbList( <.off.>, { <{v}> }, .t., ;\n                   <{for}>, <{while}>, <next>, <rec>, <.rest.>, <.prn.>, <(f)> )\nLIST a\nLIST a,b\nLIST a,b,(seek(a+b),c)\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "__dbList( .F., { {|| a} }, .t., , , , , .F., .F.,  )\n__dbList( .F., { {|| a},{|| b} }, .t., , , , , .F., .F.,  )\n__dbList( .F., { {|| a},{|| b},{|| (seek(a+b),c)} }, .t., , , , , .F., .F.,  )\n"
         );
     }
 

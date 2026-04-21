@@ -170,6 +170,7 @@ Consistente com o restante do Clipper/Harbour: `#define FOO 1` expande tanto `FO
 | `tests/fixtures/pp/list_base_root.prg` | golden do primeiro recorte do bloco `LIST`, cobrindo `LIST` puro contra a regra multiline `__dbList(...)` de `std.ch` antes de destinos, `OFF`, campos e `REST` |
 | `tests/fixtures/pp/list_destination_root.prg` | golden do recorte adjacente de destinos do bloco `LIST`, cobrindo `LIST TO PRINTER` e `LIST TO FILE a` antes de `OFF`, campos e `REST` |
 | `tests/fixtures/pp/list_off_root.prg` | golden do recorte adjacente `OFF` do bloco `LIST`, cobrindo `LIST OFF`, `LIST OFF TO PRINTER` e `LIST OFF TO FILE a` antes de campos e `REST` |
+| `tests/fixtures/pp/list_fields_root.prg` | golden do recorte adjacente de campos do bloco `LIST`, cobrindo `<{v}>` sobre lista simples e item parentetizado com vírgula interna |
 | `tests/fixtures/pp/get_command_base_root.prg` | golden do primeiro subset focado de `@ <row>, <col> GET <var>` com o caso-base `@ 0,1 GET a` de `hbpptest.prg` |
 | `tests/fixtures/pp/get_command_range_picture_reordered_root.prg` | golden do subset focado de `@ <row>, <col> GET <var>` com o caso `@ 2,2 GET a RANGE 0,100 PICTURE "X"` e reordenação pequena de cláusulas |
 | `tests/fixtures/pp/get_command_picture_range_when_reordered_root.prg` | golden do subset focado de `@ <row>, <col> GET <var>` com o caso `@ 2,4 GET a PICTURE "X" RANGE 0,100 WHEN .T.` e `WHEN` após `RANGE` |
