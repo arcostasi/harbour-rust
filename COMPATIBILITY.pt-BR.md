@@ -21,7 +21,7 @@ Harbour Rust busca compatibilidade prática com CA-Clipper e Harbour, começando
 | RDD/DBF | baseline inicial utilizável | parsing de schema, navegação, leitura, append/update/delete/recall |
 | Tooling de regressão | presente | golden tests, compare tool, benchmark smoke, scaffold de fuzzing |
 
-As adições focadas mais recentes do PP na fase 15 incluem o subconjunto adjacente de `DEFINE CLIPBOARD` observado em `hbpptest.prg` para `FORMAT TEXT`, além do ramo irmão curado `FORMAT OEMTEXT` sob a mesma regra inline `FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>`, e os primeiros slices de comandos padrão vindos de `_pp_test.prg`, cobrindo `RELEASE ALL`, `RELEASE ALL LIKE A`, `RELEASE ALL EXCEPT A`, `SAVE ALL LIKE A TO A`, o irmão reordered `SAVE TO A ALL LIKE A`, o branch base `SAVE TO A ALL` e o primeiro ramo `.f.` `SAVE ALL EXCEPT A TO A` de `std.ch`, incluindo o ramo de stringify `#<p>`, o branch `.f.`, a renderização dos dois smart markers `<(f)>` / `<(p)>` e o ramo com wildcard `"*"`.
+As adições focadas mais recentes do PP na fase 15 incluem o subconjunto adjacente de `DEFINE CLIPBOARD` observado em `hbpptest.prg` para `FORMAT TEXT`, além do ramo irmão curado `FORMAT OEMTEXT` sob a mesma regra inline `FORMAT <format:TEXT,OEMTEXT,BITMAP,DIF>`, e os primeiros slices de comandos padrão vindos de `_pp_test.prg`, cobrindo `RELEASE ALL`, `RELEASE ALL LIKE A`, `RELEASE ALL EXCEPT A`, `SAVE ALL LIKE A TO A`, o irmão reordered `SAVE TO A ALL LIKE A`, o branch base `SAVE TO A ALL`, o primeiro ramo `.f.` `SAVE ALL EXCEPT A TO A` e o ramo `.f.` reordered `SAVE TO A ALL EXCEPT A` de `std.ch`, incluindo o ramo de stringify `#<p>`, o branch `.f.`, a renderização dos dois smart markers `<(f)>` / `<(p)>` e o ramo com wildcard `"*"`.
 
 ## Limites Conhecidos
 
