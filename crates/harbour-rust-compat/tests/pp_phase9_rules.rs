@@ -3193,6 +3193,39 @@ fn phase15_save_to_all_except_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_list_base_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/_pp_test.prg",
+        "upstream _pp_test corpus",
+    ) else {
+        return;
+    };
+    let Some(upstream_std) =
+        read_upstream_or_skip("harbour-core/include/std.ch", "upstream std.ch")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture("tests/fixtures/pp/list_base_root.out"))
+        .expect("fixture snapshot");
+
+    assert!(upstream_std.contains("#command LIST [<v,...>] [<off:OFF>]"));
+    assert!(upstream_std.contains("__dbList( <.off.>, { <{v}> }, .t.,"));
+    assert!(upstream_pp_test.lines().any(|line| line == "LIST"));
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture("tests/fixtures/pp/list_base_root.prg"))
+            .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_get_command_caption_range_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",

@@ -4814,6 +4814,22 @@ mod tests {
     }
 
     #[test]
+    fn expands_list_base_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command LIST [<v,...>] [<off:OFF>] [<prn:TO PRINTER>] [TO FILE <(f)>] ;\n              [FOR <for>] [WHILE <while>] [NEXT <next>] ;\n              [RECORD <rec>] [<rest:REST>] [ALL] => ;\n         __dbList( <.off.>, { <{v}> }, .t., ;\n                   <{for}>, <{while}>, <next>, <rec>, <.rest.>, <.prn.>, <(f)> )\nLIST\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "__dbList( .F., {  }, .t., , , , , .F., .F.,  )\n"
+        );
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),
