@@ -14,7 +14,8 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | `0.1.0-alpha` | pipeline procedural mínimo ponta a ponta | concluída |
 | `0.2.0-alpha` | compatibilidade procedural ampliada e suporte inicial de pré-processador | concluída |
 | `0.3.0-alpha` | comportamento dinâmico xBase | concluída |
-| `0.4.0-alpha` | base de RDD, CLI/DX, regressão e tooling de release | em preparação de release |
+| `0.4.0-alpha` | base de RDD, CLI/DX, regressão e tooling de release | concluída |
+| `0.5.0-alpha` | expansão curada de compatibilidade da fase 15, com crescimento focado do corpus avançado de PP | em preparação de release |
 
 ## Panorama das Fases
 
@@ -35,11 +36,11 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | 12 | qualidade e prontidão para release | concluída |
 | 13 | marcadores avançados de pré-processador ancorados no oráculo | concluída |
 | 14 | expansão curada do corpus de compatibilidade | concluída |
-| 15 | expansão de compatibilidade pós-0.4 | em andamento |
+| 15 | expansão de compatibilidade pós-0.4 | primeiro slice de release concluído |
 
 ## Prioridades de Curto Prazo
 
-Depois do congelamento da release `0.4.0-alpha`, as próximas prioridades esperadas são:
+Depois do congelamento da release `0.5.0-alpha`, as próximas prioridades esperadas são:
 
 1. corpus de compatibilidade maior;
 2. fidelidade de runtime mais próxima do comportamento histórico;

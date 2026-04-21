@@ -8,9 +8,9 @@ Ter um checklist operacional mínimo para preparar uma release alpha do `harbour
 
 ## Release alvo atual
 
-- release: `0.4.0-alpha`
-- versão de manifests: `0.4.0-alpha.0`
-- notas da release: `docs/releases/0.4.0-alpha.md`
+- release: `0.5.0-alpha`
+- versão de manifests: `0.5.0-alpha.0`
+- notas da release: `docs/releases/0.5.0-alpha.md`
 
 ## Pré-flight local
 

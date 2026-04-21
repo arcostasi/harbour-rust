@@ -14,7 +14,8 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | `0.1.0-alpha` | minimal end-to-end procedural pipeline | completed |
 | `0.2.0-alpha` | expanded procedural compatibility and initial preprocessor support | completed |
 | `0.3.0-alpha` | dynamic xBase behavior | completed |
-| `0.4.0-alpha` | RDD foundation, CLI/DX, regression and release tooling | release preparation |
+| `0.4.0-alpha` | RDD foundation, CLI/DX, regression and release tooling | completed |
+| `0.5.0-alpha` | curated phase 15 compatibility expansion, focused advanced PP corpus growth | release preparation |
 
 ## Phase Snapshot
 
@@ -35,11 +36,11 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | 12 | quality and release readiness | completed |
 | 13 | oracle-backed advanced preprocessor markers | completed |
 | 14 | curated compatibility corpus expansion | completed |
-| 15 | post-0.4 compatibility expansion | in progress |
+| 15 | post-0.4 compatibility expansion | first release slice completed |
 
 ## Near-Term Priorities
 
-After the `0.4.0-alpha` release freeze, the next priorities are expected to be:
+After the `0.5.0-alpha` release freeze, the next priorities are expected to be:
 
 1. larger compatibility corpus;
 2. closer runtime fidelity to historical behavior;

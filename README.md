@@ -11,7 +11,7 @@ Rust compiler project for CA-Clipper/Harbour compatibility, with a practical exe
 
 [English](./README.md) | [Português do Brasil](./README.pt-BR.md)
 
-[Latest release](https://github.com/arcostasi/harbour-rust/releases/tag/0.4.0-alpha) | [All releases](https://github.com/arcostasi/harbour-rust/releases) | [Documentation](./docs/README.md) | [Contributing](./CONTRIBUTING.md)
+[Latest release](https://github.com/arcostasi/harbour-rust/releases/tag/0.5.0-alpha) | [All releases](https://github.com/arcostasi/harbour-rust/releases) | [Documentation](./docs/README.md) | [Contributing](./CONTRIBUTING.md)
 
 Harbour Rust is an independent, community-led, open source compiler project written in Rust and designed for compatibility with CA-Clipper and Harbour.
 
@@ -28,7 +28,7 @@ The project also has a personal origin: xBase was the maintainer's first serious
 
 ## Current Status
 
-The repository has completed phases 0 through 14 of its current roadmap and has opened phase 15 follow-on compatibility work, while the project remains on the `0.4.0-alpha` release line.
+The repository has completed phases 0 through 14 of its current roadmap and has packaged a first phase 15 compatibility expansion for the `0.5.0-alpha` release line.
 
 Current highlights:
 
@@ -39,14 +39,14 @@ Current highlights:
 
 ## Releases
 
-- Latest pre-release: [0.4.0-alpha](https://github.com/arcostasi/harbour-rust/releases/tag/0.4.0-alpha)
+- Latest pre-release: [0.5.0-alpha](https://github.com/arcostasi/harbour-rust/releases/tag/0.5.0-alpha)
 - All releases: [github.com/arcostasi/harbour-rust/releases](https://github.com/arcostasi/harbour-rust/releases)
 - Latest pre-release assets:
-  - [Linux x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-linux-x86_64.zip)
-  - [macOS aarch64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-macos-aarch64.zip)
-  - [Windows x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-windows-x86_64.zip)
-  - [SHA256SUMS.txt](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/SHA256SUMS.txt)
-  - [benchmark-report.md](https://github.com/arcostasi/harbour-rust/releases/download/0.4.0-alpha/benchmark-report.md)
+  - [Linux x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/harbour-rust-cli-0.5.0-alpha-linux-x86_64.zip)
+  - [macOS aarch64](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/harbour-rust-cli-0.5.0-alpha-macos-aarch64.zip)
+  - [Windows x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/harbour-rust-cli-0.5.0-alpha-windows-x86_64.zip)
+  - [SHA256SUMS.txt](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/SHA256SUMS.txt)
+  - [benchmark-report.md](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/benchmark-report.md)
 
 ## Documentation
 

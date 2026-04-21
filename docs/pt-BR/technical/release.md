@@ -9,8 +9,8 @@ Este documento descreve o baseline de preparação de release do Harbour Rust e 
 
 ## Alvo Atual
 
-- linha de release pública: `0.4.0-alpha`
-- linha de versão dos manifests: `0.4.0-alpha.0`
+- linha de release pública: `0.5.0-alpha`
+- linha de versão dos manifests: `0.5.0-alpha.0`
 
 ## Preflight Local
 
