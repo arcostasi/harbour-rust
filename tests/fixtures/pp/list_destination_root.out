@@ -1,0 +1,5 @@
+
+PROCEDURE Main()
+   __dbList( .F., {  }, .t., , , , , .F., .T.,  )
+   __dbList( .F., {  }, .t., , , , , .F., .F., "a" )
+RETURN

@@ -1911,24 +1911,14 @@ fn match_pattern_recursive(
         PatternPart::Optional(_) => unreachable!("optional groups are handled before dispatch"),
         PatternPart::Marker(marker) => match marker.kind {
             MarkerKind::Restricted(ref allowed) => {
-                let token = tokens.get(token_index)?;
-                if !allowed
-                    .iter()
-                    .any(|entry| token_matches_text(&token.text, entry))
-                {
-                    return None;
-                }
-                let capture = CaptureValue {
-                    raw: token.text.clone(),
-                    list: None,
-                };
+                let (end, capture) = match_restricted_marker(allowed, tokens, source, token_index)?;
                 let captures = merge_capture(captures, &marker.name, capture)?;
                 match_pattern_recursive(
                     pattern,
                     pattern_index + 1,
                     tokens,
                     source,
-                    token_index + 1,
+                    end,
                     required_end,
                     captures,
                 )
@@ -2032,6 +2022,47 @@ fn match_pattern_recursive(
             }
         },
     }
+}
+
+fn match_restricted_marker(
+    allowed: &[String],
+    tokens: &[SourceToken],
+    source: &str,
+    start: usize,
+) -> Option<(usize, CaptureValue)> {
+    let mut candidates = allowed
+        .iter()
+        .filter_map(|entry| {
+            let entry_tokens = tokenize_source_line(entry);
+            if entry_tokens.is_empty() {
+                None
+            } else {
+                Some((entry, entry_tokens))
+            }
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by_key(|(_, entry_tokens)| std::cmp::Reverse(entry_tokens.len()));
+
+    for (_, entry_tokens) in candidates {
+        let end = start + entry_tokens.len();
+        if end > tokens.len() {
+            continue;
+        }
+        if !entry_tokens.iter().enumerate().all(|(offset, expected)| {
+            token_matches_text(&tokens[start + offset].text, &expected.text)
+        }) {
+            continue;
+        }
+        return Some((
+            end,
+            CaptureValue {
+                raw: source[tokens[start].start..tokens[end - 1].end].to_owned(),
+                list: None,
+            },
+        ));
+    }
+
+    None
 }
 
 fn optional_group_end(pattern: &[PatternPart], start: usize) -> usize {
@@ -4826,6 +4857,22 @@ mod tests {
         assert_eq!(
             output.text,
             "__dbList( .F., {  }, .t., , , , , .F., .F.,  )\n"
+        );
+    }
+
+    #[test]
+    fn expands_list_destination_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command LIST [<v,...>] [<off:OFF>] [<prn:TO PRINTER>] [TO FILE <(f)>] ;\n              [FOR <for>] [WHILE <while>] [NEXT <next>] ;\n              [RECORD <rec>] [<rest:REST>] [ALL] => ;\n         __dbList( <.off.>, { <{v}> }, .t., ;\n                   <{for}>, <{while}>, <next>, <rec>, <.rest.>, <.prn.>, <(f)> )\nLIST TO PRINTER\nLIST TO FILE a\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "__dbList( .F., {  }, .t., , , , , .F., .T.,  )\n__dbList( .F., {  }, .t., , , , , .F., .F., \"a\" )\n"
         );
     }
 
