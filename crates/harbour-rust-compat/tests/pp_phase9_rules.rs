@@ -3407,6 +3407,61 @@ fn phase15_list_fields_destination_fixture_matches_curated_upstream_subset() {
 }
 
 #[test]
+fn phase15_list_fields_off_fixture_matches_curated_upstream_subset() {
+    let Some(upstream_pp_test) = read_upstream_or_skip(
+        "harbour-core/tests/hbpp/_pp_test.prg",
+        "upstream _pp_test corpus",
+    ) else {
+        return;
+    };
+    let Some(upstream_std) =
+        read_upstream_or_skip("harbour-core/include/std.ch", "upstream std.ch")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/pp/list_fields_off_root.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_std.contains("__dbList( <.off.>, { <{v}> }, .t.,"));
+    assert!(
+        upstream_pp_test
+            .lines()
+            .any(|line| line == "LIST a OFF TO PRINTER")
+    );
+    assert!(
+        upstream_pp_test
+            .lines()
+            .any(|line| line == "LIST a OFF TO FILE a")
+    );
+    assert!(
+        upstream_pp_test
+            .lines()
+            .any(|line| line == "LIST a,b OFF TO PRINTER")
+    );
+    assert!(
+        upstream_pp_test
+            .lines()
+            .any(|line| line == "LIST a,b,(seek(a+b),c) OFF TO FILE a")
+    );
+
+    let output = Preprocessor::default().preprocess(
+        SourceFile::from_path(workspace_fixture(
+            "tests/fixtures/pp/list_fields_off_root.prg",
+        ))
+        .expect("fixture"),
+    );
+
+    assert!(
+        output.errors.is_empty(),
+        "unexpected errors: {:?}",
+        output.errors
+    );
+    assert_eq!(output.text, expected);
+}
+
+#[test]
 fn phase15_get_command_caption_range_fixture_matches_curated_upstream_subset() {
     let Some(upstream_hbpptest) = read_upstream_or_skip(
         "harbour-core/tests/hbpp/hbpptest.prg",
