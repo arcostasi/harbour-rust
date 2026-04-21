@@ -4912,6 +4912,22 @@ mod tests {
     }
 
     #[test]
+    fn expands_list_fields_destination_subset() {
+        let source = SourceFile::new(
+            PathBuf::from("main.prg"),
+            "#command LIST [<v,...>] [<off:OFF>] [<prn:TO PRINTER>] [TO FILE <(f)>] ;\n              [FOR <for>] [WHILE <while>] [NEXT <next>] ;\n              [RECORD <rec>] [<rest:REST>] [ALL] => ;\n         __dbList( <.off.>, { <{v}> }, .t., ;\n                   <{for}>, <{while}>, <next>, <rec>, <.rest.>, <.prn.>, <(f)> )\nLIST a TO PRINTER\nLIST a TO FILE a\nLIST a,b TO PRINTER\nLIST a,b,(seek(a+b),c) TO FILE a\n",
+        );
+
+        let output = Preprocessor::new(MapIncludeResolver::default()).preprocess(source);
+
+        assert!(output.errors.is_empty());
+        assert_eq!(
+            output.text,
+            "__dbList( .F., { {|| a} }, .t., , , , , .F., .T.,  )\n__dbList( .F., { {|| a} }, .t., , , , , .F., .F., \"a\" )\n__dbList( .F., { {|| a},{|| b} }, .t., , , , , .F., .T.,  )\n__dbList( .F., { {|| a},{|| b},{|| (seek(a+b),c)} }, .t., , , , , .F., .F., \"a\" )\n"
+        );
+    }
+
+    #[test]
     fn expands_get_command_caption_range_subset() {
         let source = SourceFile::new(
             PathBuf::from("main.prg"),

@@ -1,0 +1,7 @@
+
+PROCEDURE Main()
+   __dbList( .F., { {|| a} }, .t., , , , , .F., .T.,  )
+   __dbList( .F., { {|| a} }, .t., , , , , .F., .F., "a" )
+   __dbList( .F., { {|| a},{|| b} }, .t., , , , , .F., .T.,  )
+   __dbList( .F., { {|| a},{|| b},{|| (seek(a+b),c)} }, .t., , , , , .F., .F., "a" )
+RETURN
