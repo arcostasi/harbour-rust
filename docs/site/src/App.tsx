@@ -17,15 +17,16 @@ type Language = 'en' | 'pt-BR';
 
 const GITHUB_URL = 'https://github.com/arcostasi/harbour-rust';
 const RELEASES_URL = `${GITHUB_URL}/releases`;
-const CURRENT_RELEASE_URL = `${RELEASES_URL}/tag/0.4.0-alpha`;
+const CURRENT_RELEASE = '0.5.0-alpha';
+const CURRENT_RELEASE_URL = `${RELEASES_URL}/tag/${CURRENT_RELEASE}`;
 const DISCUSSIONS_URL = `${GITHUB_URL}/discussions`;
 const ISSUES_URL = `${GITHUB_URL}/issues`;
 
 const ASSETS = {
-  linux: `${RELEASES_URL}/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-linux-x86_64.zip`,
-  macos: `${RELEASES_URL}/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-macos-aarch64.zip`,
-  windows: `${RELEASES_URL}/download/0.4.0-alpha/harbour-rust-cli-0.4.0-alpha-windows-x86_64.zip`,
-  sha256: `${RELEASES_URL}/download/0.4.0-alpha/SHA256SUMS.txt`,
+  linux: `${RELEASES_URL}/download/${CURRENT_RELEASE}/harbour-rust-cli-${CURRENT_RELEASE}-linux-x86_64.zip`,
+  macos: `${RELEASES_URL}/download/${CURRENT_RELEASE}/harbour-rust-cli-${CURRENT_RELEASE}-macos-aarch64.zip`,
+  windows: `${RELEASES_URL}/download/${CURRENT_RELEASE}/harbour-rust-cli-${CURRENT_RELEASE}-windows-x86_64.zip`,
+  sha256: `${RELEASES_URL}/download/${CURRENT_RELEASE}/SHA256SUMS.txt`,
 };
 
 const DOCS = {
@@ -64,12 +65,12 @@ const translations = {
     sections: {
       statusTitle: 'Current baseline',
       statusIntro:
-        'The project has completed phases 0 through 12 of the initial roadmap and is published as 0.4.0-alpha.',
+        'The project has completed phases 0 through 14 and ships the first phase 15 compatibility slice as 0.5.0-alpha.',
       statusItems: [
         'Lexer, parser, HIR, semantic analysis, runtime, IR, and C code generation are implemented.',
-        'Procedural compatibility, arrays, STATIC, memvars, codeblocks, and selected preprocessor features are available.',
+        'Procedural compatibility, arrays, STATIC, memvars, codeblocks, and selected advanced preprocessor features are available.',
         'DBF/RDD support is present as an initial usable foundation.',
-        'CLI, regression harnesses, benchmark smoke, fuzz scaffolding, and release automation are in place.',
+        'CLI, regression harnesses, benchmark smoke, fuzz scaffolding, release automation, and three-platform validation are in place.',
       ],
       releaseTitle: 'Release assets',
       releaseIntro:
@@ -104,7 +105,7 @@ const translations = {
       issues: 'Issues',
       discussions: 'Discussions',
       sourceBuild: 'Build command',
-      releaseBadge: '0.4.0-alpha',
+      releaseBadge: CURRENT_RELEASE,
       sourceCode: 'Source code',
       assets: {
         linux: 'Linux x86_64',
@@ -134,12 +135,12 @@ const translations = {
     sections: {
       statusTitle: 'Baseline atual',
       statusIntro:
-        'O projeto concluiu as fases 0 a 12 do roadmap inicial e está publicado como 0.4.0-alpha.',
+        'O projeto concluiu as fases 0 a 14 e publica o primeiro slice de compatibilidade da fase 15 como 0.5.0-alpha.',
       statusItems: [
         'Lexer, parser, HIR, análise semântica, runtime, IR e geração de código C estão implementados.',
-        'Compatibilidade procedural, arrays, STATIC, memvars, codeblocks e parte do pré-processador já estão disponíveis.',
+        'Compatibilidade procedural, arrays, STATIC, memvars, codeblocks e recursos avançados selecionados do pré-processador já estão disponíveis.',
         'O suporte a DBF/RDD já existe como base inicial utilizável.',
-        'CLI, harnesses de regressão, benchmark smoke, scaffold de fuzzing e automação de release já estão configurados.',
+        'CLI, harnesses de regressão, benchmark smoke, scaffold de fuzzing, automação de release e validação em três plataformas já estão configurados.',
       ],
       releaseTitle: 'Assets da release',
       releaseIntro:
@@ -174,7 +175,7 @@ const translations = {
       issues: 'Issues',
       discussions: 'Discussions',
       sourceBuild: 'Comando de build',
-      releaseBadge: '0.4.0-alpha',
+      releaseBadge: CURRENT_RELEASE,
       sourceCode: 'Código-fonte',
       assets: {
         linux: 'Linux x86_64',
