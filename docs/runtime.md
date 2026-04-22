@@ -6,6 +6,30 @@
 
 Fornecer semântica suficiente para executar o subconjunto inicial sem comprometer a evolução para recursos dinâmicos de xBase.
 
+## Fase 16: fidelidade de runtime pós-0.5
+
+A linha pós-`0.5.0-alpha` muda o primeiro corredor ativo de compatibilidade para fidelidade de runtime. O objetivo é ampliar a superfície de runtime/biblioteca com slices pequenos e mensuráveis, não declarar cobertura ampla da API Harbour.
+
+O primeiro alvo planejado é `hb_JsonDecode`:
+
+- mapear `null`, lógicos, números, strings, arrays e objetos JSON para o modelo atual de `Value`;
+- definir explicitamente como objetos JSON serão representados enquanto o runtime ainda não tiver hash/object completo;
+- cobrir casos felizes e erros com testes unitários do runtime;
+- adicionar fixture de integração/compatibilidade quando o caminho público do compilador puder exercitar o comportamento;
+- registrar divergências em `COMPATIBILITY.md` antes de ampliar a cobertura.
+
+Corredores posteriores prováveis:
+
+- `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes;
+- `hb_processRun`, depois de definir semântica multiplataforma de processo, exit status, ambiente e quoting.
+
+Corredores adiados:
+
+- sockets (`hb_socketOpen`, `hb_socketRecv`, `hb_socketSend`);
+- threading/mutexes (`hb_threadStart`, `hb_mutexCreate`, `hb_mutexLock`).
+
+Esses grupos exigem decisões explícitas de IO, ownership, estado compartilhado e concorrência antes de qualquer alegação de compatibilidade.
+
 Referências principais:
 
 - `harbour-core/src/vm`

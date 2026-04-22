@@ -89,3 +89,7 @@ The target approach is:
 - [RDD](./en/technical/rdd.md)
 - [Diagnostics](./en/technical/diagnostics.md)
 - [Test Strategy](./en/technical/test-strategy.md)
+
+## Active Phase Plans
+
+- [Phase 16 Runtime Fidelity Plan](./phase16-plan.md)

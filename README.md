@@ -28,7 +28,7 @@ The project also has a personal origin: xBase was the maintainer's first serious
 
 ## Current Status
 
-The repository has completed phases 0 through 14 of its current roadmap and has packaged a first phase 15 compatibility expansion for the `0.5.0-alpha` release line.
+The repository has completed phases 0 through 15 of its current roadmap through the `0.5.0-alpha` release line. The next development focus is phase 16 runtime fidelity, starting with small, oracle-backed Harbour runtime/library builtins rather than broad unmeasured API coverage.
 
 Current highlights:
 
@@ -36,6 +36,12 @@ Current highlights:
 - procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected advanced preprocessor markers are available;
 - DBF/RDD groundwork is present;
 - CLI, regression harnesses, benchmarks, fuzz scaffolding, release workflows, and cross-platform CI validation are in place.
+
+Near-term direction:
+
+- first runtime-fidelity corridor: focused `hb_JsonDecode` behavior with explicit value-mapping tests;
+- likely follow-up corridors: compression and process execution after string/binary and runtime value behavior are stable enough;
+- deferred corridors: sockets and threading, because they require cross-platform IO and concurrency design before compatibility claims are useful.
 
 ## Releases
 

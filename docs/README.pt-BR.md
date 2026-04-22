@@ -89,3 +89,7 @@ A abordagem-alvo é:
 - [RDD](./en/technical/rdd.md)
 - [Diagnostics](./en/technical/diagnostics.md)
 - [Test Strategy](./en/technical/test-strategy.md)
+
+## Planos de Fase Ativos
+
+- [Plano da Fase 16: Fidelidade de Runtime](./phase16-plan.md)

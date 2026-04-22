@@ -15,7 +15,8 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | `0.2.0-alpha` | compatibilidade procedural ampliada e suporte inicial de pré-processador | concluída |
 | `0.3.0-alpha` | comportamento dinâmico xBase | concluída |
 | `0.4.0-alpha` | base de RDD, CLI/DX, regressão e tooling de release | concluída |
-| `0.5.0-alpha` | expansão curada de compatibilidade da fase 15, com crescimento focado do corpus avançado de PP | em preparação de release |
+| `0.5.0-alpha` | expansão curada de compatibilidade da fase 15, com crescimento focado do corpus avançado de PP | concluída |
+| `0.6.0-alpha` | fidelidade de runtime da fase 16, começando por builtins focados de runtime/biblioteca Harbour | planejada |
 
 ## Panorama das Fases
 
@@ -37,16 +38,25 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | 13 | marcadores avançados de pré-processador ancorados no oráculo | concluída |
 | 14 | expansão curada do corpus de compatibilidade | concluída |
 | 15 | expansão de compatibilidade pós-0.4 | primeiro slice de release concluído |
+| 16 | fidelidade de runtime pós-0.5 | planejada |
 
 ## Prioridades de Curto Prazo
 
-Depois do congelamento da release `0.5.0-alpha`, as próximas prioridades esperadas são:
+Depois da release `0.5.0-alpha`, a próxima prioridade é a fidelidade de runtime da fase 16.
+
+O primeiro corredor planejado é:
+
+1. implementar o menor slice de `hb_JsonDecode` ancorado em oráculo que consiga mapear escalares, arrays e objetos JSON para o modelo atual de valores do runtime;
+2. documentar explicitamente os edge cases JSON/valor ainda não suportados, sem sugerir cobertura completa da API Harbour;
+3. aplicar o mesmo padrão a slices posteriores de `hb_gzCompress` e `hb_processRun` apenas depois de estabilizar o comportamento de valores e strings/binários;
+4. adiar sockets e threading até o runtime ter decisões explícitas de IO, ownership e concorrência multiplataforma.
+
+Prioridades secundárias permanecem:
 
 1. corpus de compatibilidade maior;
-2. fidelidade de runtime mais próxima do comportamento histórico;
-3. cobertura mais ampla de DBF/RDD;
-4. profiling de performance e memória;
-5. endurecimento arquitetural seletivo sem perder legibilidade.
+2. cobertura mais ampla de DBF/RDD;
+3. profiling de performance e memória;
+4. endurecimento arquitetural seletivo sem perder legibilidade.
 
 ## Regras de Planejamento
 

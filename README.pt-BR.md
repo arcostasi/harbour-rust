@@ -28,7 +28,7 @@ O projeto também tem uma origem pessoal: xBase foi o primeiro ambiente de progr
 
 ## Estado Atual
 
-O repositório concluiu as fases 0 a 14 do roadmap atual e empacotou uma primeira expansão de compatibilidade da fase 15 para a linha de release `0.5.0-alpha`.
+O repositório concluiu as fases 0 a 15 do roadmap atual com a linha de release `0.5.0-alpha`. O próximo foco de desenvolvimento é a fidelidade de runtime da fase 16, começando por builtins pequenos de runtime/biblioteca Harbour ancorados em oráculo, em vez de cobertura ampla e não medida de APIs.
 
 Destaques atuais:
 
@@ -36,6 +36,12 @@ Destaques atuais:
 - compatibilidade procedural, arrays, `STATIC`, memvars, codeblocks e marcadores avançados selecionados do pré-processador disponíveis;
 - base inicial de DBF/RDD presente;
 - CLI, harnesses de regressão, benchmarks, scaffold de fuzzing, workflows de release e validação de CI multiplataforma configurados.
+
+Direção de curto prazo:
+
+- primeiro corredor de fidelidade de runtime: comportamento focado de `hb_JsonDecode` com testes explícitos de mapeamento de valores;
+- corredores prováveis em seguida: compressão e execução de processos depois que comportamento de strings/binários e valores do runtime estiver suficientemente estável;
+- corredores adiados: sockets e threading, porque exigem design multiplataforma de IO e concorrência antes que qualquer alegação de compatibilidade seja útil.
 
 ## Releases
 

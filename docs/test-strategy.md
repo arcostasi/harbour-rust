@@ -98,6 +98,20 @@ cargo check --manifest-path fuzz/Cargo.toml
 - promover bugs corrigidos para regressão permanente,
 - não despejar o corpus completo antes de termos harness confiável.
 
+## Política da Fase 16: runtime fidelity
+
+Na fase 16, cada novo builtin ou família de API de runtime deve começar por um fixture mínimo e por testes unitários antes de expandir o comportamento.
+
+Para o primeiro corredor `hb_JsonDecode`, a validação mínima esperada é:
+
+- testes unitários para escalares JSON, arrays e objetos;
+- teste de erro para JSON inválido ou comportamento ainda não suportado;
+- fixture executável quando o frontend/codegen já conseguir exercer o builtin pelo caminho público;
+- comparação com Harbour quando houver runner disponível e o caso puder ser observado de forma estável;
+- atualização de `COMPATIBILITY.md` para qualquer limite conhecido.
+
+APIs de processo, compressão, socket e threading devem seguir o mesmo padrão de slices pequenos. Sockets e threading precisam de testes CI-safe antes de qualquer expansão maior.
+
 ## Seeds recomendados para o início
 
 - `tests/hello.prg`

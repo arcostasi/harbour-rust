@@ -15,7 +15,8 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | `0.2.0-alpha` | expanded procedural compatibility and initial preprocessor support | completed |
 | `0.3.0-alpha` | dynamic xBase behavior | completed |
 | `0.4.0-alpha` | RDD foundation, CLI/DX, regression and release tooling | completed |
-| `0.5.0-alpha` | curated phase 15 compatibility expansion, focused advanced PP corpus growth | release preparation |
+| `0.5.0-alpha` | curated phase 15 compatibility expansion, focused advanced PP corpus growth | completed |
+| `0.6.0-alpha` | phase 16 runtime fidelity, starting with focused Harbour runtime/library builtins | planned |
 
 ## Phase Snapshot
 
@@ -37,16 +38,25 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | 13 | oracle-backed advanced preprocessor markers | completed |
 | 14 | curated compatibility corpus expansion | completed |
 | 15 | post-0.4 compatibility expansion | first release slice completed |
+| 16 | post-0.5 runtime fidelity | planned |
 
 ## Near-Term Priorities
 
-After the `0.5.0-alpha` release freeze, the next priorities are expected to be:
+After the `0.5.0-alpha` release, the next priority is phase 16 runtime fidelity.
+
+The first planned corridor is:
+
+1. implement the smallest oracle-backed `hb_JsonDecode` slice that can map JSON scalars, arrays, and objects into the current runtime value model;
+2. document unsupported JSON/value edge cases explicitly instead of implying full Harbour API coverage;
+3. use the same pattern for later `hb_gzCompress` and `hb_processRun` slices only after the value and string/binary behavior is stable enough;
+4. defer sockets and threading until the runtime has explicit cross-platform IO, ownership, and concurrency decisions.
+
+Secondary priorities remain:
 
 1. larger compatibility corpus;
-2. closer runtime fidelity to historical behavior;
-3. broader DBF/RDD coverage;
-4. performance and memory profiling;
-5. selective architectural hardening without losing readability.
+2. broader DBF/RDD coverage;
+3. performance and memory profiling;
+4. selective architectural hardening without losing readability.
 
 ## Planning Rules
 
