@@ -1,19 +1,21 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   Anchor,
   BookOpen,
   Download,
   ExternalLink,
-  Github,
   Globe,
   Languages,
   ShieldCheck,
   TerminalSquare,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import socialPreview from '../../assets/harbour-rust-social-preview.png';
 
 type Language = 'en' | 'pt-BR';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const GITHUB_URL = 'https://github.com/arcostasi/harbour-rust';
 const RELEASES_URL = `${GITHUB_URL}/releases`;
@@ -201,7 +203,7 @@ function LinkTile({
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="group block border-t border-white/12 py-5 transition-colors hover:border-[color:var(--accent)]"
+      className="link-tile js-reveal group block border-t border-white/12 py-5 transition-colors hover:border-[color:var(--accent)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -215,13 +217,106 @@ function LinkTile({
 }
 
 export default function App() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [language, setLanguage] = useState<Language>('en');
-  const reduceMotion = useReducedMotion();
   const t = translations[language];
   const docs = DOCS[language];
 
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+
+    if (!root) {
+      return undefined;
+    }
+
+    const cleanup: Array<() => void> = [];
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const context = gsap.context(() => {
+      if (reduceMotion) {
+        gsap.set('.js-reveal, .strip__item, .hero__media, .hero__content > div', {
+          clearProps: 'all',
+        });
+        return;
+      }
+
+      const heroTimeline = gsap.timeline({
+        defaults: { ease: 'power3.out' },
+      });
+
+      heroTimeline
+        .from('.topbar', { y: -18, opacity: 0, duration: 0.55 })
+        .from('.hero__media', { y: 30, opacity: 0, scale: 0.975, duration: 0.95 }, '-=0.2')
+        .from(
+          '.hero__content .eyebrow, .hero__content h1, .hero__summary, .hero__actions .button',
+          { y: 18, opacity: 0, duration: 0.62, stagger: 0.075 },
+          '-=0.62',
+        )
+        .from('.strip__item', { y: 18, opacity: 0, duration: 0.5, stagger: 0.09 }, '-=0.25');
+
+      gsap.to('.hero__media img', {
+        yPercent: -4,
+        scale: 1.025,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '.hero',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true,
+        },
+      });
+
+      gsap.to('.hero__beam', {
+        xPercent: 9,
+        opacity: 0.74,
+        duration: 3.6,
+        ease: 'sine.inOut',
+        repeat: -1,
+        yoyo: true,
+      });
+
+      gsap.to('.hero__ring', {
+        rotate: 360,
+        duration: 28,
+        ease: 'none',
+        repeat: -1,
+      });
+
+      gsap.utils.toArray<HTMLElement>('.js-reveal').forEach((element) => {
+        gsap.from(element, {
+          y: 26,
+          opacity: 0,
+          duration: 0.72,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: element,
+            start: 'top 84%',
+            once: true,
+          },
+        });
+      });
+
+      gsap.utils.toArray<HTMLElement>('.button, .link-tile, .community-links a').forEach((element) => {
+        const handleEnter = () => gsap.to(element, { y: -3, duration: 0.22, ease: 'power2.out' });
+        const handleLeave = () => gsap.to(element, { y: 0, duration: 0.3, ease: 'power2.out' });
+
+        element.addEventListener('mouseenter', handleEnter);
+        element.addEventListener('mouseleave', handleLeave);
+        cleanup.push(() => {
+          element.removeEventListener('mouseenter', handleEnter);
+          element.removeEventListener('mouseleave', handleLeave);
+        });
+      });
+    }, root);
+
+    return () => {
+      cleanup.forEach((removeListener) => removeListener());
+      context.revert();
+    };
+  }, []);
+
   return (
-    <div className="site-shell">
+    <div ref={rootRef} className="site-shell">
       <header className="topbar">
         <div className="topbar__inner">
           <a className="brand" href={GITHUB_URL} target="_blank" rel="noreferrer">
@@ -254,21 +349,15 @@ export default function App() {
       <main>
         <section className="hero">
           <div className="hero__media">
-            <motion.img
-              src={socialPreview}
-              alt="Harbour Rust social preview"
-              initial={reduceMotion ? false : { opacity: 0, scale: 1.02, y: 18 }}
-              animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-            />
+            <div className="hero__frame">
+              <span className="hero__beam" aria-hidden="true" />
+              <span className="hero__ring" aria-hidden="true" />
+              <img src={socialPreview} alt="Harbour Rust social preview" />
+            </div>
           </div>
 
           <div className="hero__content">
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-              animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
-            >
+            <div>
               <p className="eyebrow">{t.labels.releaseBadge}</p>
               <h1>{t.hero.statement}</h1>
               <p className="hero__summary">{t.hero.summary}</p>
@@ -279,7 +368,7 @@ export default function App() {
                   {t.hero.ctaPrimary}
                 </a>
                 <a className="button button--ghost" href={GITHUB_URL} target="_blank" rel="noreferrer">
-                  <Github className="h-4 w-4" />
+                  <TerminalSquare className="h-4 w-4" />
                   {t.hero.ctaSecondary}
                 </a>
                 <a className="button button--ghost" href={docs.readme} target="_blank" rel="noreferrer">
@@ -287,29 +376,22 @@ export default function App() {
                   {t.hero.ctaDocs}
                 </a>
               </div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
         <section className="strip">
           <div className="strip__inner">
-            {t.strips.map((item, index) => (
-              <motion.div
-                key={item.title}
-                className="strip__item"
-                initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-                whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ duration: 0.45, delay: reduceMotion ? 0 : index * 0.08 }}
-              >
+            {t.strips.map((item) => (
+              <div key={item.title} className="strip__item">
                 <h2>{item.title}</h2>
                 <p>{item.detail}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </section>
 
-        <section className="content-section">
+        <section className="content-section js-reveal">
           <div className="content-grid">
             <div className="content-copy">
               <p className="eyebrow">Status</p>
@@ -324,7 +406,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="content-section content-section--alt">
+        <section className="content-section content-section--alt js-reveal">
           <div className="content-grid">
             <div className="content-copy">
               <p className="eyebrow">Release</p>
@@ -340,7 +422,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="content-section">
+        <section className="content-section js-reveal">
           <div className="content-grid">
             <div className="content-copy">
               <p className="eyebrow">Start</p>
@@ -368,7 +450,7 @@ cargo build --release -p harbour-rust-cli`}</code>
           </div>
         </section>
 
-        <section className="content-section content-section--alt">
+        <section className="content-section content-section--alt js-reveal">
           <div className="content-grid">
             <div className="content-copy">
               <p className="eyebrow">Docs</p>
@@ -384,7 +466,7 @@ cargo build --release -p harbour-rust-cli`}</code>
           </div>
         </section>
 
-        <section className="content-section">
+        <section className="content-section js-reveal">
           <div className="content-grid">
             <div className="content-copy">
               <p className="eyebrow">Community</p>
