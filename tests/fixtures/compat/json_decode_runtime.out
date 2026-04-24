@@ -1,0 +1,11 @@
+hb_JsonDecode("null") => NIL
+hb_JsonDecode("true") => .T.
+ValType(decoded) => A
+Len(decoded) => 2
+decoded[1][1] => ok
+decoded[1][2] => .T.
+decoded[2][1] => items
+decoded[2][2][1] => 1
+ValType(decoded[2][2][2]) => U
+decoded[2][2][3] => x
+ValType(hb_JsonDecode("{")) => U

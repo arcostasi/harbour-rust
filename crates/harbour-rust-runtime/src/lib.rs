@@ -9,6 +9,8 @@ use std::{
     },
 };
 
+use serde_json::Value as JsonValue;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
     Nil,
@@ -724,6 +726,7 @@ pub enum Builtin {
     Str,
     Val,
     ValType,
+    HbJsonDecode,
     Type,
     Empty,
     SubStr,
@@ -783,6 +786,8 @@ impl Builtin {
             Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
+        } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
+            Some(Self::HbJsonDecode)
         } else if name.eq_ignore_ascii_case("TYPE") {
             Some(Self::Type)
         } else if name.eq_ignore_ascii_case("EMPTY") {
@@ -1121,6 +1126,60 @@ pub fn valtype(value: Option<&Value>) -> Result<Value, RuntimeError> {
     };
 
     Ok(Value::from(type_code))
+}
+
+pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Ok(Value::Nil);
+    };
+    let Value::String(text) = value else {
+        return Ok(Value::Nil);
+    };
+    if text.contains("\\u") {
+        return Ok(Value::Nil);
+    }
+
+    let parsed = serde_json::from_str::<JsonValue>(text)
+        .ok()
+        .and_then(json_to_runtime_value)
+        .unwrap_or(Value::Nil);
+    Ok(parsed)
+}
+
+fn json_to_runtime_value(value: JsonValue) -> Option<Value> {
+    match value {
+        JsonValue::Null => Some(Value::Nil),
+        JsonValue::Bool(value) => Some(Value::from(value)),
+        JsonValue::Number(number) => json_number_to_runtime_value(number),
+        JsonValue::String(value) => Some(Value::from(value)),
+        JsonValue::Array(values) => values
+            .into_iter()
+            .map(json_to_runtime_value)
+            .collect::<Option<Vec<_>>>()
+            .map(Value::array),
+        JsonValue::Object(entries) => entries
+            .into_iter()
+            .map(|(key, value)| {
+                json_to_runtime_value(value)
+                    .map(|value| Value::array(vec![Value::from(key), value]))
+            })
+            .collect::<Option<Vec<_>>>()
+            .map(Value::array),
+    }
+}
+
+fn json_number_to_runtime_value(number: serde_json::Number) -> Option<Value> {
+    if let Some(value) = number.as_i64() {
+        return Some(Value::from(value));
+    }
+    if let Some(value) = number.as_u64() {
+        if let Ok(integer) = i64::try_from(value) {
+            return Some(Value::from(integer));
+        }
+        return Some(Value::from(value as f64));
+    }
+
+    number.as_f64().map(Value::from)
 }
 
 pub fn type_value(source: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1528,6 +1587,7 @@ pub fn call_builtin(
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
+        Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
@@ -1584,6 +1644,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Str) => str_value(arguments.first(), arguments.get(1), arguments.get(2)),
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
+        Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
@@ -2664,9 +2725,9 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, cos_value, exp_value, int, len, log_value, max_value,
-        min_value, mod_value, qout, replicate, round_value, sin_value, space, sqrt_value,
-        str_value, tan_value, type_value, val,
+        call_builtin, call_builtin_mut, cos_value, exp_value, hb_jsondecode, int, len, log_value,
+        max_value, min_value, mod_value, qout, replicate, round_value, sin_value, space,
+        sqrt_value, str_value, tan_value, type_value, val,
     };
 
     #[test]
@@ -3985,6 +4046,64 @@ mod tests {
             Ok(Value::from(1_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from("1HELLO."));
+    }
+
+    #[test]
+    fn hb_jsondecode_maps_scalars_arrays_and_objects_into_the_current_value_model() {
+        assert_eq!(hb_jsondecode(Some(&Value::from("null"))), Ok(Value::Nil));
+        assert_eq!(
+            hb_jsondecode(Some(&Value::from("true"))),
+            Ok(Value::from(true))
+        );
+        assert_eq!(
+            hb_jsondecode(Some(&Value::from("[1,null,\"x\"]"))),
+            Ok(Value::array(vec![
+                Value::from(1_i64),
+                Value::Nil,
+                Value::from("x"),
+            ]))
+        );
+        assert_eq!(
+            hb_jsondecode(Some(&Value::from("{\"ok\":true,\"items\":[1,null,\"x\"]}"))),
+            Ok(Value::array(vec![
+                Value::array(vec![Value::from("ok"), Value::from(true)]),
+                Value::array(vec![
+                    Value::from("items"),
+                    Value::array(vec![Value::from(1_i64), Value::Nil, Value::from("x")]),
+                ]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn hb_jsondecode_returns_nil_for_invalid_or_unsupported_input_in_the_current_slice() {
+        assert_eq!(hb_jsondecode(None), Ok(Value::Nil));
+        assert_eq!(hb_jsondecode(Some(&Value::from(10_i64))), Ok(Value::Nil));
+        assert_eq!(hb_jsondecode(Some(&Value::from("{"))), Ok(Value::Nil));
+        assert_eq!(
+            hb_jsondecode(Some(&Value::from("\"\\u00E1\""))),
+            Ok(Value::Nil)
+        );
+    }
+
+    #[test]
+    fn hb_jsondecode_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("hb_jsondecode", &[Value::from("[1,false]")], &mut context),
+            Ok(Value::array(vec![Value::from(1_i64), Value::from(false)]))
+        );
+
+        let mut mutable_arguments = [Value::from("{\"name\":\"Harbour\"}")];
+        assert_eq!(
+            call_builtin_mut("HB_JSONDECODE", &mut mutable_arguments, &mut context),
+            Ok(Value::array(vec![Value::array(vec![
+                Value::from("name"),
+                Value::from("Harbour"),
+            ])]))
+        );
+        assert_eq!(mutable_arguments[0], Value::from("{\"name\":\"Harbour\"}"));
     }
 
     #[test]

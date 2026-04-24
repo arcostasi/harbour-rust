@@ -1,8 +1,9 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
-    at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, int, left, log_value, lower,
-    ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value,
-    space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper, val, valtype,
+    at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_jsondecode, int, left,
+    log_value, lower, ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value,
+    rtrim, sin_value, space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper,
+    val, valtype,
 };
 
 #[test]
@@ -1538,6 +1539,64 @@ fn public_val_dispatches_through_the_immutable_builtin_surface() {
         Ok(Value::from(1_i64))
     );
     assert_eq!(mutable_arguments[0], Value::from("1HELLO."));
+}
+
+#[test]
+fn public_hb_jsondecode_maps_scalars_arrays_and_objects_into_the_current_value_model() {
+    assert_eq!(hb_jsondecode(Some(&Value::from("null"))), Ok(Value::Nil));
+    assert_eq!(
+        hb_jsondecode(Some(&Value::from("true"))),
+        Ok(Value::from(true))
+    );
+    assert_eq!(
+        hb_jsondecode(Some(&Value::from("[1,null,\"x\"]"))),
+        Ok(Value::array(vec![
+            Value::from(1_i64),
+            Value::Nil,
+            Value::from("x"),
+        ]))
+    );
+    assert_eq!(
+        hb_jsondecode(Some(&Value::from("{\"ok\":true,\"items\":[1,null,\"x\"]}"))),
+        Ok(Value::array(vec![
+            Value::array(vec![Value::from("ok"), Value::from(true)]),
+            Value::array(vec![
+                Value::from("items"),
+                Value::array(vec![Value::from(1_i64), Value::Nil, Value::from("x")]),
+            ]),
+        ]))
+    );
+}
+
+#[test]
+fn public_hb_jsondecode_returns_nil_for_invalid_or_unsupported_input_in_the_current_slice() {
+    assert_eq!(hb_jsondecode(None), Ok(Value::Nil));
+    assert_eq!(hb_jsondecode(Some(&Value::from(10_i64))), Ok(Value::Nil));
+    assert_eq!(hb_jsondecode(Some(&Value::from("{"))), Ok(Value::Nil));
+    assert_eq!(
+        hb_jsondecode(Some(&Value::from("\"\\u00E1\""))),
+        Ok(Value::Nil)
+    );
+}
+
+#[test]
+fn public_hb_jsondecode_dispatches_through_builtin_surfaces() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("hb_jsondecode", &[Value::from("[1,false]")], &mut context),
+        Ok(Value::array(vec![Value::from(1_i64), Value::from(false)]))
+    );
+
+    let mut mutable_arguments = [Value::from("{\"name\":\"Harbour\"}")];
+    assert_eq!(
+        call_builtin_mut("HB_JSONDECODE", &mut mutable_arguments, &mut context),
+        Ok(Value::array(vec![Value::array(vec![
+            Value::from("name"),
+            Value::from("Harbour"),
+        ])]))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("{\"name\":\"Harbour\"}"));
 }
 
 #[test]

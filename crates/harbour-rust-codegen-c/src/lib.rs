@@ -90,6 +90,7 @@ enum RuntimeBuiltin {
     Str,
     Val,
     ValType,
+    HbJsonDecode,
     Type,
     Empty,
     SubStr,
@@ -149,6 +150,8 @@ impl RuntimeBuiltin {
             Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
+        } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
+            Some(Self::HbJsonDecode)
         } else if name.eq_ignore_ascii_case("TYPE") {
             Some(Self::Type)
         } else if name.eq_ignore_ascii_case("EMPTY") {
@@ -212,6 +215,7 @@ impl RuntimeBuiltin {
             Self::Str => "harbour_builtin_str",
             Self::Val => "harbour_builtin_val",
             Self::ValType => "harbour_builtin_valtype",
+            Self::HbJsonDecode => "harbour_builtin_hb_jsondecode",
             Self::Type => "harbour_builtin_type",
             Self::Empty => "harbour_builtin_empty",
             Self::SubStr => "harbour_builtin_substr",
@@ -254,6 +258,7 @@ impl RuntimeBuiltin {
             Self::Str => "Str",
             Self::Val => "Val",
             Self::ValType => "ValType",
+            Self::HbJsonDecode => "hb_JsonDecode",
             Self::Type => "Type",
             Self::Empty => "Empty",
             Self::SubStr => "SubStr",
@@ -500,6 +505,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_hb_jsondecode(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_type(const harbour_runtime_Value *arguments, size_t argument_count);",

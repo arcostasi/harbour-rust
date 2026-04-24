@@ -153,6 +153,8 @@ APIs de processo, compressão, socket e threading devem seguir o mesmo padrão d
 - `tests/fixtures/parser/val_builtin.prg` -> `harbour-rust-cli build/run` com `Val()` string->número
 - `tests/fixtures/parser/valtype_builtin.prg` -> `harbour-rust-cli build/run` com `ValType()`
 - `tests/fixtures/parser/type_builtin.prg` -> `harbour-rust-cli build/run` com `Type()` no recorte textual atual
+- `tests/fixtures/parser/json_decode_builtin.prg` -> `harbour-rust-cli build/run` com `hb_JsonDecode()` no recorte inicial de escalares/arrays/objetos
+- `tests/fixtures/parser/json_decode_builtin_invalid.prg` -> `harbour-rust-cli build/run` com baseline leniente `NIL` para JSON inválido e argumentos fora do recorte atual
 - `tests/fixtures/parser/max_min_builtin.prg` -> `harbour-rust-cli build/run` com `Max()` e `Min()`
 - `tests/fixtures/parser/empty_builtin.prg` -> `harbour-rust-cli build/run` com `Empty()`
 - `tests/fixtures/parser/indexing.prg` -> `indexing.ast`
@@ -198,6 +200,7 @@ APIs de processo, compressão, socket e threading devem seguir o mesmo padrão d
 - `tests/fixtures/compat/val_runtime.prg` -> baseline focado de `Val()` contra `harbour-core/utils/hbtest/rt_str.prg` e `rt_math.prg`
 - `tests/fixtures/compat/valtype_runtime.prg` -> baseline focado de `ValType()` contra `harbour-core/utils/hbtest/rt_hvm.prg`
 - `tests/fixtures/compat/type_runtime.prg` -> baseline focado de `Type()` contra `harbour-core/utils/hbtest/rt_hvm.prg`
+- `tests/fixtures/compat/json_decode_runtime.prg` -> baseline focado de `hb_JsonDecode()` ancorado em `harbour-core/src/rtl/hbjson.c` e `include/harbour.hbx`, com mapeamento atual de objetos para arrays ordenados de pares
 - `tests/fixtures/compat/max_min_runtime.prg` -> baseline focado de `Max()` e `Min()` contra `harbour-core/utils/hbtest/rt_math.prg`
 - `tests/fixtures/compat/empty_runtime.prg` -> baseline focado de `Empty()` contra `harbour-core/utils/hbtest/rt_hvma.prg`
 - `tests/fixtures/parser/indexing.prg` -> lowering HIR explícito para `Index(target, indices)`

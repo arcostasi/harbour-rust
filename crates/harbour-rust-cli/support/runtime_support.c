@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@
 typedef struct harbour_runtime_Value harbour_runtime_Value;
 typedef struct harbour_memvar_Entry harbour_memvar_Entry;
 typedef struct harbour_private_Frame harbour_private_Frame;
+typedef struct harbour_json_Parser harbour_json_Parser;
 
 #define HARBOUR_XBASE_MAX_STRING_LEN ((size_t) 65535)
 
@@ -21,6 +23,11 @@ struct harbour_memvar_Entry {
 struct harbour_private_Frame {
     harbour_memvar_Entry *entries;
     harbour_private_Frame *previous;
+};
+
+struct harbour_json_Parser {
+    const char *cursor;
+    const char *end;
 };
 
 static harbour_runtime_Value harbour_value_clone(harbour_runtime_Value value);
@@ -36,6 +43,33 @@ static harbour_runtime_Value harbour_substr_from_bounds(
 static harbour_runtime_Value harbour_value_from_owned_string_buffer(
     char *buffer,
     size_t length
+);
+static void harbour_json_skip_ws(harbour_json_Parser *parser);
+static harbour_runtime_Value harbour_json_parse_value(
+    harbour_json_Parser *parser,
+    _Bool *ok
+);
+static harbour_runtime_Value harbour_json_parse_string(
+    harbour_json_Parser *parser,
+    _Bool *ok
+);
+static harbour_runtime_Value harbour_json_parse_number(
+    harbour_json_Parser *parser,
+    _Bool *ok
+);
+static harbour_runtime_Value harbour_json_parse_array(
+    harbour_json_Parser *parser,
+    _Bool *ok
+);
+static harbour_runtime_Value harbour_json_parse_object(
+    harbour_json_Parser *parser,
+    _Bool *ok
+);
+static _Bool harbour_json_push_value(
+    harbour_runtime_Value **items,
+    size_t *length,
+    size_t *capacity,
+    harbour_runtime_Value value
 );
 static const char *harbour_value_string_data(harbour_runtime_Value value);
 static size_t harbour_value_string_length(harbour_runtime_Value value);
@@ -279,6 +313,488 @@ static harbour_runtime_Value harbour_value_from_owned_string_buffer(
     value.as.string.data = buffer == NULL ? "" : buffer;
     value.as.string.length = buffer == NULL ? 0 : length;
     return value;
+}
+
+static void harbour_json_skip_ws(harbour_json_Parser *parser) {
+    if (parser == NULL) {
+        return;
+    }
+
+    while (
+        parser->cursor < parser->end &&
+        isspace((unsigned char) *parser->cursor)
+    ) {
+        ++parser->cursor;
+    }
+}
+
+static _Bool harbour_json_push_value(
+    harbour_runtime_Value **items,
+    size_t *length,
+    size_t *capacity,
+    harbour_runtime_Value value
+) {
+    harbour_runtime_Value *grown;
+    size_t next_capacity;
+
+    if (items == NULL || length == NULL || capacity == NULL) {
+        return 0;
+    }
+
+    if (*length == *capacity) {
+        next_capacity = *capacity == 0 ? 4 : *capacity * 2;
+        grown = (harbour_runtime_Value *) realloc(
+            *items,
+            next_capacity * sizeof(harbour_runtime_Value)
+        );
+        if (grown == NULL) {
+            return 0;
+        }
+        *items = grown;
+        *capacity = next_capacity;
+    }
+
+    (*items)[*length] = value;
+    ++(*length);
+    return 1;
+}
+
+static harbour_runtime_Value harbour_json_parse_string(
+    harbour_json_Parser *parser,
+    _Bool *ok
+) {
+    char *buffer = NULL;
+    size_t length = 0;
+    size_t capacity = 0;
+
+    if (ok != NULL) {
+        *ok = 0;
+    }
+    if (parser == NULL || parser->cursor >= parser->end || *parser->cursor != '"') {
+        return harbour_value_nil();
+    }
+
+    ++parser->cursor;
+    while (parser->cursor < parser->end) {
+        unsigned char ch = (unsigned char) *parser->cursor++;
+
+        if (ch == '"') {
+            if (buffer == NULL) {
+                if (ok != NULL) {
+                    *ok = 1;
+                }
+                return harbour_value_from_string_literal("");
+            }
+
+            buffer[length] = '\0';
+            if (ok != NULL) {
+                *ok = 1;
+            }
+            return harbour_value_from_owned_string_buffer(buffer, length);
+        }
+
+        if (ch == '\\') {
+            if (parser->cursor >= parser->end) {
+                return harbour_value_nil();
+            }
+
+            ch = (unsigned char) *parser->cursor++;
+            switch (ch) {
+                case '"':
+                case '\\':
+                case '/':
+                    break;
+                case 'b':
+                    ch = '\b';
+                    break;
+                case 'f':
+                    ch = '\f';
+                    break;
+                case 'n':
+                    ch = '\n';
+                    break;
+                case 'r':
+                    ch = '\r';
+                    break;
+                case 't':
+                    ch = '\t';
+                    break;
+                default:
+                    return harbour_value_nil();
+            }
+        } else if (ch < 0x20) {
+            return harbour_value_nil();
+        }
+
+        if (length + 1 >= capacity) {
+            size_t next_capacity = capacity == 0 ? 16 : capacity * 2;
+            char *grown = (char *) realloc(buffer, next_capacity);
+            if (grown == NULL) {
+                free(buffer);
+                return harbour_value_nil();
+            }
+            buffer = grown;
+            capacity = next_capacity;
+        }
+
+        buffer[length++] = (char) ch;
+    }
+
+    free(buffer);
+    return harbour_value_nil();
+}
+
+static harbour_runtime_Value harbour_json_parse_number(
+    harbour_json_Parser *parser,
+    _Bool *ok
+) {
+    const char *start;
+    const char *cursor;
+    size_t length;
+    _Bool is_integer = 1;
+    char *buffer;
+    harbour_runtime_Value result;
+    long long integer = 0;
+    _Bool negative = 0;
+    size_t index = 0;
+    _Bool integer_overflow = 0;
+
+    if (ok != NULL) {
+        *ok = 0;
+    }
+    if (parser == NULL || parser->cursor >= parser->end) {
+        return harbour_value_nil();
+    }
+
+    start = parser->cursor;
+    cursor = parser->cursor;
+    if (*cursor == '-') {
+        negative = 1;
+        ++cursor;
+    }
+
+    if (cursor >= parser->end) {
+        return harbour_value_nil();
+    }
+
+    if (*cursor == '0') {
+        ++cursor;
+    } else if (isdigit((unsigned char) *cursor)) {
+        while (cursor < parser->end && isdigit((unsigned char) *cursor)) {
+            ++cursor;
+        }
+    } else {
+        return harbour_value_nil();
+    }
+
+    if (cursor < parser->end && *cursor == '.') {
+        is_integer = 0;
+        ++cursor;
+        if (cursor >= parser->end || !isdigit((unsigned char) *cursor)) {
+            return harbour_value_nil();
+        }
+        while (cursor < parser->end && isdigit((unsigned char) *cursor)) {
+            ++cursor;
+        }
+    }
+
+    if (cursor < parser->end && (*cursor == 'e' || *cursor == 'E')) {
+        is_integer = 0;
+        ++cursor;
+        if (cursor < parser->end && (*cursor == '+' || *cursor == '-')) {
+            ++cursor;
+        }
+        if (cursor >= parser->end || !isdigit((unsigned char) *cursor)) {
+            return harbour_value_nil();
+        }
+        while (cursor < parser->end && isdigit((unsigned char) *cursor)) {
+            ++cursor;
+        }
+    }
+
+    length = (size_t) (cursor - start);
+    buffer = (char *) malloc(length + 1);
+    if (buffer == NULL) {
+        return harbour_value_nil();
+    }
+    memcpy(buffer, start, length);
+    buffer[length] = '\0';
+    parser->cursor = cursor;
+
+    if (is_integer) {
+        if (buffer[index] == '-') {
+            ++index;
+        }
+
+        for (; index < length; ++index) {
+            int digit = buffer[index] - '0';
+            if (
+                integer > (LLONG_MAX - digit) / 10
+            ) {
+                integer_overflow = 1;
+                break;
+            }
+            integer = integer * 10 + digit;
+        }
+
+        if (!integer_overflow) {
+            if (negative) {
+                integer = -integer;
+            }
+            free(buffer);
+            if (ok != NULL) {
+                *ok = 1;
+            }
+            return harbour_value_from_integer(integer);
+        }
+    }
+
+    result = harbour_value_from_float(strtod(buffer, NULL));
+    free(buffer);
+    if (ok != NULL) {
+        *ok = 1;
+    }
+    return result;
+}
+
+static harbour_runtime_Value harbour_json_parse_array(
+    harbour_json_Parser *parser,
+    _Bool *ok
+) {
+    harbour_runtime_Value *items = NULL;
+    size_t length = 0;
+    size_t capacity = 0;
+
+    if (ok != NULL) {
+        *ok = 0;
+    }
+    if (parser == NULL || parser->cursor >= parser->end || *parser->cursor != '[') {
+        return harbour_value_nil();
+    }
+
+    ++parser->cursor;
+    harbour_json_skip_ws(parser);
+    if (parser->cursor < parser->end && *parser->cursor == ']') {
+        ++parser->cursor;
+        if (ok != NULL) {
+            *ok = 1;
+        }
+        return harbour_value_from_array_items(NULL, 0);
+    }
+
+    while (parser->cursor < parser->end) {
+        harbour_runtime_Value item;
+        _Bool item_ok = 0;
+
+        item = harbour_json_parse_value(parser, &item_ok);
+        if (!item_ok || !harbour_json_push_value(&items, &length, &capacity, item)) {
+            free(items);
+            return harbour_value_nil();
+        }
+
+        harbour_json_skip_ws(parser);
+        if (parser->cursor >= parser->end) {
+            free(items);
+            return harbour_value_nil();
+        }
+        if (*parser->cursor == ']') {
+            harbour_runtime_Value result =
+                harbour_value_from_array_items(items, length);
+            free(items);
+            ++parser->cursor;
+            if (ok != NULL) {
+                *ok = 1;
+            }
+            return result;
+        }
+        if (*parser->cursor != ',') {
+            free(items);
+            return harbour_value_nil();
+        }
+
+        ++parser->cursor;
+        harbour_json_skip_ws(parser);
+    }
+
+    free(items);
+    return harbour_value_nil();
+}
+
+static harbour_runtime_Value harbour_json_parse_object(
+    harbour_json_Parser *parser,
+    _Bool *ok
+) {
+    harbour_runtime_Value *pairs = NULL;
+    size_t length = 0;
+    size_t capacity = 0;
+
+    if (ok != NULL) {
+        *ok = 0;
+    }
+    if (parser == NULL || parser->cursor >= parser->end || *parser->cursor != '{') {
+        return harbour_value_nil();
+    }
+
+    ++parser->cursor;
+    harbour_json_skip_ws(parser);
+    if (parser->cursor < parser->end && *parser->cursor == '}') {
+        ++parser->cursor;
+        if (ok != NULL) {
+            *ok = 1;
+        }
+        return harbour_value_from_array_items(NULL, 0);
+    }
+
+    while (parser->cursor < parser->end) {
+        harbour_runtime_Value key;
+        harbour_runtime_Value value;
+        _Bool key_ok = 0;
+        _Bool value_ok = 0;
+        size_t index;
+        _Bool replaced = 0;
+
+        key = harbour_json_parse_string(parser, &key_ok);
+        if (!key_ok) {
+            free(pairs);
+            return harbour_value_nil();
+        }
+
+        harbour_json_skip_ws(parser);
+        if (parser->cursor >= parser->end || *parser->cursor != ':') {
+            free(pairs);
+            return harbour_value_nil();
+        }
+
+        ++parser->cursor;
+        harbour_json_skip_ws(parser);
+        value = harbour_json_parse_value(parser, &value_ok);
+        if (!value_ok) {
+            free(pairs);
+            return harbour_value_nil();
+        }
+
+        for (index = 0; index < length; ++index) {
+            if (
+                pairs[index].kind == HARBOUR_VALUE_ARRAY &&
+                pairs[index].as.array.length == 2 &&
+                pairs[index].as.array.items[0].kind == HARBOUR_VALUE_STRING &&
+                pairs[index].as.array.items[0].as.string.length == key.as.string.length &&
+                memcmp(
+                    pairs[index].as.array.items[0].as.string.data,
+                    key.as.string.data,
+                    key.as.string.length
+                ) == 0
+            ) {
+                pairs[index].as.array.items[1] = value;
+                replaced = 1;
+                break;
+            }
+        }
+
+        if (!replaced) {
+            harbour_runtime_Value pair = harbour_value_from_array_items(
+                (harbour_runtime_Value[]) { key, value },
+                2
+            );
+            if (!harbour_json_push_value(&pairs, &length, &capacity, pair)) {
+                free(pairs);
+                return harbour_value_nil();
+            }
+        }
+
+        harbour_json_skip_ws(parser);
+        if (parser->cursor >= parser->end) {
+            free(pairs);
+            return harbour_value_nil();
+        }
+        if (*parser->cursor == '}') {
+            harbour_runtime_Value result =
+                harbour_value_from_array_items(pairs, length);
+            free(pairs);
+            ++parser->cursor;
+            if (ok != NULL) {
+                *ok = 1;
+            }
+            return result;
+        }
+        if (*parser->cursor != ',') {
+            free(pairs);
+            return harbour_value_nil();
+        }
+
+        ++parser->cursor;
+        harbour_json_skip_ws(parser);
+    }
+
+    free(pairs);
+    return harbour_value_nil();
+}
+
+static harbour_runtime_Value harbour_json_parse_value(
+    harbour_json_Parser *parser,
+    _Bool *ok
+) {
+    if (ok != NULL) {
+        *ok = 0;
+    }
+    if (parser == NULL || parser->cursor >= parser->end) {
+        return harbour_value_nil();
+    }
+
+    harbour_json_skip_ws(parser);
+    if (parser->cursor >= parser->end) {
+        return harbour_value_nil();
+    }
+
+    switch (*parser->cursor) {
+        case 'n':
+            if (
+                (size_t) (parser->end - parser->cursor) >= 4 &&
+                strncmp(parser->cursor, "null", 4) == 0
+            ) {
+                parser->cursor += 4;
+                if (ok != NULL) {
+                    *ok = 1;
+                }
+                return harbour_value_nil();
+            }
+            return harbour_value_nil();
+        case 't':
+            if (
+                (size_t) (parser->end - parser->cursor) >= 4 &&
+                strncmp(parser->cursor, "true", 4) == 0
+            ) {
+                parser->cursor += 4;
+                if (ok != NULL) {
+                    *ok = 1;
+                }
+                return harbour_value_from_logical(1);
+            }
+            return harbour_value_nil();
+        case 'f':
+            if (
+                (size_t) (parser->end - parser->cursor) >= 5 &&
+                strncmp(parser->cursor, "false", 5) == 0
+            ) {
+                parser->cursor += 5;
+                if (ok != NULL) {
+                    *ok = 1;
+                }
+                return harbour_value_from_logical(0);
+            }
+            return harbour_value_nil();
+        case '"':
+            return harbour_json_parse_string(parser, ok);
+        case '[':
+            return harbour_json_parse_array(parser, ok);
+        case '{':
+            return harbour_json_parse_object(parser, ok);
+        default:
+            if (*parser->cursor == '-' || isdigit((unsigned char) *parser->cursor)) {
+                return harbour_json_parse_number(parser, ok);
+            }
+            return harbour_value_nil();
+    }
 }
 
 static const char *harbour_value_string_data(harbour_runtime_Value value) {
@@ -1418,6 +1934,34 @@ struct harbour_runtime_Value harbour_builtin_val(
     }
 
     return harbour_val_parse_string(arguments[0].as.string.data);
+}
+
+struct harbour_runtime_Value harbour_builtin_hb_jsondecode(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    harbour_json_Parser parser;
+    harbour_runtime_Value decoded;
+    _Bool ok = 0;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_nil();
+    }
+
+    parser.cursor = arguments[0].as.string.data;
+    parser.end = arguments[0].as.string.data + arguments[0].as.string.length;
+    harbour_json_skip_ws(&parser);
+    decoded = harbour_json_parse_value(&parser, &ok);
+    harbour_json_skip_ws(&parser);
+    if (!ok || parser.cursor != parser.end) {
+        return harbour_value_nil();
+    }
+
+    return decoded;
 }
 
 struct harbour_runtime_Value harbour_builtin_substr(

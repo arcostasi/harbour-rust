@@ -18,6 +18,14 @@ O primeiro alvo planejado é `hb_JsonDecode`:
 - adicionar fixture de integração/compatibilidade quando o caminho público do compilador puder exercitar o comportamento;
 - registrar divergências em `COMPATIBILITY.md` antes de ampliar a cobertura.
 
+Slice atual já entregue:
+
+- `hb_JsonDecode( cJson )` na forma de um argumento;
+- `null -> NIL`, booleanos -> `Logical`, números -> `Integer`/`Float`, strings -> `String`, arrays -> `Array`;
+- objetos JSON mapeados como arrays ordenados de pares `[chave, valor]`, para manter ordem observável sem introduzir `Hash` no runtime ainda;
+- entradas inválidas, tipos não-string e recursos ainda fora do recorte atual retornam `NIL` no baseline atual;
+- a forma `hb_JsonDecode( cJson, @xValue )`, o argumento de codepage e escapes `\uXXXX` continuam explicitamente fora do recorte.
+
 Corredores posteriores prováveis:
 
 - `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes;
