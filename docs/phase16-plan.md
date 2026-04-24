@@ -18,11 +18,23 @@ Acceptance for the first slice:
 - document unsupported behavior, especially encoding, duplicate object keys, numeric precision edge cases, error reporting, and any Harbour-specific flags that are not implemented;
 - keep the implementation independent and original while using `harbour-core` behavior as the compatibility oracle where practical.
 
+## Delivered Follow-Up Slice
+
+The first adjacent follow-up slice now delivered is `hb_gzCompressBound`.
+
+Acceptance for this slice:
+
+- accept either source text or a numeric source length;
+- return the maximum compressed-size estimate as an integer using the observable upstream gzip-bound path;
+- report argument errors for unsupported types instead of implying broad compression support;
+- exercise the runtime surface, the public compiler/codegen path, and a focused compatibility baseline;
+- keep full `hb_gzCompress` output semantics explicitly out of scope for this step.
+
 ## Expected Follow-Up Corridors
 
 After `hb_JsonDecode`, the next candidates are:
 
-- `hb_gzCompress`, once string/binary behavior and byte-preservation expectations are clear enough;
+- `hb_gzCompress`, once string/binary behavior and byte-preservation expectations are clear enough on top of the `hb_gzCompressBound` groundwork;
 - `hb_processRun`, once process execution semantics, exit status handling, environment behavior, quoting, and platform differences are specified.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.

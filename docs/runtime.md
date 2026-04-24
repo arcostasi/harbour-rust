@@ -26,9 +26,16 @@ Slice atual já entregue:
 - entradas inválidas, tipos não-string e recursos ainda fora do recorte atual retornam `NIL` no baseline atual;
 - a forma `hb_JsonDecode( cJson, @xValue )`, o argumento de codepage e escapes `\uXXXX` continuam explicitamente fora do recorte.
 
+Primeiro slice adjacente já entregue na mesma família de runtime/library fidelity:
+
+- `hb_gzCompressBound( cData | nDataLen )` para string ou comprimento numérico direto;
+- retorno inteiro com a estimativa máxima de tamanho comprimido alinhada à fórmula observável do upstream (`compressBound + 12` do caminho gzip);
+- tipos inválidos continuam seguindo erro de argumentos no baseline atual;
+- `hb_gzCompress()` propriamente dito, buffers por referência e demais APIs zlib continuam fora do recorte atual.
+
 Corredores posteriores prováveis:
 
-- `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes;
+- `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes sobre o degrau já entregue de `hb_gzCompressBound`;
 - `hb_processRun`, depois de definir semântica multiplataforma de processo, exit status, ambiente e quoting.
 
 Corredores adiados:

@@ -90,6 +90,7 @@ enum RuntimeBuiltin {
     Str,
     Val,
     ValType,
+    HbGzCompressBound,
     HbJsonDecode,
     Type,
     Empty,
@@ -150,6 +151,8 @@ impl RuntimeBuiltin {
             Some(Self::Val)
         } else if name.eq_ignore_ascii_case("VALTYPE") {
             Some(Self::ValType)
+        } else if name.eq_ignore_ascii_case("HB_GZCOMPRESSBOUND") {
+            Some(Self::HbGzCompressBound)
         } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
             Some(Self::HbJsonDecode)
         } else if name.eq_ignore_ascii_case("TYPE") {
@@ -215,6 +218,7 @@ impl RuntimeBuiltin {
             Self::Str => "harbour_builtin_str",
             Self::Val => "harbour_builtin_val",
             Self::ValType => "harbour_builtin_valtype",
+            Self::HbGzCompressBound => "harbour_builtin_hb_gzcompressbound",
             Self::HbJsonDecode => "harbour_builtin_hb_jsondecode",
             Self::Type => "harbour_builtin_type",
             Self::Empty => "harbour_builtin_empty",
@@ -258,6 +262,7 @@ impl RuntimeBuiltin {
             Self::Str => "Str",
             Self::Val => "Val",
             Self::ValType => "ValType",
+            Self::HbGzCompressBound => "hb_gzCompressBound",
             Self::HbJsonDecode => "hb_JsonDecode",
             Self::Type => "Type",
             Self::Empty => "Empty",
@@ -505,6 +510,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_valtype(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_hb_gzcompressbound(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_hb_jsondecode(const harbour_runtime_Value *arguments, size_t argument_count);",

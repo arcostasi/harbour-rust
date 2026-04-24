@@ -1,0 +1,4 @@
+hb_gzCompressBound("abc") => 28
+hb_gzCompressBound(10) => 35
+hb_gzCompressBound(0) => 25
+hb_gzCompressBound(.T.) => BASE 3012 Argument error (HB_GZCOMPRESSBOUND)

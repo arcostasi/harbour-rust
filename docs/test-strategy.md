@@ -110,6 +110,15 @@ Para o primeiro corredor `hb_JsonDecode`, a validação mínima esperada é:
 - comparação com Harbour quando houver runner disponível e o caso puder ser observado de forma estável;
 - atualização de `COMPATIBILITY.md` para qualquer limite conhecido.
 
+Os primeiros fixtures já adicionados nessa linha incluem:
+
+- `tests/fixtures/parser/json_decode_builtin.prg`
+- `tests/fixtures/parser/json_decode_builtin_invalid.prg`
+- `tests/fixtures/compat/json_decode_runtime.prg`
+- `tests/fixtures/parser/gz_compress_bound_builtin.prg`
+- `tests/fixtures/parser/gz_compress_bound_builtin_invalid.prg`
+- `tests/fixtures/compat/gz_compress_bound_runtime.prg`
+
 APIs de processo, compressão, socket e threading devem seguir o mesmo padrão de slices pequenos. Sockets e threading precisam de testes CI-safe antes de qualquer expansão maior.
 
 ## Seeds recomendados para o início
