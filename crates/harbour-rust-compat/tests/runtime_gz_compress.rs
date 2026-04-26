@@ -4,7 +4,9 @@ mod support;
 use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
-use harbour_rust_runtime::{RuntimeError, Value, hb_gzcompress, len, valtype};
+use harbour_rust_runtime::{
+    RuntimeError, Value, hb_gzcompress, hb_gzcompress_with_nresult, len, valtype,
+};
 
 fn runtime_gz_compress_baseline() -> String {
     let compressed = hb_gzcompress(Some(&Value::from("abc"))).expect("gzip");
@@ -32,6 +34,44 @@ fn runtime_gz_compress_baseline() -> String {
         "hb_gzCompress(10) => {}\n",
         result_text(hb_gzcompress(Some(&Value::from(10_i64))))
     ));
+    out
+}
+
+fn runtime_gz_compress_nresult_baseline() -> String {
+    let mut out = String::new();
+
+    let mut arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
+    let compressed = hb_gzcompress_with_nresult(&mut arguments).expect("gzip with result");
+    out.push_str(&format!(
+        "ValType(hb_gzCompress(\"abc\", NIL, @nResult)) => {}\n",
+        result_text(valtype(Some(&compressed)))
+    ));
+    out.push_str(&format!(
+        "Len(hb_gzCompress(\"abc\", NIL, @nResult)) => {}\n",
+        result_text(len(Some(&compressed)))
+    ));
+    out.push_str(&format!(
+        "nResult after hb_gzCompress(\"abc\", NIL, @nResult) => {}\n",
+        arguments[2].to_output_string()
+    ));
+
+    let mut empty_arguments = [Value::from(""), Value::Nil, Value::from(-1_i64)];
+    let empty = hb_gzcompress_with_nresult(&mut empty_arguments).expect("empty gzip with result");
+    out.push_str(&format!(
+        "Len(hb_gzCompress(\"\", NIL, @nResult)) => {}\n",
+        result_text(len(Some(&empty)))
+    ));
+    out.push_str(&format!(
+        "nResult after hb_gzCompress(\"\", NIL, @nResult) => {}\n",
+        empty_arguments[2].to_output_string()
+    ));
+
+    let mut invalid_arguments = [Value::from("abc"), Value::from(10_i64), Value::from(-1_i64)];
+    out.push_str(&format!(
+        "hb_gzCompress(\"abc\", 10, @nResult) => {}\n",
+        result_text(hb_gzcompress_with_nresult(&mut invalid_arguments))
+    ));
+
     out
 }
 
@@ -68,6 +108,21 @@ fn gz_compress_fixture_parses_without_errors() {
 }
 
 #[test]
+fn gz_compress_nresult_fixture_parses_without_errors() {
+    let source = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/compat/gz_compress_nresult_runtime.prg",
+    ))
+    .expect("fixture source");
+    let parsed = parse(&source);
+
+    assert!(
+        parsed.errors.is_empty(),
+        "expected parse success, got {:?}",
+        parsed.errors
+    );
+}
+
+#[test]
 fn gz_compress_runtime_matches_the_documented_phase16_oracle_slice() {
     let Some(upstream_rtl) = read_upstream_or_skip("harbour-core/src/rtl/hbzlib.c", "upstream rtl")
     else {
@@ -88,4 +143,21 @@ fn gz_compress_runtime_matches_the_documented_phase16_oracle_slice() {
     assert!(upstream_hbx.contains("DYNAMIC hb_gzCompress"));
 
     assert_eq!(runtime_gz_compress_baseline(), expected);
+}
+
+#[test]
+fn gz_compress_nresult_runtime_matches_the_documented_phase16_oracle_slice() {
+    let Some(upstream_rtl) = read_upstream_or_skip("harbour-core/src/rtl/hbzlib.c", "upstream rtl")
+    else {
+        return;
+    };
+    let expected = fs::read_to_string(workspace_fixture(
+        "tests/fixtures/compat/gz_compress_nresult_runtime.out",
+    ))
+    .expect("fixture snapshot");
+
+    assert!(upstream_rtl.contains("hb_storni( iResult, 3 );"));
+    assert!(upstream_rtl.contains("hb_gzCompress( <cData>, [<nDstBufLen>|<@cBuffer>]"));
+
+    assert_eq!(runtime_gz_compress_nresult_baseline(), expected);
 }

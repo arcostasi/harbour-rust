@@ -42,6 +42,14 @@ Slice seguinte já entregue no mesmo corredor:
 - tipos inválidos continuam seguindo erro de argumentos no baseline atual;
 - `hb_gzCompress( cData, nDstBufLen | @cBuffer, @nResult, nLevel )`, escolha explícita de nível e paridade byte-a-byte com o output zlib do upstream continuam fora do recorte atual.
 
+Degrau adjacente agora entregue sobre a mesma família:
+
+- `hb_gzCompress( cData, NIL, @nResult )` com writeback observável do código de resultado no terceiro slot;
+- `@nResult` recebe `0` no caminho atual de sucesso, incluindo string vazia;
+- o caminho público do compilador agora aceita `@ident` em argumentos de chamada somente no recorte necessário para esse builtin;
+- o segundo slot ainda não cobre `nDstBufLen` nem `@cBuffer`; fora do `NIL` curado atual, o comportamento segue erro de argumentos no baseline do slice;
+- nível explícito de compressão, buffer por referência e semântica genérica de chamadas por referência continuam fora do recorte.
+
 Corredores posteriores prováveis:
 
 - expansão da superfície de `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes sobre os degraus já entregues de `hb_gzCompressBound` e `hb_gzCompress( cData )`;

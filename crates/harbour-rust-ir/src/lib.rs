@@ -266,6 +266,7 @@ pub enum Expression {
     Array(ArrayLiteral),
     Codeblock(CodeblockLiteral),
     Macro(MacroExpression),
+    ByRef(ByRefExpression),
     Call(CallExpression),
     Index(IndexExpression),
     Assign(AssignExpression),
@@ -287,6 +288,7 @@ impl Expression {
             Self::Array(expression) => expression.span,
             Self::Codeblock(expression) => expression.span,
             Self::Macro(expression) => expression.span,
+            Self::ByRef(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
             Self::Assign(expression) => expression.span,
@@ -370,6 +372,12 @@ pub struct CodeblockLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MacroExpression {
     pub value: Box<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ByRefExpression {
+    pub target: Box<Expression>,
     pub span: Span,
 }
 
@@ -833,6 +841,16 @@ fn lower_expression(
             )),
             span: expression.span,
         }),
+        hir::Expression::ByRef(expression) => Expression::ByRef(ByRefExpression {
+            target: Box::new(lower_expression(
+                &expression.target,
+                module_static_names,
+                local_scopes,
+                dynamic_memvar_mode,
+                errors,
+            )),
+            span: expression.span,
+        }),
         hir::Expression::Call(expression) => Expression::Call(CallExpression {
             callee: Box::new(lower_call_callee(
                 &expression.callee,
@@ -1067,6 +1085,7 @@ fn statement_uses_dynamic_features(statement: &hir::Statement) -> bool {
 fn expression_uses_dynamic_features(expression: &hir::Expression) -> bool {
     match expression {
         hir::Expression::Codeblock(_) | hir::Expression::Macro(_) => true,
+        hir::Expression::ByRef(expression) => expression_uses_dynamic_features(&expression.target),
         hir::Expression::Array(expression) => expression
             .elements
             .iter()

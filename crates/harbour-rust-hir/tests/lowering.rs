@@ -335,3 +335,27 @@ fn lowers_macro_read_fixture_to_explicit_macro_expressions() {
         harbour_rust_hir::Expression::Macro(_)
     ));
 }
+
+#[test]
+fn lowers_gz_compress_nresult_fixture_to_explicit_byref_expression() {
+    let lowered = lower_fixture("tests/fixtures/parser/gz_compress_builtin_nresult.prg");
+    assert!(
+        lowered.errors.is_empty(),
+        "unexpected lowering errors: {:?}",
+        lowered.errors
+    );
+
+    let harbour_rust_hir::Statement::Local(statement) = &lowered.program.routines[0].body[1] else {
+        panic!("expected second local statement");
+    };
+    let Some(harbour_rust_hir::Expression::Call(call)) = &statement.bindings[0].initializer else {
+        panic!("expected call initializer");
+    };
+    let harbour_rust_hir::Expression::ByRef(byref) = &call.arguments[2] else {
+        panic!("expected byref third argument");
+    };
+    assert!(matches!(
+        byref.target.as_ref(),
+        harbour_rust_hir::Expression::Read(read) if read.symbol().text == "nResult"
+    ));
+}

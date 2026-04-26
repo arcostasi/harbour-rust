@@ -1285,6 +1285,28 @@ pub fn hb_gzcompress(value: Option<&Value>) -> Result<Value, RuntimeError> {
     Ok(Value::String(gzip_encode_stored(bytes.as_bytes())))
 }
 
+pub fn hb_gzcompress_with_nresult(arguments: &mut [Value]) -> Result<Value, RuntimeError> {
+    if arguments.is_empty() {
+        return Err(RuntimeError::hb_gzcompress_argument_error(None));
+    }
+    if arguments.len() > 1 && !matches!(arguments[1], Value::Nil) {
+        return Err(RuntimeError::hb_gzcompress_argument_error(Some(
+            arguments[1].kind(),
+        )));
+    }
+    if arguments.len() > 3 {
+        return Err(RuntimeError::hb_gzcompress_argument_error(Some(
+            arguments[3].kind(),
+        )));
+    }
+
+    let compressed = hb_gzcompress(arguments.first())?;
+    if let Some(result) = arguments.get_mut(2) {
+        *result = Value::from(0_i64);
+    }
+    Ok(compressed)
+}
+
 pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
     let Some(value) = value else {
         return Ok(Value::Nil);
@@ -1873,7 +1895,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
-        Some(Builtin::HbGzCompress) => hb_gzcompress(arguments.first()),
+        Some(Builtin::HbGzCompress) => hb_gzcompress_with_nresult(arguments),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -2997,9 +3019,10 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress, hb_gzcompressbound,
-        hb_jsondecode, int, len, log_value, max_value, min_value, mod_value, qout, replicate,
-        round_value, sin_value, space, sqrt_value, str_value, tan_value, type_value, val,
+        call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
+        hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, int, len, log_value,
+        max_value, min_value, mod_value, qout, replicate, round_value, sin_value, space,
+        sqrt_value, str_value, tan_value, type_value, val,
     };
 
     #[test]
@@ -4391,6 +4414,26 @@ mod tests {
     }
 
     #[test]
+    fn hb_gzcompress_with_nresult_sets_result_code_for_the_current_slice() {
+        let mut arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
+        let compressed =
+            hb_gzcompress_with_nresult(&mut arguments).expect("gzip with result status");
+
+        let Value::String(compressed) = compressed else {
+            panic!("expected string result");
+        };
+        assert_eq!(compressed.as_bytes().len(), 26);
+        assert_eq!(arguments[2], Value::from(0_i64));
+
+        let mut empty_arguments = [Value::from(""), Value::Nil, Value::from(-1_i64)];
+        assert_eq!(
+            hb_gzcompress_with_nresult(&mut empty_arguments),
+            Ok(Value::from(""))
+        );
+        assert_eq!(empty_arguments[2], Value::from(0_i64));
+    }
+
+    #[test]
     fn hb_gzcompress_reports_argument_errors_for_missing_or_invalid_input() {
         assert_eq!(
             hb_gzcompress(None),
@@ -4408,6 +4451,16 @@ mod tests {
                 actual: Some(ValueKind::Logical),
             })
         );
+
+        let mut arguments = [Value::from("abc"), Value::from(10_i64), Value::from(-1_i64)];
+        assert_eq!(
+            hb_gzcompress_with_nresult(&mut arguments),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
     }
 
     #[test]
@@ -4421,7 +4474,7 @@ mod tests {
         };
         assert_eq!(compressed.as_bytes().len(), 26);
 
-        let mut mutable_arguments = [Value::from("abc")];
+        let mut mutable_arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
         let compressed = call_builtin_mut("HB_GZCOMPRESS", &mut mutable_arguments, &mut context)
             .expect("mutable gzip dispatch");
         let Value::String(compressed) = compressed else {
@@ -4429,6 +4482,7 @@ mod tests {
         };
         assert_eq!(compressed.as_bytes().len(), 26);
         assert_eq!(mutable_arguments[0], Value::from("abc"));
+        assert_eq!(mutable_arguments[2], Value::from(0_i64));
     }
 
     #[test]

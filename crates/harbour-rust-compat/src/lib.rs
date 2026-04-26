@@ -351,6 +351,14 @@ fn render_expression(out: &mut String, expression: &Expression, level: usize) {
         }
         Expression::Codeblock(expression) => render_codeblock_expression(out, expression, level),
         Expression::Macro(expression) => render_macro_expression(out, expression, level),
+        Expression::ByRef(expression) => {
+            push_line(
+                out,
+                level,
+                &format!("ByRef [{}]", format_span(expression.span)),
+            );
+            render_expression(out, &expression.target, level + 1);
+        }
         Expression::Call(expression) => render_call_expression(out, expression, level),
         Expression::Index(expression) => render_index_expression(out, expression, level),
         Expression::Assignment(expression) => {

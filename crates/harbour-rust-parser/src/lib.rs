@@ -1,11 +1,11 @@
 use harbour_rust_ast::{
-    ArrayLiteral, AssignmentExpression, BinaryExpression, BinaryOperator, CallExpression,
-    CodeblockLiteral, ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement,
-    FloatLiteral, ForStatement, Identifier, IfStatement, IndexExpression, IntegerLiteral, Item,
-    LocalBinding, LocalStatement, LogicalLiteral, MacroExpression, MemvarBinding, MemvarClass,
-    MemvarStatement, NilLiteral, PostfixExpression, PostfixOperator, PrintStatement, Program,
-    ReturnStatement, Routine, RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass,
-    StringLiteral, UnaryExpression, UnaryOperator,
+    ArrayLiteral, AssignmentExpression, BinaryExpression, BinaryOperator, ByRefExpression,
+    CallExpression, CodeblockLiteral, ConditionalBranch, DoWhileStatement, Expression,
+    ExpressionStatement, FloatLiteral, ForStatement, Identifier, IfStatement, IndexExpression,
+    IntegerLiteral, Item, LocalBinding, LocalStatement, LogicalLiteral, MacroExpression,
+    MemvarBinding, MemvarClass, MemvarStatement, NilLiteral, PostfixExpression, PostfixOperator,
+    PrintStatement, Program, ReturnStatement, Routine, RoutineKind, Statement, StaticBinding,
+    StaticStatement, StorageClass, StringLiteral, UnaryExpression, UnaryOperator,
 };
 use harbour_rust_lexer::{Keyword, LexErrorKind, Span, Token, TokenKind, lex};
 use std::fmt;
@@ -662,6 +662,10 @@ impl<'src> Parser<'src> {
             return self.parse_macro_expression();
         }
 
+        if self.match_token(TokenKind::At) {
+            return self.parse_byref_expression();
+        }
+
         self.parse_postfix()
     }
 
@@ -911,6 +915,26 @@ impl<'src> Parser<'src> {
         Some(Expression::Macro(MacroExpression {
             value: Box::new(value),
             span,
+        }))
+    }
+
+    fn parse_byref_expression(&mut self) -> Option<Expression> {
+        let start = self.previous().span.start;
+        let target = self.parse_primary()?;
+        let span = Span {
+            start,
+            end: target.span().end,
+        };
+        if !matches!(target, Expression::Identifier(_)) {
+            self.errors.push(ParseError {
+                message: "expected identifier after `@`".to_owned(),
+                span: target.span(),
+            });
+        }
+
+        Some(Expression::ByRef(ByRefExpression {
+            span,
+            target: Box::new(target),
         }))
     }
 
@@ -1531,6 +1555,50 @@ FUNCTION Lookup(cName, cExpr)
         };
         assert!(matches!(binary.left.as_ref(), Expression::Macro(_)));
         assert!(matches!(binary.right.as_ref(), Expression::Macro(_)));
+    }
+
+    #[test]
+    fn parses_byref_identifier_arguments() {
+        let source = r#"
+FUNCTION Compress()
+   RETURN hb_gzCompress( "abc", NIL, @nResult )
+"#;
+        let parsed = parse(source);
+        assert!(parsed.errors.is_empty(), "{:?}", parsed.errors);
+
+        let Item::Routine(routine) = &parsed.program.items[0] else {
+            panic!("expected routine item");
+        };
+        let Statement::Return(statement) = &routine.body[0] else {
+            panic!("expected return statement");
+        };
+        let Some(Expression::Call(call)) = &statement.value else {
+            panic!("expected call expression");
+        };
+        assert_eq!(call.arguments.len(), 3);
+        assert!(matches!(call.arguments[0], Expression::String(_)));
+        assert!(matches!(call.arguments[1], Expression::Nil(_)));
+        let Expression::ByRef(byref) = &call.arguments[2] else {
+            panic!("expected byref argument");
+        };
+        assert!(
+            matches!(byref.target.as_ref(), Expression::Identifier(identifier) if identifier.text == "nResult")
+        );
+    }
+
+    #[test]
+    fn reports_non_identifier_after_byref_marker() {
+        let source = r#"
+FUNCTION Compress()
+   RETURN hb_gzCompress( "abc", NIL, @1 )
+"#;
+        let parsed = parse(source);
+
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(
+            parsed.errors[0].to_string(),
+            "expected identifier after `@` at line 3, column 39"
+        );
     }
 
     #[test]

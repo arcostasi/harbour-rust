@@ -1,9 +1,9 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
     at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
-    hb_gzcompressbound, hb_jsondecode, int, left, log_value, lower, ltrim, max_value, min_value,
-    mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value, str_value,
-    substr, tan_value, trim, type_value, upper, val, valtype,
+    hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, int, left, log_value, lower,
+    ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value,
+    space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -1642,7 +1642,7 @@ fn public_hb_gzcompress_dispatches_through_builtin_surfaces() {
     };
     assert_eq!(compressed.as_bytes().len(), 26);
 
-    let mut mutable_arguments = [Value::from("abc")];
+    let mut mutable_arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
     let compressed =
         call_builtin_mut("HB_GZCOMPRESS", &mut mutable_arguments, &mut context).expect("gzip");
     let Value::String(compressed) = compressed else {
@@ -1650,6 +1650,18 @@ fn public_hb_gzcompress_dispatches_through_builtin_surfaces() {
     };
     assert_eq!(compressed.as_bytes().len(), 26);
     assert_eq!(mutable_arguments[0], Value::from("abc"));
+    assert_eq!(mutable_arguments[2], Value::from(0_i64));
+}
+
+#[test]
+fn public_hb_gzcompress_with_nresult_sets_the_observable_status_slot() {
+    let mut arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
+    let compressed = hb_gzcompress_with_nresult(&mut arguments).expect("gzip");
+    let Value::String(compressed) = compressed else {
+        panic!("expected string result");
+    };
+    assert_eq!(compressed.as_bytes().len(), 26);
+    assert_eq!(arguments[2], Value::from(0_i64));
 }
 
 #[test]

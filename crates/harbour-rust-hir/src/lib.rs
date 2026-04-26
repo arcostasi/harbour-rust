@@ -217,6 +217,7 @@ pub enum Expression {
     Array(ArrayLiteral),
     Codeblock(CodeblockLiteral),
     Macro(MacroExpression),
+    ByRef(ByRefExpression),
     Call(CallExpression),
     Index(IndexExpression),
     Assign(AssignExpression),
@@ -238,6 +239,7 @@ impl Expression {
             Self::Array(expression) => expression.span,
             Self::Codeblock(expression) => expression.span,
             Self::Macro(expression) => expression.span,
+            Self::ByRef(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
             Self::Assign(expression) => expression.span,
@@ -319,6 +321,12 @@ pub struct CodeblockLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MacroExpression {
     pub value: Box<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ByRefExpression {
+    pub target: Box<Expression>,
     pub span: Span,
 }
 
@@ -617,6 +625,10 @@ fn lower_expression(expression: &ast::Expression, errors: &mut Vec<LoweringError
         }),
         ast::Expression::Macro(expression) => Expression::Macro(MacroExpression {
             value: Box::new(lower_expression(&expression.value, errors)),
+            span: expression.span,
+        }),
+        ast::Expression::ByRef(expression) => Expression::ByRef(ByRefExpression {
+            target: Box::new(lower_expression(&expression.target, errors)),
             span: expression.span,
         }),
         ast::Expression::Call(expression) => Expression::Call(CallExpression {

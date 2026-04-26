@@ -440,6 +440,9 @@ impl<'a> RoutineAnalyzer<'a> {
             hir::Expression::Macro(expression) => {
                 self.analyze_expression(&expression.value, ExpressionContext::Value);
             }
+            hir::Expression::ByRef(expression) => {
+                self.analyze_expression(&expression.target, ExpressionContext::Value);
+            }
             hir::Expression::Call(expression) => {
                 self.analyze_expression(&expression.callee, ExpressionContext::CallCallee);
                 for argument in &expression.arguments {
@@ -695,6 +698,7 @@ fn expression_uses_dynamic_features(expression: &hir::Expression) -> bool {
                 || expression.body.iter().any(expression_uses_dynamic_features)
         }
         hir::Expression::Macro(_) => true,
+        hir::Expression::ByRef(expression) => expression_uses_dynamic_features(&expression.target),
         hir::Expression::Array(expression) => expression
             .elements
             .iter()

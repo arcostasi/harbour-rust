@@ -40,6 +40,16 @@ Acceptance for this slice:
 - keep destination buffers, by-reference result reporting, compression-level selection, and byte-for-byte parity with upstream explicitly out of scope;
 - cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline.
 
+The next adjacent slice now delivered in the same corridor is observable `@nResult` writeback for `hb_gzCompress`.
+
+Acceptance for this slice:
+
+- accept the focused `hb_gzCompress( cData, NIL, @nResult )` form without implying generic by-reference call support;
+- write back `0` to `@nResult` on the current successful path, including empty-string input;
+- preserve runtime argument errors for still-out-of-scope second-slot forms such as numeric destination sizing;
+- cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline;
+- keep destination buffers, compression level, and broader by-reference semantics explicitly out of scope.
+
 ## Expected Follow-Up Corridors
 
 After `hb_JsonDecode`, the next candidates are:

@@ -191,6 +191,7 @@ pub enum Expression {
     Array(ArrayLiteral),
     Codeblock(CodeblockLiteral),
     Macro(MacroExpression),
+    ByRef(ByRefExpression),
     Call(CallExpression),
     Index(IndexExpression),
     Assignment(AssignmentExpression),
@@ -211,6 +212,7 @@ impl Expression {
             Self::Array(expression) => expression.span,
             Self::Codeblock(expression) => expression.span,
             Self::Macro(expression) => expression.span,
+            Self::ByRef(expression) => expression.span,
             Self::Call(expression) => expression.span,
             Self::Index(expression) => expression.span,
             Self::Assignment(expression) => expression.span,
@@ -272,6 +274,12 @@ pub struct CodeblockLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MacroExpression {
     pub value: Box<Expression>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ByRefExpression {
+    pub target: Box<Expression>,
     pub span: Span,
 }
 
@@ -355,9 +363,9 @@ mod tests {
     use harbour_rust_lexer::{Position, Span};
 
     use crate::{
-        ArrayLiteral, BinaryExpression, BinaryOperator, CallExpression, CodeblockLiteral,
-        ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement, ForStatement,
-        Identifier, IfStatement, IndexExpression, Item, LocalBinding, LocalStatement,
+        ArrayLiteral, BinaryExpression, BinaryOperator, ByRefExpression, CallExpression,
+        CodeblockLiteral, ConditionalBranch, DoWhileStatement, Expression, ExpressionStatement,
+        ForStatement, Identifier, IfStatement, IndexExpression, Item, LocalBinding, LocalStatement,
         MacroExpression, MemvarBinding, MemvarClass, MemvarStatement, NilLiteral,
         PostfixExpression, PostfixOperator, PrintStatement, Program, ReturnStatement, Routine,
         RoutineKind, Statement, StaticBinding, StaticStatement, StorageClass, StringLiteral,
@@ -659,9 +667,17 @@ mod tests {
             })),
             span: span(0, 2, 1, 5, 2, 6),
         });
+        let byref_expression = Expression::ByRef(ByRefExpression {
+            target: Box::new(Expression::Identifier(Identifier {
+                text: "name".to_owned(),
+                span: span(1, 3, 2, 5, 3, 6),
+            })),
+            span: span(0, 3, 1, 5, 3, 6),
+        });
 
         assert_eq!(codeblock.span(), span(0, 1, 1, 8, 1, 9));
         assert_eq!(macro_expression.span(), span(0, 2, 1, 5, 2, 6));
+        assert_eq!(byref_expression.span(), span(0, 3, 1, 5, 3, 6));
     }
 
     #[test]

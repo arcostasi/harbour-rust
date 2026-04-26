@@ -523,6 +523,9 @@ impl Emitter {
             "extern harbour_runtime_Value harbour_builtin_hb_gzcompress(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_hb_gzcompress_with_nresult(const harbour_runtime_Value *arguments, size_t argument_count, harbour_runtime_Value *nresult);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_hb_jsondecode(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
@@ -887,6 +890,13 @@ impl Emitter {
                 let value = self.emit_expression(&expression.value)?;
                 Some(format!("harbour_macro_read({})", value))
             }
+            Expression::ByRef(expression) => {
+                self.push_error(
+                    "C emission for by-reference expressions is only implemented in specific builtin call positions",
+                    expression.span,
+                );
+                None
+            }
             Expression::Call(expression) => {
                 if let Some(symbol) = self.named_read_symbol(expression.callee.as_ref()) {
                     if let Some(builtin) = RuntimeBuiltin::lookup(&symbol.text) {
@@ -1030,6 +1040,10 @@ impl Emitter {
         arguments: &[Expression],
         span: Span,
     ) -> Option<String> {
+        if builtin == RuntimeBuiltin::HbGzCompress {
+            return self.emit_hb_gzcompress_expression(arguments, span);
+        }
+
         if builtin.requires_mutable_dispatch() {
             return self.emit_mutable_runtime_builtin_expression(builtin, arguments, span);
         }
@@ -1057,6 +1071,54 @@ impl Emitter {
                 emitted_arguments.len()
             ))
         }
+    }
+
+    fn emit_hb_gzcompress_expression(
+        &mut self,
+        arguments: &[Expression],
+        span: Span,
+    ) -> Option<String> {
+        let byref_positions: Vec<usize> = arguments
+            .iter()
+            .enumerate()
+            .filter_map(|(index, argument)| {
+                matches!(argument, Expression::ByRef(_)).then_some(index)
+            })
+            .collect();
+        if byref_positions.is_empty() {
+            return self.emit_runtime_builtin_invocation(RuntimeBuiltin::HbGzCompress, arguments);
+        }
+        if byref_positions != [2] {
+            self.push_error(
+                "C emission currently supports by-reference call arguments only for HB_GZCOMPRESS(..., ..., @nResult)",
+                span,
+            );
+            return None;
+        }
+
+        let Some(result_symbol) = self.named_byref_symbol(&arguments[2]) else {
+            self.push_error(
+                "C emission for HB_GZCOMPRESS(..., ..., @nResult) requires an addressable identifier",
+                span,
+            );
+            return None;
+        };
+        let mut emitted_arguments = Vec::with_capacity(arguments.len());
+        for (index, argument) in arguments.iter().enumerate() {
+            if index == 2 {
+                emitted_arguments.push(self.resolve_symbol_storage_name(&result_symbol.text));
+            } else {
+                emitted_arguments.push(self.emit_expression(argument)?);
+            }
+        }
+
+        let result_slot = format!("&{}", self.resolve_symbol_storage_name(&result_symbol.text));
+        Some(format!(
+            "harbour_builtin_hb_gzcompress_with_nresult((harbour_runtime_Value[]) {{ {} }}, {}, {})",
+            emitted_arguments.join(", "),
+            emitted_arguments.len(),
+            result_slot
+        ))
     }
 
     fn emit_mutable_runtime_builtin_expression(
@@ -1230,6 +1292,13 @@ impl Emitter {
                 ir::ReadPath::Name(symbol) => Some(symbol),
                 ir::ReadPath::Memvar(_) => None,
             },
+            _ => None,
+        }
+    }
+
+    fn named_byref_symbol<'a>(&self, expression: &'a Expression) -> Option<&'a ir::Symbol> {
+        match expression {
+            Expression::ByRef(byref) => self.named_read_symbol(byref.target.as_ref()),
             _ => None,
         }
     }
