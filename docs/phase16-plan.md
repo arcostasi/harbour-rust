@@ -30,11 +30,21 @@ Acceptance for this slice:
 - exercise the runtime surface, the public compiler/codegen path, and a focused compatibility baseline;
 - keep full `hb_gzCompress` output semantics explicitly out of scope for this step.
 
+The next delivered slice in the same corridor is the minimal one-argument `hb_gzCompress`.
+
+Acceptance for this slice:
+
+- accept only the direct `hb_gzCompress( cData )` form;
+- preserve binary output through the current runtime string model so the result stays observable in tests;
+- emit a valid gzip stream without requiring host zlib linkage in the CLI executable path;
+- keep destination buffers, by-reference result reporting, compression-level selection, and byte-for-byte parity with upstream explicitly out of scope;
+- cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline.
+
 ## Expected Follow-Up Corridors
 
 After `hb_JsonDecode`, the next candidates are:
 
-- `hb_gzCompress`, once string/binary behavior and byte-preservation expectations are clear enough on top of the `hb_gzCompressBound` groundwork;
+- the broader `hb_gzCompress` surface, once string/binary behavior and byte-preservation expectations are clear enough on top of the delivered `hb_gzCompressBound` and one-argument `hb_gzCompress` groundwork;
 - `hb_processRun`, once process execution semantics, exit status handling, environment behavior, quoting, and platform differences are specified.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.

@@ -1,0 +1,5 @@
+ValType(hb_gzCompress("abc")) => C
+Len(hb_gzCompress("abc")) => 26
+hb_gzCompress("abc") prefix => 1F8B08
+Len(hb_gzCompress("")) => 0
+hb_gzCompress(10) => BASE 3012 Argument error (HB_GZCOMPRESS)

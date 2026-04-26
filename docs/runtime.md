@@ -33,9 +33,18 @@ Primeiro slice adjacente já entregue na mesma família de runtime/library fidel
 - tipos inválidos continuam seguindo erro de argumentos no baseline atual;
 - `hb_gzCompress()` propriamente dito, buffers por referência e demais APIs zlib continuam fora do recorte atual.
 
+Slice seguinte já entregue no mesmo corredor:
+
+- `hb_gzCompress( cData )` na forma mínima de um argumento;
+- retorno como string binária válida no modelo byte-safe atual do runtime;
+- saída gzip observável e determinística via blocos `stored`, suficiente para medir header, tamanho, payload e footer sem introduzir dependência de zlib no host C;
+- string vazia retorna string vazia, alinhada ao branch direto observado no upstream;
+- tipos inválidos continuam seguindo erro de argumentos no baseline atual;
+- `hb_gzCompress( cData, nDstBufLen | @cBuffer, @nResult, nLevel )`, escolha explícita de nível e paridade byte-a-byte com o output zlib do upstream continuam fora do recorte atual.
+
 Corredores posteriores prováveis:
 
-- `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes sobre o degrau já entregue de `hb_gzCompressBound`;
+- expansão da superfície de `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes sobre os degraus já entregues de `hb_gzCompressBound` e `hb_gzCompress( cData )`;
 - `hb_processRun`, depois de definir semântica multiplataforma de processo, exit status, ambiente e quoting.
 
 Corredores adiados:

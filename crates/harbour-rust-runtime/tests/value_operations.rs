@@ -1,9 +1,9 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
-    at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompressbound,
-    hb_jsondecode, int, left, log_value, lower, ltrim, max_value, min_value, mod_value, qout,
-    replicate, right, round_value, rtrim, sin_value, space, sqrt_value, str_value, substr,
-    tan_value, trim, type_value, upper, val, valtype,
+    at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
+    hb_gzcompressbound, hb_jsondecode, int, left, log_value, lower, ltrim, max_value, min_value,
+    mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value, str_value,
+    substr, tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -1592,6 +1592,64 @@ fn public_hb_gzcompressbound_dispatches_through_builtin_surfaces() {
         Ok(Value::from(35_i64))
     );
     assert_eq!(mutable_arguments[0], Value::from(10_i64));
+}
+
+#[test]
+fn public_hb_gzcompress_returns_the_current_minimal_gzip_stream() {
+    let compressed = hb_gzcompress(Some(&Value::from("abc"))).expect("gzip");
+    let Value::String(compressed) = compressed else {
+        panic!("expected string result");
+    };
+
+    assert_eq!(
+        compressed.as_bytes(),
+        &[
+            0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x03, 0x00, 0xfc,
+            0xff, b'a', b'b', b'c', 0xc2, 0x41, 0x24, 0x35, 0x03, 0x00, 0x00, 0x00,
+        ]
+    );
+    assert_eq!(hb_gzcompress(Some(&Value::from(""))), Ok(Value::from("")));
+}
+
+#[test]
+fn public_hb_gzcompress_reports_argument_errors_for_missing_or_invalid_input() {
+    assert_eq!(
+        hb_gzcompress(None),
+        Err(RuntimeError {
+            message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        hb_gzcompress(Some(&Value::from(true))),
+        Err(RuntimeError {
+            message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Logical),
+        })
+    );
+}
+
+#[test]
+fn public_hb_gzcompress_dispatches_through_builtin_surfaces() {
+    let mut context = RuntimeContext::new();
+
+    let compressed =
+        call_builtin("hb_gzcompress", &[Value::from("abc")], &mut context).expect("gzip");
+    let Value::String(compressed) = compressed else {
+        panic!("expected string result");
+    };
+    assert_eq!(compressed.as_bytes().len(), 26);
+
+    let mut mutable_arguments = [Value::from("abc")];
+    let compressed =
+        call_builtin_mut("HB_GZCOMPRESS", &mut mutable_arguments, &mut context).expect("gzip");
+    let Value::String(compressed) = compressed else {
+        panic!("expected string result");
+    };
+    assert_eq!(compressed.as_bytes().len(), 26);
+    assert_eq!(mutable_arguments[0], Value::from("abc"));
 }
 
 #[test]

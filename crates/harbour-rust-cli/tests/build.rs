@@ -482,6 +482,30 @@ fn build_command_writes_c_output_for_gz_compress_bound_builtin_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_gz_compress_builtin_fixture() {
+    let temp_dir = unique_temp_dir("gz-compress-builtin");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("gz_compress_builtin.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path(
+            "tests/fixtures/parser/gz_compress_builtin.prg",
+        ))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_hb_gzcompress("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_json_decode_builtin_fixture() {
     let temp_dir = unique_temp_dir("json-decode-builtin");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -1511,6 +1535,38 @@ fn run_command_executes_valtype_builtin_fixture_with_expected_output() {
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "U\nU\nL\nN\nN\nC\nA\nB\n");
+}
+
+#[test]
+fn run_command_executes_gz_compress_builtin_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/gz_compress_builtin.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "C\n26\n0\n");
+}
+
+#[test]
+fn run_command_executes_gz_compress_builtin_invalid_fixture_with_xbase_error_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/gz_compress_builtin_invalid.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "BASE 3012 Argument error (HB_GZCOMPRESS)\n");
 }
 
 #[test]

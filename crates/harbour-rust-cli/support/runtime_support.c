@@ -71,6 +71,12 @@ static _Bool harbour_json_push_value(
     size_t *capacity,
     harbour_runtime_Value value
 );
+static unsigned int harbour_crc32(const unsigned char *bytes, size_t length);
+static size_t harbour_gzip_stored_output_len(size_t length);
+static harbour_runtime_Value harbour_gzip_encode_stored(
+    const unsigned char *bytes,
+    size_t length
+);
 static const char *harbour_value_string_data(harbour_runtime_Value value);
 static size_t harbour_value_string_length(harbour_runtime_Value value);
 static harbour_runtime_Value harbour_ascii_case_transform(
@@ -1936,6 +1942,84 @@ struct harbour_runtime_Value harbour_builtin_val(
     return harbour_val_parse_string(arguments[0].as.string.data);
 }
 
+static unsigned int harbour_crc32(const unsigned char *bytes, size_t length) {
+    unsigned int crc = 0xFFFFFFFFU;
+    size_t index;
+
+    for (index = 0; index < length; ++index) {
+        unsigned int value = crc ^ bytes[index];
+        int bit;
+
+        for (bit = 0; bit < 8; ++bit) {
+            unsigned int mask = (unsigned int) -((int) (value & 1U)) & 0xEDB88320U;
+            value = (value >> 1) ^ mask;
+        }
+        crc = value;
+    }
+
+    return ~crc;
+}
+
+static size_t harbour_gzip_stored_output_len(size_t length) {
+    size_t blocks = length == 0 ? 0 : (length + 65534U) / 65535U;
+    return 10U + length + (blocks * 5U) + 8U;
+}
+
+static harbour_runtime_Value harbour_gzip_encode_stored(
+    const unsigned char *bytes,
+    size_t length
+) {
+    const size_t output_length = harbour_gzip_stored_output_len(length);
+    unsigned char *buffer = (unsigned char *) malloc(output_length);
+    size_t cursor = 0;
+    size_t offset = 0;
+    unsigned int crc;
+
+    if (buffer == NULL) {
+        return harbour_value_nil();
+    }
+
+    buffer[cursor++] = 0x1FU;
+    buffer[cursor++] = 0x8BU;
+    buffer[cursor++] = 0x08U;
+    buffer[cursor++] = 0x00U;
+    buffer[cursor++] = 0x00U;
+    buffer[cursor++] = 0x00U;
+    buffer[cursor++] = 0x00U;
+    buffer[cursor++] = 0x00U;
+    buffer[cursor++] = 0x00U;
+    buffer[cursor++] = 0xFFU;
+
+    while (offset < length) {
+        const size_t remaining = length - offset;
+        const unsigned short chunk_length =
+            (unsigned short) (remaining > 65535U ? 65535U : remaining);
+        const unsigned short inverse_length = (unsigned short) ~chunk_length;
+        const _Bool final_block = offset + chunk_length == length;
+
+        buffer[cursor++] = final_block ? 0x01U : 0x00U;
+        buffer[cursor++] = (unsigned char) (chunk_length & 0xFFU);
+        buffer[cursor++] = (unsigned char) ((chunk_length >> 8) & 0xFFU);
+        buffer[cursor++] = (unsigned char) (inverse_length & 0xFFU);
+        buffer[cursor++] = (unsigned char) ((inverse_length >> 8) & 0xFFU);
+        memcpy(buffer + cursor, bytes + offset, chunk_length);
+        cursor += chunk_length;
+        offset += chunk_length;
+    }
+
+    crc = harbour_crc32(bytes, length);
+    buffer[cursor++] = (unsigned char) (crc & 0xFFU);
+    buffer[cursor++] = (unsigned char) ((crc >> 8) & 0xFFU);
+    buffer[cursor++] = (unsigned char) ((crc >> 16) & 0xFFU);
+    buffer[cursor++] = (unsigned char) ((crc >> 24) & 0xFFU);
+    buffer[cursor++] = (unsigned char) (length & 0xFFU);
+    buffer[cursor++] = (unsigned char) ((length >> 8) & 0xFFU);
+    buffer[cursor++] = (unsigned char) ((length >> 16) & 0xFFU);
+    buffer[cursor++] = (unsigned char) ((length >> 24) & 0xFFU);
+
+    return harbour_value_from_owned_string_buffer((char *) buffer, cursor);
+}
+
 struct harbour_runtime_Value harbour_builtin_hb_gzcompressbound(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -1978,6 +2062,28 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompressbound(
     }
 
     return harbour_value_from_integer((long long) bound);
+}
+
+struct harbour_runtime_Value harbour_builtin_hb_gzcompress(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+    }
+
+    if (arguments[0].as.string.length == 0) {
+        return harbour_value_from_string_literal("");
+    }
+
+    return harbour_gzip_encode_stored(
+        (const unsigned char *) arguments[0].as.string.data,
+        arguments[0].as.string.length
+    );
 }
 
 struct harbour_runtime_Value harbour_builtin_hb_jsondecode(

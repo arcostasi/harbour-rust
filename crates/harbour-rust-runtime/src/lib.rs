@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cmp::Ordering,
     collections::HashMap,
     error::Error,
@@ -141,6 +142,127 @@ impl PartialEq for FloatValue {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct HarbourString {
+    bytes: Vec<u8>,
+}
+
+impl HarbourString {
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        Self { bytes }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.as_utf8()
+            .expect("runtime string is not valid UTF-8 in this text-only path")
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
+
+    pub fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bytes.is_empty()
+    }
+
+    pub fn as_utf8(&self) -> Option<&str> {
+        std::str::from_utf8(&self.bytes).ok()
+    }
+
+    pub fn to_utf8_lossy(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(&self.bytes)
+    }
+
+    pub fn push_bytes(&mut self, bytes: &[u8]) {
+        self.bytes.extend_from_slice(bytes);
+    }
+
+    pub fn repeat(&self, count: usize) -> Self {
+        Self::from_bytes(self.bytes.repeat(count))
+    }
+
+    pub fn to_ascii_uppercase(&self) -> Self {
+        Self::from_bytes(
+            self.bytes
+                .iter()
+                .map(u8::to_ascii_uppercase)
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    pub fn to_ascii_lowercase(&self) -> Self {
+        Self::from_bytes(
+            self.bytes
+                .iter()
+                .map(u8::to_ascii_lowercase)
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    pub fn trim_start_ascii_whitespace(&self) -> Self {
+        let start = self
+            .bytes
+            .iter()
+            .position(|byte| !byte.is_ascii_whitespace())
+            .unwrap_or(self.bytes.len());
+        Self::from_bytes(self.bytes[start..].to_vec())
+    }
+
+    pub fn trim_end_spaces(&self) -> Self {
+        let end = self
+            .bytes
+            .iter()
+            .rposition(|byte| *byte != b' ')
+            .map(|index| index + 1)
+            .unwrap_or(0);
+        Self::from_bytes(self.bytes[..end].to_vec())
+    }
+
+    pub fn find(&self, needle: &Self) -> Option<usize> {
+        if needle.is_empty() {
+            return Some(0);
+        }
+
+        self.bytes
+            .windows(needle.len())
+            .position(|window| window == needle.as_bytes())
+    }
+
+    pub fn starts_with(&self, needle: &Self) -> bool {
+        self.bytes.starts_with(needle.as_bytes())
+    }
+
+    pub fn slice(&self, start: usize, count: usize) -> Self {
+        Self::from_bytes(self.bytes[start..start + count].to_vec())
+    }
+}
+
+impl From<String> for HarbourString {
+    fn from(value: String) -> Self {
+        Self::from_bytes(value.into_bytes())
+    }
+}
+
+impl From<&str> for HarbourString {
+    fn from(value: &str) -> Self {
+        Self::from_bytes(value.as_bytes().to_vec())
+    }
+}
+
+impl From<Vec<u8>> for HarbourString {
+    fn from(value: Vec<u8>) -> Self {
+        Self::from_bytes(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Value {
     #[default]
@@ -148,7 +270,7 @@ pub enum Value {
     Logical(bool),
     Integer(i64),
     Float(FloatValue),
-    String(String),
+    String(HarbourString),
     Array(Vec<Value>),
     Codeblock(CodeblockValue),
 }
@@ -207,7 +329,9 @@ impl Value {
 
     pub fn as_str(&self) -> Result<&str, RuntimeError> {
         match self {
-            Self::String(value) => Ok(value),
+            Self::String(value) => value
+                .as_utf8()
+                .ok_or_else(RuntimeError::string_encoding_mismatch),
             _ => Err(RuntimeError::type_mismatch(
                 "convert value to string",
                 self.kind(),
@@ -371,7 +495,7 @@ impl Value {
             Self::Logical(false) => ".F.".to_owned(),
             Self::Integer(value) => value.to_string(),
             Self::Float(value) => format_float_output(*value),
-            Self::String(value) => value.clone(),
+            Self::String(value) => value.to_utf8_lossy().into_owned(),
             Self::Array(values) => format!("{{ Array({}) }}", values.len()),
             Self::Codeblock(value) => value.repr().to_owned(),
         }
@@ -404,7 +528,7 @@ impl Value {
         match (self, rhs) {
             (Self::String(left), Self::String(right)) => {
                 let mut value = left.clone();
-                value.push_str(right);
+                value.push_bytes(right.as_bytes());
                 Ok(Self::String(value))
             }
             _ => match self.numeric_pair(rhs, "add")? {
@@ -727,6 +851,7 @@ pub enum Builtin {
     Val,
     ValType,
     HbGzCompressBound,
+    HbGzCompress,
     HbJsonDecode,
     Type,
     Empty,
@@ -789,6 +914,8 @@ impl Builtin {
             Some(Self::ValType)
         } else if name.eq_ignore_ascii_case("HB_GZCOMPRESSBOUND") {
             Some(Self::HbGzCompressBound)
+        } else if name.eq_ignore_ascii_case("HB_GZCOMPRESS") {
+            Some(Self::HbGzCompress)
         } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
             Some(Self::HbJsonDecode)
         } else if name.eq_ignore_ascii_case("TYPE") {
@@ -1114,6 +1241,9 @@ pub fn val(value: Option<&Value>) -> Result<Value, RuntimeError> {
     let Value::String(text) = value else {
         return Err(RuntimeError::val_argument_error(Some(value.kind())));
     };
+    let Some(text) = text.as_utf8() else {
+        return Err(RuntimeError::val_argument_error(Some(ValueKind::String)));
+    };
 
     Ok(parse_val_string(text))
 }
@@ -1139,11 +1269,30 @@ pub fn hb_gzcompressbound(value: Option<&Value>) -> Result<Value, RuntimeError> 
     Ok(Value::from(bound))
 }
 
+pub fn hb_gzcompress(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::hb_gzcompress_argument_error(None));
+    };
+    let Value::String(bytes) = value else {
+        return Err(RuntimeError::hb_gzcompress_argument_error(Some(
+            value.kind(),
+        )));
+    };
+    if bytes.is_empty() {
+        return Ok(Value::from(""));
+    }
+
+    Ok(Value::String(gzip_encode_stored(bytes.as_bytes())))
+}
+
 pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
     let Some(value) = value else {
         return Ok(Value::Nil);
     };
     let Value::String(text) = value else {
+        return Ok(Value::Nil);
+    };
+    let Some(text) = text.as_utf8() else {
         return Ok(Value::Nil);
     };
     if text.contains("\\u") {
@@ -1224,6 +1373,52 @@ fn gzip_compress_bound(length: u128) -> Option<u128> {
         .checked_add(25)
 }
 
+fn gzip_encode_stored(bytes: &[u8]) -> HarbourString {
+    let mut encoded = Vec::with_capacity(gzip_stored_output_len(bytes.len()));
+    encoded.extend_from_slice(&[0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff]);
+
+    let mut offset = 0usize;
+    while offset < bytes.len() {
+        let remaining = bytes.len() - offset;
+        let chunk_len = remaining.min(u16::MAX as usize);
+        let final_block = offset + chunk_len == bytes.len();
+        let len = chunk_len as u16;
+        let nlen = !len;
+
+        encoded.push(if final_block { 0x01 } else { 0x00 });
+        encoded.extend_from_slice(&len.to_le_bytes());
+        encoded.extend_from_slice(&nlen.to_le_bytes());
+        encoded.extend_from_slice(&bytes[offset..offset + chunk_len]);
+        offset += chunk_len;
+    }
+
+    let crc = crc32(bytes);
+    encoded.extend_from_slice(&crc.to_le_bytes());
+    encoded.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+    HarbourString::from_bytes(encoded)
+}
+
+fn gzip_stored_output_len(input_len: usize) -> usize {
+    let block_count = if input_len == 0 {
+        0
+    } else {
+        input_len.div_ceil(u16::MAX as usize)
+    };
+    10 + input_len + (block_count * 5) + 8
+}
+
+fn crc32(bytes: &[u8]) -> u32 {
+    let mut crc = 0xffff_ffff_u32;
+    for byte in bytes {
+        crc ^= u32::from(*byte);
+        for _ in 0..8 {
+            let mask = (crc & 1).wrapping_neg() & 0xedb8_8320;
+            crc = (crc >> 1) ^ mask;
+        }
+    }
+    !crc
+}
+
 pub fn type_value(source: Option<&Value>) -> Result<Value, RuntimeError> {
     let Some(source) = source else {
         return Err(RuntimeError::type_argument_error(None));
@@ -1272,11 +1467,10 @@ pub fn substr(
     let mut count = match count {
         Some(Value::Integer(value)) => *value,
         Some(other) => return Err(RuntimeError::substr_argument_error(Some(other.kind()))),
-        None => text.chars().count() as i64,
+        None => text.len() as i64,
     };
 
-    let characters: Vec<char> = text.chars().collect();
-    let size = characters.len() as i64;
+    let size = text.len() as i64;
 
     if start > 0 {
         start -= 1;
@@ -1309,11 +1503,7 @@ pub fn substr(
     }
 
     let start_index = start_index as usize;
-    Ok(Value::from(string_slice(
-        &characters,
-        start_index,
-        count as usize,
-    )))
+    Ok(Value::String(text.slice(start_index, count as usize)))
 }
 
 pub fn left(source: Option<&Value>, count: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1336,9 +1526,8 @@ pub fn left(source: Option<&Value>, count: Option<&Value>) -> Result<Value, Runt
         return Ok(Value::from(""));
     }
 
-    let characters: Vec<char> = text.chars().collect();
-    let count = usize::min(count as usize, characters.len());
-    Ok(Value::from(string_slice(&characters, 0, count)))
+    let count = usize::min(count as usize, text.len());
+    Ok(Value::String(text.slice(0, count)))
 }
 
 pub fn right(source: Option<&Value>, count: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1361,17 +1550,12 @@ pub fn right(source: Option<&Value>, count: Option<&Value>) -> Result<Value, Run
         return Ok(Value::from(""));
     }
 
-    let characters: Vec<char> = text.chars().collect();
-    if count as usize >= characters.len() {
-        return Ok(Value::from(text.clone()));
+    if count as usize >= text.len() {
+        return Ok(Value::String(text.clone()));
     }
 
-    let start = characters.len() - count as usize;
-    Ok(Value::from(string_slice(
-        &characters,
-        start,
-        count as usize,
-    )))
+    let start = text.len() - count as usize;
+    Ok(Value::String(text.slice(start, count as usize)))
 }
 
 pub fn upper(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1382,7 +1566,7 @@ pub fn upper(value: Option<&Value>) -> Result<Value, RuntimeError> {
         return Err(RuntimeError::upper_argument_error(Some(value.kind())));
     };
 
-    Ok(Value::from(text.to_ascii_uppercase()))
+    Ok(Value::String(text.to_ascii_uppercase()))
 }
 
 pub fn lower(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1393,7 +1577,7 @@ pub fn lower(value: Option<&Value>) -> Result<Value, RuntimeError> {
         return Err(RuntimeError::lower_argument_error(Some(value.kind())));
     };
 
-    Ok(Value::from(text.to_ascii_lowercase()))
+    Ok(Value::String(text.to_ascii_lowercase()))
 }
 
 pub fn trim(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1408,7 +1592,7 @@ pub fn ltrim(value: Option<&Value>) -> Result<Value, RuntimeError> {
         return Err(RuntimeError::ltrim_argument_error(Some(value.kind())));
     };
 
-    Ok(Value::from(text.trim_start_matches(char::is_whitespace)))
+    Ok(Value::String(text.trim_start_ascii_whitespace()))
 }
 
 pub fn rtrim(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1419,7 +1603,7 @@ pub fn rtrim(value: Option<&Value>) -> Result<Value, RuntimeError> {
         return Err(RuntimeError::trim_argument_error(Some(value.kind())));
     };
 
-    Ok(Value::from(text.trim_end_matches(' ')))
+    Ok(Value::String(text.trim_end_spaces()))
 }
 
 pub fn at(needle: Option<&Value>, haystack: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1445,7 +1629,7 @@ pub fn at(needle: Option<&Value>, haystack: Option<&Value>) -> Result<Value, Run
         return Ok(Value::from(0_i64));
     };
 
-    let position = haystack[..byte_index].chars().count() as i64 + 1;
+    let position = byte_index as i64 + 1;
     Ok(Value::from(position))
 }
 
@@ -1467,7 +1651,7 @@ pub fn replicate(source: Option<&Value>, count: Option<&Value>) -> Result<Value,
         return Ok(Value::from(""));
     }
 
-    Ok(Value::from(source.repeat(count)))
+    Ok(Value::String(source.repeat(count)))
 }
 
 pub fn space(count: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -1630,6 +1814,7 @@ pub fn call_builtin(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
+        Some(Builtin::HbGzCompress) => hb_gzcompress(arguments.first()),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -1688,6 +1873,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
+        Some(Builtin::HbGzCompress) => hb_gzcompress(arguments.first()),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -1753,7 +1939,7 @@ fn array_scan_matches(candidate: &Value, search: &Value) -> bool {
     }
 }
 
-fn string_equals_exact_off(left: &str, right: &str) -> bool {
+fn string_equals_exact_off(left: &HarbourString, right: &HarbourString) -> bool {
     left.starts_with(right)
 }
 
@@ -1787,13 +1973,19 @@ impl From<f64> for Value {
 
 impl From<String> for Value {
     fn from(value: String) -> Self {
-        Self::String(value)
+        Self::String(HarbourString::from(value))
     }
 }
 
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
-        Self::String(value.to_owned())
+        Self::String(HarbourString::from(value))
+    }
+}
+
+impl From<Vec<u8>> for Value {
+    fn from(value: Vec<u8>) -> Self {
+        Self::String(HarbourString::from(value))
     }
 }
 
@@ -1891,6 +2083,14 @@ impl RuntimeError {
             message: "compare ordering with non-orderable Float".to_owned(),
             expected: None,
             actual: None,
+        }
+    }
+
+    pub fn string_encoding_mismatch() -> Self {
+        Self {
+            message: "string value is not valid UTF-8 in current text path".to_owned(),
+            expected: None,
+            actual: Some(ValueKind::String),
         }
     }
 
@@ -2049,6 +2249,14 @@ impl RuntimeError {
     pub fn hb_gzcompressbound_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 3012 Argument error (HB_GZCOMPRESSBOUND)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn hb_gzcompress_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
             expected: None,
             actual,
         }
@@ -2333,10 +2541,6 @@ impl fmt::Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
-fn string_slice(characters: &[char], start: usize, count: usize) -> String {
-    characters[start..start + count].iter().copied().collect()
-}
-
 fn extremum_value(
     left: Option<&Value>,
     right: Option<&Value>,
@@ -2406,12 +2610,15 @@ fn is_extremum_supported_kind(kind: ValueKind) -> bool {
     )
 }
 
-fn harbour_string_is_empty(text: &str) -> bool {
+fn harbour_string_is_empty(text: &HarbourString) -> bool {
     text.as_bytes().iter().all(u8::is_ascii_whitespace)
 }
 
-fn type_from_source_text(text: &str) -> &'static str {
-    let text = text.trim_matches(|ch: char| ch.is_ascii_whitespace());
+fn type_from_source_text(text: &HarbourString) -> &'static str {
+    let bytes = trim_ascii_whitespace(text.as_bytes());
+    let Some(text) = std::str::from_utf8(bytes).ok() else {
+        return "U";
+    };
     if text.is_empty() {
         return "U";
     }
@@ -2437,6 +2644,19 @@ fn type_from_source_text(text: &str) -> &'static str {
     }
 
     "U"
+}
+
+fn trim_ascii_whitespace(bytes: &[u8]) -> &[u8] {
+    let start = bytes
+        .iter()
+        .position(|byte| !byte.is_ascii_whitespace())
+        .unwrap_or(bytes.len());
+    let end = bytes
+        .iter()
+        .rposition(|byte| !byte.is_ascii_whitespace())
+        .map(|index| index + 1)
+        .unwrap_or(start);
+    &bytes[start..end]
 }
 
 fn is_type_numeric_text(text: &str) -> bool {
@@ -2777,9 +2997,9 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompressbound, hb_jsondecode,
-        int, len, log_value, max_value, min_value, mod_value, qout, replicate, round_value,
-        sin_value, space, sqrt_value, str_value, tan_value, type_value, val,
+        call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress, hb_gzcompressbound,
+        hb_jsondecode, int, len, log_value, max_value, min_value, mod_value, qout, replicate,
+        round_value, sin_value, space, sqrt_value, str_value, tan_value, type_value, val,
     };
 
     #[test]
@@ -4151,6 +4371,64 @@ mod tests {
             Ok(Value::from(35_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from(10_i64));
+    }
+
+    #[test]
+    fn hb_gzcompress_returns_the_current_minimal_gzip_stream() {
+        let compressed = hb_gzcompress(Some(&Value::from("abc"))).expect("gzip");
+        let Value::String(compressed) = compressed else {
+            panic!("expected string result");
+        };
+
+        assert_eq!(
+            compressed.as_bytes(),
+            &[
+                0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x03, 0x00, 0xfc,
+                0xff, b'a', b'b', b'c', 0xc2, 0x41, 0x24, 0x35, 0x03, 0x00, 0x00, 0x00,
+            ]
+        );
+        assert_eq!(hb_gzcompress(Some(&Value::from(""))), Ok(Value::from("")));
+    }
+
+    #[test]
+    fn hb_gzcompress_reports_argument_errors_for_missing_or_invalid_input() {
+        assert_eq!(
+            hb_gzcompress(None),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            hb_gzcompress(Some(&Value::from(true))),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Logical),
+            })
+        );
+    }
+
+    #[test]
+    fn hb_gzcompress_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        let compressed = call_builtin("hb_gzcompress", &[Value::from("abc")], &mut context)
+            .expect("immutable gzip dispatch");
+        let Value::String(compressed) = compressed else {
+            panic!("expected string result");
+        };
+        assert_eq!(compressed.as_bytes().len(), 26);
+
+        let mut mutable_arguments = [Value::from("abc")];
+        let compressed = call_builtin_mut("HB_GZCOMPRESS", &mut mutable_arguments, &mut context)
+            .expect("mutable gzip dispatch");
+        let Value::String(compressed) = compressed else {
+            panic!("expected string result");
+        };
+        assert_eq!(compressed.as_bytes().len(), 26);
+        assert_eq!(mutable_arguments[0], Value::from("abc"));
     }
 
     #[test]

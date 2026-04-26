@@ -69,7 +69,7 @@ fn runtime_substr_edges_baseline() -> String {
 
 fn escaped_result(result: Result<Value, RuntimeError>) -> String {
     match result {
-        Ok(Value::String(text)) => format!("\"{}\"", escape_string(&text)),
+        Ok(Value::String(text)) => format!("\"{}\"", escape_string(text.as_str())),
         Ok(value) => value.to_output_string(),
         Err(error) => error.message,
     }
