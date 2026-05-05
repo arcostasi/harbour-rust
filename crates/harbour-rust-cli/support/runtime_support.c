@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
 
 #include "runtime_support.h"
 
@@ -2189,6 +2192,35 @@ struct harbour_runtime_Value harbour_builtin_hb_jsondecode(
     }
 
     return decoded;
+}
+
+struct harbour_runtime_Value harbour_builtin_hb_processrun(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    int status;
+
+    if (
+        arguments == NULL ||
+        argument_count != 1 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 4001 Argument error (HB_PROCESSRUN)");
+    }
+
+    status = system(arguments[0].as.string.data);
+    if (status == -1) {
+        return harbour_value_from_integer(-1);
+    }
+
+#ifdef _WIN32
+    return harbour_value_from_integer(status);
+#else
+    if (WIFEXITED(status)) {
+        return harbour_value_from_integer(WEXITSTATUS(status));
+    }
+    return harbour_value_from_integer(-1);
+#endif
 }
 
 struct harbour_runtime_Value harbour_builtin_substr(

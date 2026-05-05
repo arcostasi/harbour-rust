@@ -1,0 +1,2 @@
+hb_processRun("exit 7") => 7
+hb_processRun(10) => BASE 4001 Argument error (HB_PROCESSRUN)

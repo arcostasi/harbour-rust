@@ -50,10 +50,18 @@ Degrau adjacente agora entregue sobre a mesma família:
 - o segundo slot também cobre `nDstBufLen` numérico no recorte atual: tamanho suficiente retorna string comprimida e `@nResult := 0`; tamanho insuficiente retorna `NIL` e `@nResult := -5`;
 - nível explícito de compressão, buffer por referência e semântica genérica de chamadas por referência continuam fora do recorte.
 
+Slice seguinte já entregue no corredor de execução de processos:
+
+- `hb_processRun( cCommand )` na forma mínima de um argumento;
+- execução via shell padrão da plataforma (`cmd /C` no Windows, `sh -c` em Unix-like no runtime Rust; `system()` no suporte C);
+- retorno inteiro do exit status normalizado quando o processo termina normalmente;
+- erro `BASE 4001 Argument error (HB_PROCESSRUN)` para argumento ausente ou não-string no recorte atual;
+- stdin, captura de stdout/stderr por referência, merge de streams, detach/async, ambiente customizado e quoting avançado seguem fora do recorte.
+
 Corredores posteriores prováveis:
 
-- expansão da superfície de `hb_gzCompress`, depois de consolidar comportamento de strings/binários e preservação de bytes sobre os degraus já entregues de `hb_gzCompressBound` e `hb_gzCompress( cData )`;
-- `hb_processRun`, depois de definir semântica multiplataforma de processo, exit status, ambiente e quoting.
+- superfície restante de `hb_gzCompress`, especialmente `@cBuffer`, nível de compressão e paridade byte-a-byte com zlib upstream;
+- superfície restante de `hb_processRun`, especialmente stdin, captura por referência, detach e quoting multiplataforma.
 
 Corredores adiados:
 

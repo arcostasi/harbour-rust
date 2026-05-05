@@ -4,6 +4,7 @@ use std::{
     collections::HashMap,
     error::Error,
     fmt,
+    process::Command,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering as AtomicOrdering},
@@ -852,6 +853,7 @@ pub enum Builtin {
     ValType,
     HbGzCompressBound,
     HbGzCompress,
+    HbProcessRun,
     HbJsonDecode,
     Type,
     Empty,
@@ -916,6 +918,8 @@ impl Builtin {
             Some(Self::HbGzCompressBound)
         } else if name.eq_ignore_ascii_case("HB_GZCOMPRESS") {
             Some(Self::HbGzCompress)
+        } else if name.eq_ignore_ascii_case("HB_PROCESSRUN") {
+            Some(Self::HbProcessRun)
         } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
             Some(Self::HbJsonDecode)
         } else if name.eq_ignore_ascii_case("TYPE") {
@@ -1367,6 +1371,44 @@ pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
         .and_then(json_to_runtime_value)
         .unwrap_or(Value::Nil);
     Ok(parsed)
+}
+
+pub fn hb_processrun(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::hb_processrun_argument_error(None));
+    };
+    let Value::String(command) = value else {
+        return Err(RuntimeError::hb_processrun_argument_error(Some(
+            value.kind(),
+        )));
+    };
+    let Some(command) = command.as_utf8() else {
+        return Err(RuntimeError::hb_processrun_argument_error(Some(
+            ValueKind::String,
+        )));
+    };
+
+    let status = hb_processrun_shell_status(command)?;
+    Ok(Value::from(status))
+}
+
+#[cfg(windows)]
+fn hb_processrun_shell_status(command: &str) -> Result<i64, RuntimeError> {
+    let status = Command::new("cmd")
+        .args(["/C", command])
+        .status()
+        .map_err(|_| RuntimeError::hb_processrun_argument_error(Some(ValueKind::String)))?;
+    Ok(status.code().map(i64::from).unwrap_or(-1))
+}
+
+#[cfg(not(windows))]
+fn hb_processrun_shell_status(command: &str) -> Result<i64, RuntimeError> {
+    let status = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .status()
+        .map_err(|_| RuntimeError::hb_processrun_argument_error(Some(ValueKind::String)))?;
+    Ok(status.code().map(i64::from).unwrap_or(-1))
 }
 
 fn json_to_runtime_value(value: JsonValue) -> Option<Value> {
@@ -1881,6 +1923,7 @@ pub fn call_builtin(
             let argument_refs = arguments.iter().collect::<Vec<_>>();
             hb_gzcompress_with_options(argument_refs.as_slice())
         }
+        Some(Builtin::HbProcessRun) => hb_processrun(arguments.first()),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -1940,6 +1983,7 @@ pub fn call_builtin_mut(
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
         Some(Builtin::HbGzCompress) => hb_gzcompress_with_nresult(arguments),
+        Some(Builtin::HbProcessRun) => hb_processrun(arguments.first()),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -2323,6 +2367,14 @@ impl RuntimeError {
     pub fn hb_gzcompress_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn hb_processrun_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 4001 Argument error (HB_PROCESSRUN)".to_owned(),
             expected: None,
             actual,
         }
@@ -3064,8 +3116,8 @@ mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
         call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
-        hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, int, len, log_value,
-        max_value, min_value, mod_value, qout, replicate, round_value, sin_value, space,
+        hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun, int, len,
+        log_value, max_value, min_value, mod_value, qout, replicate, round_value, sin_value, space,
         sqrt_value, str_value, tan_value, type_value, val,
     };
 
@@ -4610,6 +4662,51 @@ mod tests {
             ])]))
         );
         assert_eq!(mutable_arguments[0], Value::from("{\"name\":\"Harbour\"}"));
+    }
+
+    #[test]
+    fn hb_processrun_returns_shell_exit_status_for_the_current_slice() {
+        assert_eq!(
+            hb_processrun(Some(&Value::from("exit 7"))),
+            Ok(Value::from(7_i64))
+        );
+    }
+
+    #[test]
+    fn hb_processrun_reports_argument_errors_for_missing_or_invalid_input() {
+        assert_eq!(
+            hb_processrun(None),
+            Err(RuntimeError {
+                message: "BASE 4001 Argument error (HB_PROCESSRUN)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            hb_processrun(Some(&Value::from(10_i64))),
+            Err(RuntimeError {
+                message: "BASE 4001 Argument error (HB_PROCESSRUN)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Integer),
+            })
+        );
+    }
+
+    #[test]
+    fn hb_processrun_dispatches_through_the_builtin_surfaces() {
+        let mut context = RuntimeContext::new();
+
+        assert_eq!(
+            call_builtin("hb_processrun", &[Value::from("exit 7")], &mut context),
+            Ok(Value::from(7_i64))
+        );
+
+        let mut mutable_arguments = [Value::from("exit 7")];
+        assert_eq!(
+            call_builtin_mut("HB_PROCESSRUN", &mut mutable_arguments, &mut context),
+            Ok(Value::from(7_i64))
+        );
+        assert_eq!(mutable_arguments[0], Value::from("exit 7"));
     }
 
     #[test]

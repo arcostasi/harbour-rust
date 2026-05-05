@@ -59,12 +59,23 @@ Acceptance for this slice:
 - preserve argument errors for unsupported second-slot types and keep `@cBuffer` plus compression-level selection out of scope;
 - cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline.
 
+The first process-execution slice now delivered is minimal `hb_processRun`.
+
+Acceptance for this slice:
+
+- accept only `hb_processRun( cCommand )`;
+- execute the command through the host shell in a CI-safe way for the public executable path;
+- return the normalized integer exit status for normally terminated commands;
+- report `BASE 4001` argument errors for missing or non-string input;
+- keep stdin, stdout/stderr capture by reference, detach/async behavior, environment customization, and advanced quoting out of scope;
+- cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline tied to `hbprocfn.c`.
+
 ## Expected Follow-Up Corridors
 
 After `hb_JsonDecode`, the next candidates are:
 
 - the remaining `hb_gzCompress` surface, especially destination-buffer by-reference writes and compression-level selection, after the delivered bound, direct-output, `@nResult`, and numeric `nDstBufLen` slices;
-- `hb_processRun`, once process execution semantics, exit status handling, environment behavior, quoting, and platform differences are specified.
+- the remaining `hb_processRun` surface, especially stdin, stdout/stderr capture, detach behavior, environment behavior, quoting, and platform differences.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.
 

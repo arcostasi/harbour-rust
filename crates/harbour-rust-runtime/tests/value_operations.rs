@@ -1,9 +1,10 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
     at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
-    hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, int, left, log_value, lower,
-    ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value,
-    space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper, val, valtype,
+    hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun, int, left,
+    log_value, lower, ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value,
+    rtrim, sin_value, space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper,
+    val, valtype,
 };
 
 #[test]
@@ -1744,6 +1745,51 @@ fn public_hb_jsondecode_dispatches_through_builtin_surfaces() {
         ])]))
     );
     assert_eq!(mutable_arguments[0], Value::from("{\"name\":\"Harbour\"}"));
+}
+
+#[test]
+fn public_hb_processrun_returns_shell_exit_status_for_the_current_slice() {
+    assert_eq!(
+        hb_processrun(Some(&Value::from("exit 7"))),
+        Ok(Value::from(7_i64))
+    );
+}
+
+#[test]
+fn public_hb_processrun_reports_argument_errors_for_missing_or_invalid_input() {
+    assert_eq!(
+        hb_processrun(None),
+        Err(RuntimeError {
+            message: "BASE 4001 Argument error (HB_PROCESSRUN)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        hb_processrun(Some(&Value::from(10_i64))),
+        Err(RuntimeError {
+            message: "BASE 4001 Argument error (HB_PROCESSRUN)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Integer),
+        })
+    );
+}
+
+#[test]
+fn public_hb_processrun_dispatches_through_builtin_surfaces() {
+    let mut context = RuntimeContext::new();
+
+    assert_eq!(
+        call_builtin("hb_processrun", &[Value::from("exit 7")], &mut context),
+        Ok(Value::from(7_i64))
+    );
+
+    let mut mutable_arguments = [Value::from("exit 7")];
+    assert_eq!(
+        call_builtin_mut("HB_PROCESSRUN", &mut mutable_arguments, &mut context),
+        Ok(Value::from(7_i64))
+    );
+    assert_eq!(mutable_arguments[0], Value::from("exit 7"));
 }
 
 #[test]
