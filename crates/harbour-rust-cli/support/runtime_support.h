@@ -209,6 +209,11 @@ struct harbour_runtime_Value harbour_builtin_hb_processrun(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 );
+struct harbour_runtime_Value harbour_builtin_hb_processrun_with_stdout(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count,
+    struct harbour_runtime_Value *stdout_value
+);
 struct harbour_runtime_Value harbour_builtin_hb_gzcompressbound(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

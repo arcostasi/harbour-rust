@@ -1,2 +1,4 @@
 hb_processRun("exit 7") => 7
+hb_processRun("echo hbrust", NIL, @cStdOut) => 0
+captured stdout prefix => hbrust
 hb_processRun(10) => BASE 4001 Argument error (HB_PROCESSRUN)

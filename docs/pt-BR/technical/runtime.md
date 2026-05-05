@@ -52,11 +52,13 @@ O runtime já suporta:
 - `Str()` em largura default agora está alinhado para números positivos grandes e para a escala visual de literais float no caminho executável em C; além disso, o padding com largura negativa explícita e o arredondamento guiado por largura também seguem o oráculo com comportamento half-away-from-zero.
 - saída executável de `Round()` com floats grandes agora preservada em decimal simples, sem colapsar para notação científica no caminho host C.
 - o comportamento executável orientado a tipos agora cobre `ValType()` sobre codeblocks e `Empty()` sobre codeblocks e valores de erro do host C com expectativas guiadas por oráculo.
+- slices focados da fase 16 em runtime/biblioteca agora cobrem `hb_JsonDecode()`, `hb_gzCompressBound()`, a superfície atual de `hb_gzCompress()`, `hb_processRun( cCommand )` e captura de stdout com `hb_processRun( cCommand, NIL, @cStdOut )`.
 
 ## Limites Conhecidos
 
 - ainda não existem todos os tipos históricos de valor de xBase;
 - alguns builtins cobrem apenas o subconjunto de argumentos já testado;
+- o comportamento mais amplo de `hb_processRun()` ainda é limitado: stdin, captura de stderr, merge de streams, detach/async, ambiente customizado e quoting avançado seguem fora da alegação de compatibilidade atual;
 - `Val()` agora segue o oráculo em continuações com ponto final como `1..`, `1...`, `..` e `-..`; o subconjunto ASCII atual também já bate em sinais repetidos, paradas estilo expoente, pontuação mista como `13.1.9` e fragmentos separados por espaço após o separador decimal como `12. 0` e `12 .10`; a divergência remanescente ficou ligada à construção de `Chr(0)` embutido a partir do código-fonte no caminho atual de frontend/codegen;
 - a construção de strings com `Chr(0)` embutido a partir do código-fonte ainda é limitada no caminho atual de frontend/codegen, mesmo com o runtime host C já preservando esses bytes em helpers selecionados quando eles existem;
 - a formatação histórica exata ainda diverge em alguns edge cases, especialmente em algumas expressões numéricas negativas grandes com largura default.

@@ -10,6 +10,14 @@
 
 #include "runtime_support.h"
 
+#ifdef _WIN32
+#define harbour_popen _popen
+#define harbour_pclose _pclose
+#else
+#define harbour_popen popen
+#define harbour_pclose pclose
+#endif
+
 typedef struct harbour_runtime_Value harbour_runtime_Value;
 typedef struct harbour_memvar_Entry harbour_memvar_Entry;
 typedef struct harbour_private_Frame harbour_private_Frame;
@@ -47,6 +55,7 @@ static harbour_runtime_Value harbour_value_from_owned_string_buffer(
     char *buffer,
     size_t length
 );
+static long long harbour_process_status_code(int status);
 static void harbour_json_skip_ws(harbour_json_Parser *parser);
 static harbour_runtime_Value harbour_json_parse_value(
     harbour_json_Parser *parser,
@@ -2213,14 +2222,87 @@ struct harbour_runtime_Value harbour_builtin_hb_processrun(
         return harbour_value_from_integer(-1);
     }
 
+    return harbour_value_from_integer(harbour_process_status_code(status));
+}
+
+static long long harbour_process_status_code(int status) {
 #ifdef _WIN32
-    return harbour_value_from_integer(status);
+    return status;
 #else
     if (WIFEXITED(status)) {
-        return harbour_value_from_integer(WEXITSTATUS(status));
+        return WEXITSTATUS(status);
     }
-    return harbour_value_from_integer(-1);
+    return -1;
 #endif
+}
+
+struct harbour_runtime_Value harbour_builtin_hb_processrun_with_stdout(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count,
+    struct harbour_runtime_Value *stdout_value
+) {
+    FILE *pipe;
+    char *buffer = NULL;
+    size_t length = 0;
+    size_t capacity = 0;
+    int status;
+
+    if (
+        arguments == NULL ||
+        argument_count != 3 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING ||
+        arguments[1].kind != HARBOUR_VALUE_NIL ||
+        stdout_value == NULL
+    ) {
+        return harbour_value_error_literal("BASE 4001 Argument error (HB_PROCESSRUN)");
+    }
+
+    pipe = harbour_popen(arguments[0].as.string.data, "r");
+    if (pipe == NULL) {
+        *stdout_value = harbour_value_from_string_literal("");
+        return harbour_value_from_integer(-1);
+    }
+
+    for (;;) {
+        char chunk[256];
+        size_t read_count = fread(chunk, 1, sizeof(chunk), pipe);
+        if (read_count > 0) {
+            if (length + read_count > capacity) {
+                size_t next_capacity = capacity == 0 ? 512 : capacity * 2;
+                char *next_buffer;
+                while (next_capacity < length + read_count) {
+                    next_capacity *= 2;
+                }
+                next_buffer = (char *) realloc(buffer, next_capacity);
+                if (next_buffer == NULL) {
+                    free(buffer);
+                    harbour_pclose(pipe);
+                    *stdout_value = harbour_value_from_string_literal("");
+                    return harbour_value_from_integer(-1);
+                }
+                buffer = next_buffer;
+                capacity = next_capacity;
+            }
+            memcpy(buffer + length, chunk, read_count);
+            length += read_count;
+        }
+        if (read_count < sizeof(chunk)) {
+            if (feof(pipe) || ferror(pipe)) {
+                break;
+            }
+        }
+    }
+
+    status = harbour_pclose(pipe);
+    if (buffer == NULL) {
+        *stdout_value = harbour_value_from_string_literal("");
+    } else {
+        *stdout_value = harbour_value_from_owned_string_buffer(buffer, length);
+    }
+    if (status == -1) {
+        return harbour_value_from_integer(-1);
+    }
+    return harbour_value_from_integer(harbour_process_status_code(status));
 }
 
 struct harbour_runtime_Value harbour_builtin_substr(

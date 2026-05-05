@@ -1373,7 +1373,7 @@ pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
     Ok(parsed)
 }
 
-pub fn hb_processrun(value: Option<&Value>) -> Result<Value, RuntimeError> {
+fn hb_processrun_command(value: Option<&Value>) -> Result<&str, RuntimeError> {
     let Some(value) = value else {
         return Err(RuntimeError::hb_processrun_argument_error(None));
     };
@@ -1388,7 +1388,33 @@ pub fn hb_processrun(value: Option<&Value>) -> Result<Value, RuntimeError> {
         )));
     };
 
+    Ok(command)
+}
+
+pub fn hb_processrun(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let command = hb_processrun_command(value)?;
     let status = hb_processrun_shell_status(command)?;
+    Ok(Value::from(status))
+}
+
+pub fn hb_processrun_with_stdout(arguments: &mut [Value]) -> Result<Value, RuntimeError> {
+    if arguments.len() == 1 {
+        return hb_processrun(arguments.first());
+    }
+    if arguments.len() != 3 {
+        return Err(RuntimeError::hb_processrun_argument_error(
+            arguments.get(3).map(Value::kind),
+        ));
+    }
+    if !matches!(arguments[1], Value::Nil) {
+        return Err(RuntimeError::hb_processrun_argument_error(Some(
+            arguments[1].kind(),
+        )));
+    }
+
+    let command = hb_processrun_command(arguments.first())?;
+    let (status, stdout) = hb_processrun_shell_output(command)?;
+    arguments[2] = Value::String(HarbourString::from_bytes(stdout));
     Ok(Value::from(status))
 }
 
@@ -1401,6 +1427,18 @@ fn hb_processrun_shell_status(command: &str) -> Result<i64, RuntimeError> {
     Ok(status.code().map(i64::from).unwrap_or(-1))
 }
 
+#[cfg(windows)]
+fn hb_processrun_shell_output(command: &str) -> Result<(i64, Vec<u8>), RuntimeError> {
+    let output = Command::new("cmd")
+        .args(["/C", command])
+        .output()
+        .map_err(|_| RuntimeError::hb_processrun_argument_error(Some(ValueKind::String)))?;
+    Ok((
+        output.status.code().map(i64::from).unwrap_or(-1),
+        output.stdout,
+    ))
+}
+
 #[cfg(not(windows))]
 fn hb_processrun_shell_status(command: &str) -> Result<i64, RuntimeError> {
     let status = Command::new("sh")
@@ -1409,6 +1447,19 @@ fn hb_processrun_shell_status(command: &str) -> Result<i64, RuntimeError> {
         .status()
         .map_err(|_| RuntimeError::hb_processrun_argument_error(Some(ValueKind::String)))?;
     Ok(status.code().map(i64::from).unwrap_or(-1))
+}
+
+#[cfg(not(windows))]
+fn hb_processrun_shell_output(command: &str) -> Result<(i64, Vec<u8>), RuntimeError> {
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .output()
+        .map_err(|_| RuntimeError::hb_processrun_argument_error(Some(ValueKind::String)))?;
+    Ok((
+        output.status.code().map(i64::from).unwrap_or(-1),
+        output.stdout,
+    ))
 }
 
 fn json_to_runtime_value(value: JsonValue) -> Option<Value> {
@@ -1983,7 +2034,7 @@ pub fn call_builtin_mut(
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
         Some(Builtin::HbGzCompress) => hb_gzcompress_with_nresult(arguments),
-        Some(Builtin::HbProcessRun) => hb_processrun(arguments.first()),
+        Some(Builtin::HbProcessRun) => hb_processrun_with_stdout(arguments),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -3116,9 +3167,10 @@ mod tests {
     use crate::{
         OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
         call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
-        hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun, int, len,
-        log_value, max_value, min_value, mod_value, qout, replicate, round_value, sin_value, space,
-        sqrt_value, str_value, tan_value, type_value, val,
+        hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun,
+        hb_processrun_with_stdout, int, len, log_value, max_value, min_value, mod_value, qout,
+        replicate, round_value, sin_value, space, sqrt_value, str_value, tan_value, type_value,
+        val,
     };
 
     #[test]
@@ -4707,6 +4759,26 @@ mod tests {
             Ok(Value::from(7_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from("exit 7"));
+    }
+
+    #[test]
+    fn hb_processrun_with_stdout_captures_the_current_stdout_slice() {
+        let mut arguments = [Value::from("echo hbrust"), Value::Nil, Value::Nil];
+
+        assert_eq!(
+            hb_processrun_with_stdout(&mut arguments),
+            Ok(Value::from(0_i64))
+        );
+        let Value::String(stdout) = &arguments[2] else {
+            panic!("expected stdout string");
+        };
+        assert!(stdout.as_bytes().starts_with(b"hbrust"));
+
+        let mut context = RuntimeContext::new();
+        assert_eq!(
+            call_builtin_mut("HB_PROCESSRUN", &mut arguments, &mut context),
+            Ok(Value::from(0_i64))
+        );
     }
 
     #[test]

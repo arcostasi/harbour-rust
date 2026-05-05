@@ -4,13 +4,22 @@ mod support;
 use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
-use harbour_rust_runtime::{RuntimeError, Value, hb_processrun};
+use harbour_rust_runtime::{RuntimeError, Value, hb_processrun, hb_processrun_with_stdout};
 
 fn runtime_process_run_baseline() -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "hb_processRun(\"exit 7\") => {}\n",
         result_text(hb_processrun(Some(&Value::from("exit 7"))))
+    ));
+    let mut stdout_arguments = [Value::from("echo hbrust"), Value::Nil, Value::Nil];
+    out.push_str(&format!(
+        "hb_processRun(\"echo hbrust\", NIL, @cStdOut) => {}\n",
+        result_text(hb_processrun_with_stdout(&mut stdout_arguments))
+    ));
+    out.push_str(&format!(
+        "captured stdout prefix => {}\n",
+        captured_stdout_prefix(&stdout_arguments[2])
     ));
     out.push_str(&format!(
         "hb_processRun(10) => {}\n",
@@ -24,6 +33,13 @@ fn result_text(result: Result<Value, RuntimeError>) -> String {
         Ok(value) => value.to_output_string(),
         Err(error) => error.message,
     }
+}
+
+fn captured_stdout_prefix(value: &Value) -> String {
+    let Value::String(stdout) = value else {
+        panic!("expected stdout string");
+    };
+    String::from_utf8_lossy(&stdout.as_bytes()[..6]).into_owned()
 }
 
 #[test]

@@ -70,12 +70,22 @@ Acceptance for this slice:
 - keep stdin, stdout/stderr capture by reference, detach/async behavior, environment customization, and advanced quoting out of scope;
 - cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline tied to `hbprocfn.c`.
 
+The next adjacent process-execution slice now delivered is stdout capture.
+
+Acceptance for this slice:
+
+- accept the focused `hb_processRun( cCommand, NIL, @cStdOut )` form without implying generic by-reference call support;
+- write the captured stdout bytes back to the third argument slot as a runtime string;
+- keep the second argument restricted to `NIL` in this slice;
+- keep stdin, stderr capture, merged streams, detach/async behavior, environment customization, and advanced quoting out of scope;
+- cover runtime unit tests, public compiler/runtime execution, and the focused compatibility baseline.
+
 ## Expected Follow-Up Corridors
 
 After `hb_JsonDecode`, the next candidates are:
 
 - the remaining `hb_gzCompress` surface, especially destination-buffer by-reference writes and compression-level selection, after the delivered bound, direct-output, `@nResult`, and numeric `nDstBufLen` slices;
-- the remaining `hb_processRun` surface, especially stdin, stdout/stderr capture, detach behavior, environment behavior, quoting, and platform differences.
+- the remaining `hb_processRun` surface, especially stdin, stderr capture, merged streams, detach behavior, environment behavior, quoting, and platform differences.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.
 

@@ -52,11 +52,13 @@ The runtime already supports:
 - default-width `Str()` formatting now aligned for positive large numbers and source-level float-literal display scale in the executable C path, while explicit negative-width padding and width-driven `Str()` rounding also follow the oracle through half-away-from-zero behavior.
 - executable `Round()` output for large floats now stays in plain decimal form instead of collapsing into scientific notation in the host-C path.
 - type-oriented executable behavior now covers `ValType()` on codeblocks and `Empty()` on codeblocks and host-C error values with oracle-backed expectations.
+- focused phase 16 runtime-library slices now cover `hb_JsonDecode()`, `hb_gzCompressBound()`, the current `hb_gzCompress()` surface, `hb_processRun( cCommand )`, and `hb_processRun( cCommand, NIL, @cStdOut )` stdout capture.
 
 ## Known Limits
 
 - not all historical xBase value kinds exist yet;
 - some builtins only cover the currently tested subset of arguments;
+- broader `hb_processRun()` behavior is still limited: stdin, stderr capture, merged streams, detach/async behavior, environment customization, and advanced quoting remain outside the current compatibility claim;
 - `Val()` now follows the oracle for trailing-dot continuations such as `1..`, `1...`, `..`, and `-..`; the current ASCII subset also matches repeated-sign and exponent-like stop conditions, mixed punctuation such as `13.1.9`, and space-separated fragments after the decimal separator such as `12. 0` and `12 .10`; the remaining divergence is tied to source-level embedded `Chr(0)` construction in the current frontend/codegen path;
 - source-level construction of embedded `Chr(0)` strings is still limited in the current frontend/codegen path even though the host-C runtime preserves them in selected helpers once present;
 - exact historical formatting still differs in selected edge cases, especially some default-width large negative numeric expressions.

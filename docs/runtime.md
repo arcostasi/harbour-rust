@@ -58,10 +58,17 @@ Slice seguinte já entregue no corredor de execução de processos:
 - erro `BASE 4001 Argument error (HB_PROCESSRUN)` para argumento ausente ou não-string no recorte atual;
 - stdin, captura de stdout/stderr por referência, merge de streams, detach/async, ambiente customizado e quoting avançado seguem fora do recorte.
 
+Degrau adjacente entregue no mesmo corredor:
+
+- `hb_processRun( cCommand, NIL, @cStdOut )` com captura observável de stdout no terceiro slot;
+- o segundo slot precisa ser `NIL` no recorte atual;
+- o caminho Rust e o caminho executável em C preservam a saída capturada como string byte-safe;
+- stderr separado, stdin, merge de streams, detach/async, ambiente customizado e quoting avançado seguem fora do recorte.
+
 Corredores posteriores prováveis:
 
 - superfície restante de `hb_gzCompress`, especialmente `@cBuffer`, nível de compressão e paridade byte-a-byte com zlib upstream;
-- superfície restante de `hb_processRun`, especialmente stdin, captura por referência, detach e quoting multiplataforma.
+- superfície restante de `hb_processRun`, especialmente stdin, stderr separado, merge de streams, detach e quoting multiplataforma.
 
 Corredores adiados:
 

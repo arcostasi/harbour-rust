@@ -1,8 +1,6 @@
 PROCEDURE Main()
    LOCAL cOut := ""
 
-   ? hb_processRun( "exit 7" )
    ? hb_processRun( "echo hbrust", NIL, @cOut )
    ? Left( cOut, 6 )
-   ? hb_processRun( 10 )
 RETURN

@@ -127,6 +127,7 @@ Os primeiros fixtures já adicionados nessa linha incluem:
 - `tests/fixtures/compat/gz_compress_nresult_runtime.prg`
 - `tests/fixtures/parser/process_run_builtin.prg`
 - `tests/fixtures/parser/process_run_builtin_invalid.prg`
+- `tests/fixtures/parser/process_run_stdout_builtin.prg`
 - `tests/fixtures/compat/process_run_runtime.prg`
 
 APIs de processo, compressão, socket e threading devem seguir o mesmo padrão de slices pequenos. Sockets e threading precisam de testes CI-safe antes de qualquer expansão maior.

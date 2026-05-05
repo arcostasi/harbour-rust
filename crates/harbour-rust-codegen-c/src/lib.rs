@@ -537,6 +537,9 @@ impl Emitter {
             "extern harbour_runtime_Value harbour_builtin_hb_processrun(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_hb_processrun_with_stdout(const harbour_runtime_Value *arguments, size_t argument_count, harbour_runtime_Value *stdout_value);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_type(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
@@ -1051,6 +1054,9 @@ impl Emitter {
         if builtin == RuntimeBuiltin::HbGzCompress {
             return self.emit_hb_gzcompress_expression(arguments, span);
         }
+        if builtin == RuntimeBuiltin::HbProcessRun {
+            return self.emit_hb_processrun_expression(arguments, span);
+        }
 
         if builtin.requires_mutable_dispatch() {
             return self.emit_mutable_runtime_builtin_expression(builtin, arguments, span);
@@ -1126,6 +1132,54 @@ impl Emitter {
             emitted_arguments.join(", "),
             emitted_arguments.len(),
             result_slot
+        ))
+    }
+
+    fn emit_hb_processrun_expression(
+        &mut self,
+        arguments: &[Expression],
+        span: Span,
+    ) -> Option<String> {
+        let byref_positions: Vec<usize> = arguments
+            .iter()
+            .enumerate()
+            .filter_map(|(index, argument)| {
+                matches!(argument, Expression::ByRef(_)).then_some(index)
+            })
+            .collect();
+        if byref_positions.is_empty() {
+            return self.emit_runtime_builtin_invocation(RuntimeBuiltin::HbProcessRun, arguments);
+        }
+        if byref_positions != [2] {
+            self.push_error(
+                "C emission currently supports by-reference call arguments only for HB_PROCESSRUN(..., NIL, @cStdOut)",
+                span,
+            );
+            return None;
+        }
+
+        let Some(stdout_symbol) = self.named_byref_symbol(&arguments[2]) else {
+            self.push_error(
+                "C emission for HB_PROCESSRUN(..., NIL, @cStdOut) requires an addressable identifier",
+                span,
+            );
+            return None;
+        };
+        let mut emitted_arguments = Vec::with_capacity(arguments.len());
+        for (index, argument) in arguments.iter().enumerate() {
+            if index == 2 {
+                emitted_arguments.push(self.resolve_symbol_storage_name(&stdout_symbol.text));
+            } else {
+                emitted_arguments.push(self.emit_expression(argument)?);
+            }
+        }
+
+        let stdout_slot = format!("&{}", self.resolve_symbol_storage_name(&stdout_symbol.text));
+        Some(format!(
+            "harbour_builtin_hb_processrun_with_stdout((harbour_runtime_Value[]) {{ {} }}, {}, {})",
+            emitted_arguments.join(", "),
+            emitted_arguments.len(),
+            stdout_slot
         ))
     }
 

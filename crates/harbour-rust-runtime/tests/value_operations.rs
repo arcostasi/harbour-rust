@@ -1,10 +1,10 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
     at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
-    hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun, int, left,
-    log_value, lower, ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value,
-    rtrim, sin_value, space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper,
-    val, valtype,
+    hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun,
+    hb_processrun_with_stdout, int, left, log_value, lower, ltrim, max_value, min_value, mod_value,
+    qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value, str_value, substr,
+    tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -1790,6 +1790,26 @@ fn public_hb_processrun_dispatches_through_builtin_surfaces() {
         Ok(Value::from(7_i64))
     );
     assert_eq!(mutable_arguments[0], Value::from("exit 7"));
+}
+
+#[test]
+fn public_hb_processrun_with_stdout_captures_the_current_stdout_slice() {
+    let mut arguments = [Value::from("echo hbrust"), Value::Nil, Value::Nil];
+
+    assert_eq!(
+        hb_processrun_with_stdout(&mut arguments),
+        Ok(Value::from(0_i64))
+    );
+    let Value::String(stdout) = &arguments[2] else {
+        panic!("expected stdout string");
+    };
+    assert!(stdout.as_bytes().starts_with(b"hbrust"));
+
+    let mut context = RuntimeContext::new();
+    assert_eq!(
+        call_builtin_mut("HB_PROCESSRUN", &mut arguments, &mut context),
+        Ok(Value::from(0_i64))
+    );
 }
 
 #[test]
