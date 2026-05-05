@@ -1352,6 +1352,33 @@ pub fn hb_gzcompress_with_nresult(arguments: &mut [Value]) -> Result<Value, Runt
     Ok(compressed)
 }
 
+pub fn hb_gzcompress_with_buffer(arguments: &mut [Value]) -> Result<Value, RuntimeError> {
+    if !matches!(arguments.get(1), Some(Value::String(_))) {
+        return hb_gzcompress_with_nresult(arguments);
+    }
+    if arguments.len() > 3 {
+        return Err(RuntimeError::hb_gzcompress_argument_error(
+            arguments.get(3).map(Value::kind),
+        ));
+    }
+    let Some(Value::String(bytes)) = arguments.first() else {
+        return Err(RuntimeError::hb_gzcompress_argument_error(
+            arguments.first().map(Value::kind),
+        ));
+    };
+    let Value::String(buffer) = &arguments[1] else {
+        unreachable!("buffer slot already matched as a string");
+    };
+    let (compressed, result_code) = hb_gzcompress_render(bytes, Some(buffer.len()))?;
+    if result_code == 0 {
+        arguments[1] = compressed.clone();
+    }
+    if let Some(result) = arguments.get_mut(2) {
+        *result = Value::from(result_code);
+    }
+    Ok(compressed)
+}
+
 pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
     let Some(value) = value else {
         return Ok(Value::Nil);
@@ -2033,7 +2060,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
-        Some(Builtin::HbGzCompress) => hb_gzcompress_with_nresult(arguments),
+        Some(Builtin::HbGzCompress) => hb_gzcompress_with_buffer(arguments),
         Some(Builtin::HbProcessRun) => hb_processrun_with_stdout(arguments),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
@@ -3165,12 +3192,12 @@ fn round_with_decimals(value: f64, decimals: i64) -> f64 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs, aclone, asize, at,
-        call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
-        hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun,
-        hb_processrun_with_stdout, int, len, log_value, max_value, min_value, mod_value, qout,
-        replicate, round_value, sin_value, space, sqrt_value, str_value, tan_value, type_value,
-        val,
+        HarbourString, OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs,
+        aclone, asize, at, call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
+        hb_gzcompress_with_buffer, hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode,
+        hb_processrun, hb_processrun_with_stdout, int, len, log_value, max_value, min_value,
+        mod_value, qout, replicate, round_value, sin_value, space, sqrt_value, str_value,
+        tan_value, type_value, val,
     };
 
     #[test]
@@ -4593,6 +4620,37 @@ mod tests {
         assert_eq!(
             hb_gzcompress_with_nresult(&mut small_arguments),
             Ok(Value::Nil)
+        );
+        assert_eq!(small_arguments[2], Value::from(-5_i64));
+    }
+
+    #[test]
+    fn hb_gzcompress_with_buffer_writes_the_current_compressed_slice() {
+        let mut arguments = [
+            Value::from("abc"),
+            Value::String(HarbourString::from_bytes(vec![b' '; 26])),
+            Value::from(-1_i64),
+        ];
+        let compressed = hb_gzcompress_with_buffer(&mut arguments).expect("gzip with buffer");
+        let Value::String(compressed_bytes) = &compressed else {
+            panic!("expected compressed string");
+        };
+        assert_eq!(compressed_bytes.as_bytes().len(), 26);
+        assert_eq!(arguments[1], compressed);
+        assert_eq!(arguments[2], Value::from(0_i64));
+
+        let mut small_arguments = [
+            Value::from("abc"),
+            Value::String(HarbourString::from_bytes(vec![b' '; 25])),
+            Value::from(-1_i64),
+        ];
+        assert_eq!(
+            hb_gzcompress_with_buffer(&mut small_arguments),
+            Ok(Value::Nil)
+        );
+        assert_eq!(
+            small_arguments[1],
+            Value::String(HarbourString::from_bytes(vec![b' '; 25]))
         );
         assert_eq!(small_arguments[2], Value::from(-5_i64));
     }

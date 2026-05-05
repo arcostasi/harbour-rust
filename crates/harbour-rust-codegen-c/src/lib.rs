@@ -531,6 +531,9 @@ impl Emitter {
             "extern harbour_runtime_Value harbour_builtin_hb_gzcompress_with_nresult(const harbour_runtime_Value *arguments, size_t argument_count, harbour_runtime_Value *nresult);",
         );
         self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_hb_gzcompress_with_buffer(const harbour_runtime_Value *arguments, size_t argument_count, harbour_runtime_Value *buffer, harbour_runtime_Value *nresult);",
+        );
+        self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_hb_jsondecode(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
@@ -1102,9 +1105,12 @@ impl Emitter {
         if byref_positions.is_empty() {
             return self.emit_runtime_builtin_invocation(RuntimeBuiltin::HbGzCompress, arguments);
         }
+        if byref_positions == [1] || byref_positions == [1, 2] {
+            return self.emit_hb_gzcompress_buffer_expression(arguments, &byref_positions, span);
+        }
         if byref_positions != [2] {
             self.push_error(
-                "C emission currently supports by-reference call arguments only for HB_GZCOMPRESS(..., ..., @nResult)",
+                "C emission currently supports by-reference call arguments only for HB_GZCOMPRESS(..., @cBuffer, [@nResult]) or HB_GZCOMPRESS(..., ..., @nResult)",
                 span,
             );
             return None;
@@ -1131,6 +1137,64 @@ impl Emitter {
             "harbour_builtin_hb_gzcompress_with_nresult((harbour_runtime_Value[]) {{ {} }}, {}, {})",
             emitted_arguments.join(", "),
             emitted_arguments.len(),
+            result_slot
+        ))
+    }
+
+    fn emit_hb_gzcompress_buffer_expression(
+        &mut self,
+        arguments: &[Expression],
+        byref_positions: &[usize],
+        span: Span,
+    ) -> Option<String> {
+        if arguments.len() > 2 && !byref_positions.contains(&2) {
+            self.push_error(
+                "C emission for HB_GZCOMPRESS(..., @cBuffer, ...) currently supports only an optional @nResult third argument",
+                span,
+            );
+            return None;
+        }
+        let Some(buffer_symbol) = self.named_byref_symbol(&arguments[1]) else {
+            self.push_error(
+                "C emission for HB_GZCOMPRESS(..., @cBuffer, ...) requires an addressable buffer identifier",
+                span,
+            );
+            return None;
+        };
+        let result_symbol = if byref_positions.contains(&2) {
+            let Some(symbol) = self.named_byref_symbol(&arguments[2]) else {
+                self.push_error(
+                    "C emission for HB_GZCOMPRESS(..., @cBuffer, @nResult) requires an addressable result identifier",
+                    span,
+                );
+                return None;
+            };
+            Some(symbol)
+        } else {
+            None
+        };
+
+        let mut emitted_arguments = Vec::with_capacity(arguments.len());
+        for (index, argument) in arguments.iter().enumerate() {
+            if index == 1 {
+                emitted_arguments.push(self.resolve_symbol_storage_name(&buffer_symbol.text));
+            } else if index == 2 {
+                let symbol = result_symbol?;
+                emitted_arguments.push(self.resolve_symbol_storage_name(&symbol.text));
+            } else {
+                emitted_arguments.push(self.emit_expression(argument)?);
+            }
+        }
+
+        let buffer_slot = format!("&{}", self.resolve_symbol_storage_name(&buffer_symbol.text));
+        let result_slot = result_symbol
+            .map(|symbol| format!("&{}", self.resolve_symbol_storage_name(&symbol.text)))
+            .unwrap_or_else(|| "NULL".to_owned());
+        Some(format!(
+            "harbour_builtin_hb_gzcompress_with_buffer((harbour_runtime_Value[]) {{ {} }}, {}, {}, {})",
+            emitted_arguments.join(", "),
+            emitted_arguments.len(),
+            buffer_slot,
             result_slot
         ))
     }

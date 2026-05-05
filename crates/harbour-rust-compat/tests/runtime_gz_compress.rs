@@ -5,8 +5,8 @@ use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{
-    RuntimeError, Value, hb_gzcompress, hb_gzcompress_with_nresult, hb_gzcompress_with_options,
-    len, valtype,
+    RuntimeError, Value, hb_gzcompress, hb_gzcompress_with_buffer, hb_gzcompress_with_nresult,
+    hb_gzcompress_with_options, len, space, valtype,
 };
 
 fn runtime_gz_compress_baseline() -> String {
@@ -104,6 +104,45 @@ fn runtime_gz_compress_nresult_baseline() -> String {
         result_text(hb_gzcompress_with_nresult(&mut invalid_arguments))
     ));
 
+    let mut buffer_arguments = [
+        Value::from("abc"),
+        space(Some(&Value::from(26_i64))).expect("buffer"),
+        Value::from(-1_i64),
+    ];
+    let buffered = hb_gzcompress_with_buffer(&mut buffer_arguments).expect("buffered gzip");
+    out.push_str(&format!(
+        "ValType(hb_gzCompress(\"abc\", @cBuffer, @nResult)) => {}\n",
+        result_text(valtype(Some(&buffered)))
+    ));
+    out.push_str(&format!(
+        "Len(cBuffer after hb_gzCompress(\"abc\", @cBuffer, @nResult)) => {}\n",
+        result_text(len(Some(&buffer_arguments[1])))
+    ));
+    out.push_str(&format!(
+        "nResult after hb_gzCompress(\"abc\", @cBuffer, @nResult) => {}\n",
+        buffer_arguments[2].to_output_string()
+    ));
+
+    let mut small_buffer_arguments = [
+        Value::from("abc"),
+        space(Some(&Value::from(25_i64))).expect("small buffer"),
+        Value::from(-1_i64),
+    ];
+    let small_buffer =
+        hb_gzcompress_with_buffer(&mut small_buffer_arguments).expect("small buffered gzip");
+    out.push_str(&format!(
+        "ValType(hb_gzCompress(\"abc\", @smallBuffer, @nResult)) => {}\n",
+        result_text(valtype(Some(&small_buffer)))
+    ));
+    out.push_str(&format!(
+        "Len(smallBuffer after hb_gzCompress(\"abc\", @smallBuffer, @nResult)) => {}\n",
+        result_text(len(Some(&small_buffer_arguments[1])))
+    ));
+    out.push_str(&format!(
+        "nResult after hb_gzCompress(\"abc\", @smallBuffer, @nResult) => {}\n",
+        small_buffer_arguments[2].to_output_string()
+    ));
+
     out
 }
 
@@ -190,6 +229,7 @@ fn gz_compress_nresult_runtime_matches_the_documented_phase16_oracle_slice() {
 
     assert!(upstream_rtl.contains("hb_storni( iResult, 3 );"));
     assert!(upstream_rtl.contains("hb_gzCompress( <cData>, [<nDstBufLen>|<@cBuffer>]"));
+    assert!(upstream_rtl.contains("HB_ISBYREF( 2 )"));
 
     assert_eq!(runtime_gz_compress_nresult_baseline(), expected);
 }

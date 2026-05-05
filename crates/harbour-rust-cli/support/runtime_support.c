@@ -2073,11 +2073,13 @@ static _Bool harbour_gzcompress_dst_len(
 static harbour_runtime_Value harbour_gzcompress_with_options(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count,
-    struct harbour_runtime_Value *nresult
+    struct harbour_runtime_Value *nresult,
+    struct harbour_runtime_Value *buffer
 ) {
     harbour_runtime_Value error;
     size_t dst_len;
     size_t output_length;
+    harbour_runtime_Value compressed;
 
     if (
         arguments == NULL ||
@@ -2088,13 +2090,23 @@ static harbour_runtime_Value harbour_gzcompress_with_options(
         return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
     }
 
-    if (!harbour_gzcompress_dst_len(arguments, argument_count, &dst_len, &error)) {
-        return error;
+    if (buffer != NULL) {
+        if (buffer->kind != HARBOUR_VALUE_STRING) {
+            return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+        }
+        dst_len = buffer->as.string.length;
+    } else {
+        if (!harbour_gzcompress_dst_len(arguments, argument_count, &dst_len, &error)) {
+            return error;
+        }
     }
 
     if (arguments[0].as.string.length == 0) {
         if (nresult != NULL) {
             *nresult = harbour_value_from_integer(0);
+        }
+        if (buffer != NULL) {
+            *buffer = harbour_value_from_string_literal("");
         }
         return harbour_value_from_string_literal("");
     }
@@ -2107,13 +2119,17 @@ static harbour_runtime_Value harbour_gzcompress_with_options(
         return harbour_value_nil();
     }
 
-    if (nresult != NULL) {
-        *nresult = harbour_value_from_integer(0);
-    }
-    return harbour_gzip_encode_stored(
+    compressed = harbour_gzip_encode_stored(
         (const unsigned char *) arguments[0].as.string.data,
         arguments[0].as.string.length
     );
+    if (buffer != NULL) {
+        *buffer = compressed;
+    }
+    if (nresult != NULL) {
+        *nresult = harbour_value_from_integer(0);
+    }
+    return compressed;
 }
 
 struct harbour_runtime_Value harbour_builtin_hb_gzcompressbound(
@@ -2164,7 +2180,7 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompress(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 ) {
-    return harbour_gzcompress_with_options(arguments, argument_count, NULL);
+    return harbour_gzcompress_with_options(arguments, argument_count, NULL, NULL);
 }
 
 struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_nresult(
@@ -2172,7 +2188,16 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_nresult(
     size_t argument_count,
     struct harbour_runtime_Value *nresult
 ) {
-    return harbour_gzcompress_with_options(arguments, argument_count, nresult);
+    return harbour_gzcompress_with_options(arguments, argument_count, nresult, NULL);
+}
+
+struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_buffer(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count,
+    struct harbour_runtime_Value *buffer,
+    struct harbour_runtime_Value *nresult
+) {
+    return harbour_gzcompress_with_options(arguments, argument_count, nresult, buffer);
 }
 
 struct harbour_runtime_Value harbour_builtin_hb_jsondecode(

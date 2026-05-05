@@ -52,7 +52,7 @@ The runtime already supports:
 - default-width `Str()` formatting now aligned for positive large numbers and source-level float-literal display scale in the executable C path, while explicit negative-width padding and width-driven `Str()` rounding also follow the oracle through half-away-from-zero behavior.
 - executable `Round()` output for large floats now stays in plain decimal form instead of collapsing into scientific notation in the host-C path.
 - type-oriented executable behavior now covers `ValType()` on codeblocks and `Empty()` on codeblocks and host-C error values with oracle-backed expectations.
-- focused phase 16 runtime-library slices now cover `hb_JsonDecode()`, `hb_gzCompressBound()`, the current `hb_gzCompress()` surface, `hb_processRun( cCommand )`, and `hb_processRun( cCommand, NIL, @cStdOut )` stdout capture.
+- focused phase 16 runtime-library slices now cover `hb_JsonDecode()`, `hb_gzCompressBound()`, the current `hb_gzCompress()` surface including destination-buffer writeback, `hb_processRun( cCommand )`, and `hb_processRun( cCommand, NIL, @cStdOut )` stdout capture.
 
 ## Known Limits
 

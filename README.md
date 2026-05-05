@@ -35,7 +35,7 @@ Current highlights:
 - parser, HIR, sema, runtime, IR, and the current executable C backend are implemented;
 - procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected advanced preprocessor markers are available;
 - DBF/RDD groundwork is present;
-- focused `hb_JsonDecode()`, `hb_gzCompressBound()`, `hb_gzCompress()`, and `hb_processRun()` runtime slices, including stdout capture for `hb_processRun( cCommand, NIL, @cStdOut )`, are covered by tests and documented limits;
+- focused `hb_JsonDecode()`, `hb_gzCompressBound()`, `hb_gzCompress()`, and `hb_processRun()` runtime slices, including `hb_gzCompress()` destination-buffer writeback and stdout capture for `hb_processRun( cCommand, NIL, @cStdOut )`, are covered by tests and documented limits;
 - CLI, regression harnesses, benchmarks, fuzz scaffolding, release workflows, and cross-platform CI validation are in place.
 
 Near-term direction:

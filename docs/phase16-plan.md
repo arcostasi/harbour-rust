@@ -59,6 +59,16 @@ Acceptance for this slice:
 - preserve argument errors for unsupported second-slot types and keep `@cBuffer` plus compression-level selection out of scope;
 - cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline.
 
+The next adjacent zlib slice now delivered is destination-buffer writeback for the same builtin.
+
+Acceptance for this slice:
+
+- accept `hb_gzCompress( cData, @cBuffer )` and `hb_gzCompress( cData, @cBuffer, @nResult )` for a preallocated string buffer;
+- use the current buffer length as the destination limit;
+- write the compressed string back to `@cBuffer` and `@nResult := 0` when the output fits;
+- return `NIL`, preserve the current buffer value, and write `@nResult := -5` when the buffer is too small;
+- keep compression-level selection, zlib byte-for-byte parity, and generic by-reference call semantics out of scope.
+
 The first process-execution slice now delivered is minimal `hb_processRun`.
 
 Acceptance for this slice:
@@ -84,7 +94,7 @@ Acceptance for this slice:
 
 After `hb_JsonDecode`, the next candidates are:
 
-- the remaining `hb_gzCompress` surface, especially destination-buffer by-reference writes and compression-level selection, after the delivered bound, direct-output, `@nResult`, and numeric `nDstBufLen` slices;
+- the remaining `hb_gzCompress` surface, especially compression-level selection and zlib byte-for-byte parity, after the delivered bound, direct-output, `@nResult`, numeric `nDstBufLen`, and `@cBuffer` slices;
 - the remaining `hb_processRun` surface, especially stdin, stderr capture, merged streams, detach behavior, environment behavior, quoting, and platform differences.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.

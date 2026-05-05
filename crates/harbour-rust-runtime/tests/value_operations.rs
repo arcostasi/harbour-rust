@@ -1,10 +1,10 @@
 use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
     at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
-    hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode, hb_processrun,
-    hb_processrun_with_stdout, int, left, log_value, lower, ltrim, max_value, min_value, mod_value,
-    qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value, str_value, substr,
-    tan_value, trim, type_value, upper, val, valtype,
+    hb_gzcompress_with_buffer, hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode,
+    hb_processrun, hb_processrun_with_stdout, int, left, len, log_value, lower, ltrim, max_value,
+    min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value,
+    str_value, substr, tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -1686,6 +1686,31 @@ fn public_hb_gzcompress_with_nresult_sets_the_observable_status_slot() {
         hb_gzcompress_with_nresult(&mut small_arguments),
         Ok(Value::Nil)
     );
+    assert_eq!(small_arguments[2], Value::from(-5_i64));
+}
+
+#[test]
+fn public_hb_gzcompress_with_buffer_writes_the_observable_buffer_slot() {
+    let mut arguments = [
+        Value::from("abc"),
+        space(Some(&Value::from(26_i64))).expect("buffer"),
+        Value::from(-1_i64),
+    ];
+    let compressed = hb_gzcompress_with_buffer(&mut arguments).expect("gzip with buffer");
+    assert_eq!(len(Some(&compressed)), Ok(Value::from(26_i64)));
+    assert_eq!(arguments[1], compressed);
+    assert_eq!(arguments[2], Value::from(0_i64));
+
+    let mut small_arguments = [
+        Value::from("abc"),
+        space(Some(&Value::from(25_i64))).expect("small buffer"),
+        Value::from(-1_i64),
+    ];
+    assert_eq!(
+        hb_gzcompress_with_buffer(&mut small_arguments),
+        Ok(Value::Nil)
+    );
+    assert_eq!(len(Some(&small_arguments[1])), Ok(Value::from(25_i64)));
     assert_eq!(small_arguments[2], Value::from(-5_i64));
 }
 

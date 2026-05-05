@@ -48,7 +48,8 @@ Degrau adjacente agora entregue sobre a mesma família:
 - `@nResult` recebe `0` no caminho atual de sucesso, incluindo string vazia;
 - o caminho público do compilador agora aceita `@ident` em argumentos de chamada somente no recorte necessário para esse builtin;
 - o segundo slot também cobre `nDstBufLen` numérico no recorte atual: tamanho suficiente retorna string comprimida e `@nResult := 0`; tamanho insuficiente retorna `NIL` e `@nResult := -5`;
-- nível explícito de compressão, buffer por referência e semântica genérica de chamadas por referência continuam fora do recorte.
+- o segundo slot agora cobre também `@cBuffer` string prealocado: tamanho suficiente escreve a string comprimida no buffer e `@nResult := 0`; tamanho insuficiente preserva o buffer e escreve `@nResult := -5`;
+- nível explícito de compressão, paridade byte-a-byte com zlib upstream e semântica genérica de chamadas por referência continuam fora do recorte.
 
 Slice seguinte já entregue no corredor de execução de processos:
 
@@ -67,7 +68,7 @@ Degrau adjacente entregue no mesmo corredor:
 
 Corredores posteriores prováveis:
 
-- superfície restante de `hb_gzCompress`, especialmente `@cBuffer`, nível de compressão e paridade byte-a-byte com zlib upstream;
+- superfície restante de `hb_gzCompress`, especialmente nível de compressão e paridade byte-a-byte com zlib upstream;
 - superfície restante de `hb_processRun`, especialmente stdin, stderr separado, merge de streams, detach e quoting multiplataforma.
 
 Corredores adiados:
