@@ -8,8 +8,8 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/arcostasi/harbour-rust"
 rust-version = "1.94"
-version = "0.5.0-alpha.0"
+version = "0.6.0-alpha.0"
 
 [workspace.metadata.harbour-rust]
-phase = 12
-status = "release-prep"
+phase = 16
+status = "0.6.0-alpha-release"

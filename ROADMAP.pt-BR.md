@@ -16,7 +16,7 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | `0.3.0-alpha` | comportamento dinâmico xBase | concluída |
 | `0.4.0-alpha` | base de RDD, CLI/DX, regressão e tooling de release | concluída |
 | `0.5.0-alpha` | expansão curada de compatibilidade da fase 15, com crescimento focado do corpus avançado de PP | concluída |
-| `0.6.0-alpha` | fidelidade de runtime da fase 16, começando por builtins focados de runtime/biblioteca Harbour | planejada |
+| `0.6.0-alpha` | fidelidade de runtime da fase 16, começando por builtins focados de runtime/biblioteca Harbour | concluída |
 
 ## Panorama das Fases
 
@@ -38,18 +38,19 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | 13 | marcadores avançados de pré-processador ancorados no oráculo | concluída |
 | 14 | expansão curada do corpus de compatibilidade | concluída |
 | 15 | expansão de compatibilidade pós-0.4 | primeiro slice de release concluído |
-| 16 | fidelidade de runtime pós-0.5 | planejada |
+| 16 | fidelidade de runtime pós-0.5 | primeiro slice de release concluído |
 
 ## Prioridades de Curto Prazo
 
-Depois da release `0.5.0-alpha`, a próxima prioridade é a fidelidade de runtime da fase 16.
+Depois da release `0.6.0-alpha`, a próxima prioridade é continuar a fidelidade de runtime da fase 16 sem ampliar alegações de compatibilidade além de slices de runtime/biblioteca testados.
 
-O primeiro corredor planejado é:
+O primeiro corredor entregue cobre:
 
-1. implementar o menor slice de `hb_JsonDecode` ancorado em oráculo que consiga mapear escalares, arrays e objetos JSON para o modelo atual de valores do runtime;
-2. documentar explicitamente os edge cases JSON/valor ainda não suportados, sem sugerir cobertura completa da API Harbour;
-3. aplicar o mesmo padrão a slices posteriores de `hb_gzCompress` e `hb_processRun` apenas depois de estabilizar o comportamento de valores e strings/binários;
-4. adiar sockets e threading até o runtime ter decisões explícitas de IO, ownership e concorrência multiplataforma.
+1. o menor slice de `hb_JsonDecode` ancorado em oráculo que mapeia escalares, arrays e objetos JSON para o modelo atual de valores do runtime;
+2. documentação explícita dos edge cases JSON/valor ainda não suportados, sem sugerir cobertura completa da API Harbour;
+3. slices focados de `hb_gzCompressBound()` e `hb_gzCompress()` cobrindo saída direta, `@nResult`, `nDstBufLen` numérico e limites de compressão documentados;
+4. tratamento focado de exit status em `hb_processRun( cCommand )`, deixando captura, detach, ambiente e quoting para oráculos posteriores;
+5. adiamento de sockets e threading até o runtime ter decisões explícitas de IO, ownership e concorrência multiplataforma.
 
 Prioridades secundárias permanecem:
 

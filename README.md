@@ -11,7 +11,7 @@ Rust compiler project for CA-Clipper/Harbour compatibility, with a practical exe
 
 [English](./README.md) | [Português do Brasil](./README.pt-BR.md)
 
-[Latest release](https://github.com/arcostasi/harbour-rust/releases/tag/0.5.0-alpha) | [All releases](https://github.com/arcostasi/harbour-rust/releases) | [Documentation](./docs/README.md) | [Contributing](./CONTRIBUTING.md)
+[Latest release](https://github.com/arcostasi/harbour-rust/releases/tag/0.6.0-alpha) | [All releases](https://github.com/arcostasi/harbour-rust/releases) | [Documentation](./docs/README.md) | [Contributing](./CONTRIBUTING.md)
 
 Harbour Rust is an independent, community-led, open source compiler project written in Rust and designed for compatibility with CA-Clipper and Harbour.
 
@@ -28,31 +28,31 @@ The project also has a personal origin: xBase was the maintainer's first serious
 
 ## Current Status
 
-The repository has completed phases 0 through 15 of its current roadmap through the `0.5.0-alpha` release line. The next development focus is phase 16 runtime fidelity, starting with small, oracle-backed Harbour runtime/library builtins rather than broad unmeasured API coverage.
+The repository has completed phases 0 through 16 of its current roadmap through the `0.6.0-alpha` release line. The current runtime-fidelity baseline adds small, oracle-backed Harbour runtime/library slices without claiming broad unmeasured API coverage.
 
 Current highlights:
 
 - parser, HIR, sema, runtime, IR, and the current executable C backend are implemented;
 - procedural compatibility, arrays, `STATIC`, memvars, codeblocks, and selected advanced preprocessor markers are available;
 - DBF/RDD groundwork is present;
+- focused `hb_JsonDecode()`, `hb_gzCompressBound()`, `hb_gzCompress()`, and `hb_processRun()` runtime slices are covered by tests and documented limits;
 - CLI, regression harnesses, benchmarks, fuzz scaffolding, release workflows, and cross-platform CI validation are in place.
 
 Near-term direction:
 
-- first runtime-fidelity corridor: focused `hb_JsonDecode` behavior with explicit value-mapping tests;
-- likely follow-up corridors: compression and process execution after string/binary and runtime value behavior are stable enough;
+- continue runtime fidelity through the remaining `hb_gzCompress()` and `hb_processRun()` surfaces only with new focused oracles;
 - deferred corridors: sockets and threading, because they require cross-platform IO and concurrency design before compatibility claims are useful.
 
 ## Releases
 
-- Latest pre-release: [0.5.0-alpha](https://github.com/arcostasi/harbour-rust/releases/tag/0.5.0-alpha)
+- Latest pre-release: [0.6.0-alpha](https://github.com/arcostasi/harbour-rust/releases/tag/0.6.0-alpha)
 - All releases: [github.com/arcostasi/harbour-rust/releases](https://github.com/arcostasi/harbour-rust/releases)
 - Latest pre-release assets:
-  - [Linux x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/harbour-rust-cli-0.5.0-alpha-linux-x86_64.zip)
-  - [macOS aarch64](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/harbour-rust-cli-0.5.0-alpha-macos-aarch64.zip)
-  - [Windows x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/harbour-rust-cli-0.5.0-alpha-windows-x86_64.zip)
-  - [SHA256SUMS.txt](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/SHA256SUMS.txt)
-  - [benchmark-report.md](https://github.com/arcostasi/harbour-rust/releases/download/0.5.0-alpha/benchmark-report.md)
+  - [Linux x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.6.0-alpha/harbour-rust-cli-0.6.0-alpha-linux-x86_64.zip)
+  - [macOS aarch64](https://github.com/arcostasi/harbour-rust/releases/download/0.6.0-alpha/harbour-rust-cli-0.6.0-alpha-macos-aarch64.zip)
+  - [Windows x86_64](https://github.com/arcostasi/harbour-rust/releases/download/0.6.0-alpha/harbour-rust-cli-0.6.0-alpha-windows-x86_64.zip)
+  - [SHA256SUMS.txt](https://github.com/arcostasi/harbour-rust/releases/download/0.6.0-alpha/SHA256SUMS.txt)
+  - [benchmark-report.md](https://github.com/arcostasi/harbour-rust/releases/download/0.6.0-alpha/benchmark-report.md)
 
 ## Documentation
 
