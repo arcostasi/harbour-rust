@@ -1270,7 +1270,24 @@ pub fn hb_gzcompressbound(value: Option<&Value>) -> Result<Value, RuntimeError> 
 }
 
 pub fn hb_gzcompress(value: Option<&Value>) -> Result<Value, RuntimeError> {
-    let Some(value) = value else {
+    let arguments = value.into_iter().collect::<Vec<_>>();
+    hb_gzcompress_with_options(arguments.as_slice())
+}
+
+pub fn hb_gzcompress_with_options(arguments: &[&Value]) -> Result<Value, RuntimeError> {
+    let (bytes, dst_len) = hb_gzcompress_input(arguments)?;
+    hb_gzcompress_render(bytes, dst_len).map(|(value, _)| value)
+}
+
+fn hb_gzcompress_input<'a>(
+    arguments: &[&'a Value],
+) -> Result<(&'a HarbourString, Option<usize>), RuntimeError> {
+    if arguments.len() > 3 {
+        return Err(RuntimeError::hb_gzcompress_argument_error(
+            arguments.get(3).map(|value| value.kind()),
+        ));
+    }
+    let Some(value) = arguments.first().copied() else {
         return Err(RuntimeError::hb_gzcompress_argument_error(None));
     };
     let Value::String(bytes) = value else {
@@ -1278,31 +1295,55 @@ pub fn hb_gzcompress(value: Option<&Value>) -> Result<Value, RuntimeError> {
             value.kind(),
         )));
     };
+    let dst_len = match arguments.get(1).copied() {
+        None | Some(Value::Nil) => None,
+        Some(value) => Some(hb_gzcompress_dst_len(value)?),
+    };
+    Ok((bytes, dst_len))
+}
+
+fn hb_gzcompress_dst_len(value: &Value) -> Result<usize, RuntimeError> {
+    match value {
+        Value::Integer(length) if *length >= 0 => usize::try_from(*length)
+            .map_err(|_| RuntimeError::hb_gzcompress_argument_error(Some(ValueKind::Integer))),
+        Value::Float(length) => {
+            let length = length.raw();
+            if !length.is_finite() || length < 0.0 || length > usize::MAX as f64 {
+                return Err(RuntimeError::hb_gzcompress_argument_error(Some(
+                    ValueKind::Float,
+                )));
+            }
+            Ok(length.trunc() as usize)
+        }
+        _ => Err(RuntimeError::hb_gzcompress_argument_error(Some(
+            value.kind(),
+        ))),
+    }
+}
+
+fn hb_gzcompress_render(
+    bytes: &HarbourString,
+    dst_len: Option<usize>,
+) -> Result<(Value, i64), RuntimeError> {
     if bytes.is_empty() {
-        return Ok(Value::from(""));
+        return Ok((Value::from(""), 0));
     }
 
-    Ok(Value::String(gzip_encode_stored(bytes.as_bytes())))
+    let output_len = gzip_stored_output_len(bytes.len());
+    if dst_len.is_some_and(|length| length < output_len) {
+        return Ok((Value::Nil, -5));
+    }
+
+    Ok((Value::String(gzip_encode_stored(bytes.as_bytes())), 0))
 }
 
 pub fn hb_gzcompress_with_nresult(arguments: &mut [Value]) -> Result<Value, RuntimeError> {
-    if arguments.is_empty() {
-        return Err(RuntimeError::hb_gzcompress_argument_error(None));
-    }
-    if arguments.len() > 1 && !matches!(arguments[1], Value::Nil) {
-        return Err(RuntimeError::hb_gzcompress_argument_error(Some(
-            arguments[1].kind(),
-        )));
-    }
-    if arguments.len() > 3 {
-        return Err(RuntimeError::hb_gzcompress_argument_error(Some(
-            arguments[3].kind(),
-        )));
-    }
-
-    let compressed = hb_gzcompress(arguments.first())?;
+    let argument_refs = arguments.iter().collect::<Vec<_>>();
+    let (bytes, dst_len) = hb_gzcompress_input(argument_refs.as_slice())?;
+    let (compressed, result_code) = hb_gzcompress_render(bytes, dst_len)?;
+    drop(argument_refs);
     if let Some(result) = arguments.get_mut(2) {
-        *result = Value::from(0_i64);
+        *result = Value::from(result_code);
     }
     Ok(compressed)
 }
@@ -1836,7 +1877,10 @@ pub fn call_builtin(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
-        Some(Builtin::HbGzCompress) => hb_gzcompress(arguments.first()),
+        Some(Builtin::HbGzCompress) => {
+            let argument_refs = arguments.iter().collect::<Vec<_>>();
+            hb_gzcompress_with_options(argument_refs.as_slice())
+        }
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
@@ -4431,6 +4475,22 @@ mod tests {
             Ok(Value::from(""))
         );
         assert_eq!(empty_arguments[2], Value::from(0_i64));
+
+        let mut sized_arguments = [Value::from("abc"), Value::from(26_i64), Value::from(-1_i64)];
+        let compressed =
+            hb_gzcompress_with_nresult(&mut sized_arguments).expect("gzip with dst len");
+        let Value::String(compressed) = compressed else {
+            panic!("expected string result");
+        };
+        assert_eq!(compressed.as_bytes().len(), 26);
+        assert_eq!(sized_arguments[2], Value::from(0_i64));
+
+        let mut small_arguments = [Value::from("abc"), Value::from(25_i64), Value::from(-1_i64)];
+        assert_eq!(
+            hb_gzcompress_with_nresult(&mut small_arguments),
+            Ok(Value::Nil)
+        );
+        assert_eq!(small_arguments[2], Value::from(-5_i64));
     }
 
     #[test]
@@ -4452,13 +4512,13 @@ mod tests {
             })
         );
 
-        let mut arguments = [Value::from("abc"), Value::from(10_i64), Value::from(-1_i64)];
+        let mut arguments = [Value::from("abc"), Value::from(true), Value::from(-1_i64)];
         assert_eq!(
             hb_gzcompress_with_nresult(&mut arguments),
             Err(RuntimeError {
                 message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
                 expected: None,
-                actual: Some(ValueKind::Integer),
+                actual: Some(ValueKind::Logical),
             })
         );
     }
@@ -4473,6 +4533,15 @@ mod tests {
             panic!("expected string result");
         };
         assert_eq!(compressed.as_bytes().len(), 26);
+
+        assert_eq!(
+            call_builtin(
+                "hb_gzcompress",
+                &[Value::from("abc"), Value::from(25_i64)],
+                &mut context,
+            ),
+            Ok(Value::Nil)
+        );
 
         let mut mutable_arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
         let compressed = call_builtin_mut("HB_GZCOMPRESS", &mut mutable_arguments, &mut context)

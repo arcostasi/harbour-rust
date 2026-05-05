@@ -1642,6 +1642,15 @@ fn public_hb_gzcompress_dispatches_through_builtin_surfaces() {
     };
     assert_eq!(compressed.as_bytes().len(), 26);
 
+    assert_eq!(
+        call_builtin(
+            "hb_gzcompress",
+            &[Value::from("abc"), Value::from(25_i64)],
+            &mut context,
+        ),
+        Ok(Value::Nil)
+    );
+
     let mut mutable_arguments = [Value::from("abc"), Value::Nil, Value::from(-1_i64)];
     let compressed =
         call_builtin_mut("HB_GZCOMPRESS", &mut mutable_arguments, &mut context).expect("gzip");
@@ -1662,6 +1671,21 @@ fn public_hb_gzcompress_with_nresult_sets_the_observable_status_slot() {
     };
     assert_eq!(compressed.as_bytes().len(), 26);
     assert_eq!(arguments[2], Value::from(0_i64));
+
+    let mut sized_arguments = [Value::from("abc"), Value::from(26_i64), Value::from(-1_i64)];
+    let compressed = hb_gzcompress_with_nresult(&mut sized_arguments).expect("gzip");
+    let Value::String(compressed) = compressed else {
+        panic!("expected string result");
+    };
+    assert_eq!(compressed.as_bytes().len(), 26);
+    assert_eq!(sized_arguments[2], Value::from(0_i64));
+
+    let mut small_arguments = [Value::from("abc"), Value::from(25_i64), Value::from(-1_i64)];
+    assert_eq!(
+        hb_gzcompress_with_nresult(&mut small_arguments),
+        Ok(Value::Nil)
+    );
+    assert_eq!(small_arguments[2], Value::from(-5_i64));
 }
 
 #[test]

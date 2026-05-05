@@ -5,7 +5,8 @@ use support::{read_upstream_or_skip, workspace_fixture};
 
 use harbour_rust_parser::parse;
 use harbour_rust_runtime::{
-    RuntimeError, Value, hb_gzcompress, hb_gzcompress_with_nresult, len, valtype,
+    RuntimeError, Value, hb_gzcompress, hb_gzcompress_with_nresult, hb_gzcompress_with_options,
+    len, valtype,
 };
 
 fn runtime_gz_compress_baseline() -> String {
@@ -66,9 +67,40 @@ fn runtime_gz_compress_nresult_baseline() -> String {
         empty_arguments[2].to_output_string()
     ));
 
-    let mut invalid_arguments = [Value::from("abc"), Value::from(10_i64), Value::from(-1_i64)];
+    let mut sized_arguments = [Value::from("abc"), Value::from(26_i64), Value::from(-1_i64)];
+    let sized = hb_gzcompress_with_nresult(&mut sized_arguments).expect("gzip sized result");
     out.push_str(&format!(
-        "hb_gzCompress(\"abc\", 10, @nResult) => {}\n",
+        "ValType(hb_gzCompress(\"abc\", 26, @nResult)) => {}\n",
+        result_text(valtype(Some(&sized)))
+    ));
+    out.push_str(&format!(
+        "nResult after hb_gzCompress(\"abc\", 26, @nResult) => {}\n",
+        sized_arguments[2].to_output_string()
+    ));
+
+    let mut small_arguments = [Value::from("abc"), Value::from(25_i64), Value::from(-1_i64)];
+    let small = hb_gzcompress_with_nresult(&mut small_arguments).expect("small gzip result");
+    out.push_str(&format!(
+        "ValType(hb_gzCompress(\"abc\", 25, @nResult)) => {}\n",
+        result_text(valtype(Some(&small)))
+    ));
+    out.push_str(&format!(
+        "nResult after hb_gzCompress(\"abc\", 25, @nResult) => {}\n",
+        small_arguments[2].to_output_string()
+    ));
+
+    let immutable_small_args = [Value::from("abc"), Value::from(25_i64)];
+    let immutable_small_arg_refs = immutable_small_args.iter().collect::<Vec<_>>();
+    let immutable_small =
+        hb_gzcompress_with_options(immutable_small_arg_refs.as_slice()).expect("small gzip");
+    out.push_str(&format!(
+        "ValType(hb_gzCompress(\"abc\", 25)) => {}\n",
+        result_text(valtype(Some(&immutable_small)))
+    ));
+
+    let mut invalid_arguments = [Value::from("abc"), Value::from(true), Value::from(-1_i64)];
+    out.push_str(&format!(
+        "hb_gzCompress(\"abc\", .T., @nResult) => {}\n",
         result_text(hb_gzcompress_with_nresult(&mut invalid_arguments))
     ));
 

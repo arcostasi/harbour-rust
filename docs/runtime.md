@@ -47,7 +47,7 @@ Degrau adjacente agora entregue sobre a mesma família:
 - `hb_gzCompress( cData, NIL, @nResult )` com writeback observável do código de resultado no terceiro slot;
 - `@nResult` recebe `0` no caminho atual de sucesso, incluindo string vazia;
 - o caminho público do compilador agora aceita `@ident` em argumentos de chamada somente no recorte necessário para esse builtin;
-- o segundo slot ainda não cobre `nDstBufLen` nem `@cBuffer`; fora do `NIL` curado atual, o comportamento segue erro de argumentos no baseline do slice;
+- o segundo slot também cobre `nDstBufLen` numérico no recorte atual: tamanho suficiente retorna string comprimida e `@nResult := 0`; tamanho insuficiente retorna `NIL` e `@nResult := -5`;
 - nível explícito de compressão, buffer por referência e semântica genérica de chamadas por referência continuam fora do recorte.
 
 Corredores posteriores prováveis:

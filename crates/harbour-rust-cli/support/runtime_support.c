@@ -2020,6 +2020,90 @@ static harbour_runtime_Value harbour_gzip_encode_stored(
     return harbour_value_from_owned_string_buffer((char *) buffer, cursor);
 }
 
+static _Bool harbour_gzcompress_dst_len(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count,
+    size_t *dst_len,
+    harbour_runtime_Value *error
+) {
+    *dst_len = (size_t) -1;
+    if (argument_count <= 1 || arguments[1].kind == HARBOUR_VALUE_NIL) {
+        return 1;
+    }
+
+    if (arguments[1].kind == HARBOUR_VALUE_INTEGER) {
+        if (arguments[1].as.integer < 0) {
+            *error = harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+            return 0;
+        }
+        *dst_len = (size_t) arguments[1].as.integer;
+        if ((long long) *dst_len != arguments[1].as.integer) {
+            *error = harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+            return 0;
+        }
+        return 1;
+    }
+
+    if (arguments[1].kind == HARBOUR_VALUE_FLOAT) {
+        double length = arguments[1].as.floating;
+        if (!isfinite(length) || length < 0.0 || length > (double) LLONG_MAX) {
+            *error = harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+            return 0;
+        }
+        *dst_len = (size_t) trunc(length);
+        return 1;
+    }
+
+    *error = harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+    return 0;
+}
+
+static harbour_runtime_Value harbour_gzcompress_with_options(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count,
+    struct harbour_runtime_Value *nresult
+) {
+    harbour_runtime_Value error;
+    size_t dst_len;
+    size_t output_length;
+
+    if (
+        arguments == NULL ||
+        argument_count == 0 ||
+        argument_count > 3 ||
+        arguments[0].kind != HARBOUR_VALUE_STRING
+    ) {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
+    }
+
+    if (!harbour_gzcompress_dst_len(arguments, argument_count, &dst_len, &error)) {
+        return error;
+    }
+
+    if (arguments[0].as.string.length == 0) {
+        if (nresult != NULL) {
+            *nresult = harbour_value_from_integer(0);
+        }
+        return harbour_value_from_string_literal("");
+    }
+
+    output_length = harbour_gzip_stored_output_len(arguments[0].as.string.length);
+    if (dst_len != (size_t) -1 && dst_len < output_length) {
+        if (nresult != NULL) {
+            *nresult = harbour_value_from_integer(-5);
+        }
+        return harbour_value_nil();
+    }
+
+    if (nresult != NULL) {
+        *nresult = harbour_value_from_integer(0);
+    }
+    return harbour_gzip_encode_stored(
+        (const unsigned char *) arguments[0].as.string.data,
+        arguments[0].as.string.length
+    );
+}
+
 struct harbour_runtime_Value harbour_builtin_hb_gzcompressbound(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
@@ -2068,22 +2152,7 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompress(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
 ) {
-    if (
-        arguments == NULL ||
-        argument_count == 0 ||
-        arguments[0].kind != HARBOUR_VALUE_STRING
-    ) {
-        return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
-    }
-
-    if (arguments[0].as.string.length == 0) {
-        return harbour_value_from_string_literal("");
-    }
-
-    return harbour_gzip_encode_stored(
-        (const unsigned char *) arguments[0].as.string.data,
-        arguments[0].as.string.length
-    );
+    return harbour_gzcompress_with_options(arguments, argument_count, NULL);
 }
 
 struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_nresult(
@@ -2091,27 +2160,7 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_nresult(
     size_t argument_count,
     struct harbour_runtime_Value *nresult
 ) {
-    harbour_runtime_Value compressed;
-
-    if (
-        argument_count > 1 &&
-        arguments != NULL &&
-        arguments[1].kind != HARBOUR_VALUE_NIL
-    ) {
-        return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
-    }
-    if (argument_count > 3) {
-        return harbour_value_error_literal("BASE 3012 Argument error (HB_GZCOMPRESS)");
-    }
-
-    compressed = harbour_builtin_hb_gzcompress(arguments, argument_count > 0 ? 1 : 0);
-    if (compressed.kind == HARBOUR_VALUE_ERROR) {
-        return compressed;
-    }
-    if (nresult != NULL) {
-        *nresult = harbour_value_from_integer(0);
-    }
-    return compressed;
+    return harbour_gzcompress_with_options(arguments, argument_count, nresult);
 }
 
 struct harbour_runtime_Value harbour_builtin_hb_jsondecode(

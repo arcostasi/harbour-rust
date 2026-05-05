@@ -46,15 +46,24 @@ Acceptance for this slice:
 
 - accept the focused `hb_gzCompress( cData, NIL, @nResult )` form without implying generic by-reference call support;
 - write back `0` to `@nResult` on the current successful path, including empty-string input;
-- preserve runtime argument errors for still-out-of-scope second-slot forms such as numeric destination sizing;
 - cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline;
 - keep destination buffers, compression level, and broader by-reference semantics explicitly out of scope.
+
+The next adjacent slice now delivered is numeric destination-length handling for the same builtin.
+
+Acceptance for this slice:
+
+- accept `hb_gzCompress( cData, nDstBufLen )` and `hb_gzCompress( cData, nDstBufLen, @nResult )` for numeric destination sizes;
+- return a compressed binary string and write `0` when the current deterministic gzip output fits;
+- return `NIL` and write `-5` when the supplied size is too small, matching the observable `Z_BUF_ERROR` branch;
+- preserve argument errors for unsupported second-slot types and keep `@cBuffer` plus compression-level selection out of scope;
+- cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline.
 
 ## Expected Follow-Up Corridors
 
 After `hb_JsonDecode`, the next candidates are:
 
-- the broader `hb_gzCompress` surface, once string/binary behavior and byte-preservation expectations are clear enough on top of the delivered `hb_gzCompressBound` and one-argument `hb_gzCompress` groundwork;
+- the remaining `hb_gzCompress` surface, especially destination-buffer by-reference writes and compression-level selection, after the delivered bound, direct-output, `@nResult`, and numeric `nDstBufLen` slices;
 - `hb_processRun`, once process execution semantics, exit status handling, environment behavior, quoting, and platform differences are specified.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.

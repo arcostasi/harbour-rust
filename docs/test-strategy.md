@@ -120,6 +120,7 @@ Os primeiros fixtures já adicionados nessa linha incluem:
 - `tests/fixtures/compat/gz_compress_bound_runtime.prg`
 - `tests/fixtures/parser/gz_compress_builtin.prg`
 - `tests/fixtures/parser/gz_compress_builtin_invalid.prg`
+- `tests/fixtures/parser/gz_compress_builtin_dstlen.prg`
 - `tests/fixtures/parser/gz_compress_builtin_nresult.prg`
 - `tests/fixtures/parser/gz_compress_builtin_nresult_invalid.prg`
 - `tests/fixtures/compat/gz_compress_runtime.prg`

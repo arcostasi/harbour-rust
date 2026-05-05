@@ -1610,6 +1610,22 @@ fn run_command_executes_gz_compress_builtin_nresult_fixture_with_expected_output
 }
 
 #[test]
+fn run_command_executes_gz_compress_builtin_dstlen_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path(
+            "tests/fixtures/parser/gz_compress_builtin_dstlen.prg",
+        ))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "C\n26\n0\nU\n-5\nC\nU\n");
+}
+
+#[test]
 fn run_command_executes_gz_compress_builtin_nresult_invalid_fixture_with_xbase_error_output() {
     let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
         .arg("run")
