@@ -17,6 +17,7 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | `0.4.0-alpha` | base de RDD, CLI/DX, regressão e tooling de release | concluída |
 | `0.5.0-alpha` | expansão curada de compatibilidade da fase 15, com crescimento focado do corpus avançado de PP | concluída |
 | `0.6.0-alpha` | fidelidade de runtime da fase 16, começando por builtins focados de runtime/biblioteca Harbour | concluída |
+| `0.7.0-alpha` | fidelidade de runtime da fase 16, com expansão de slices zlib e process-run | concluída |
 
 ## Panorama das Fases
 
@@ -38,18 +39,18 @@ Este roadmap organiza o Harbour Rust em marcos pequenos, cumulativos e verificá
 | 13 | marcadores avançados de pré-processador ancorados no oráculo | concluída |
 | 14 | expansão curada do corpus de compatibilidade | concluída |
 | 15 | expansão de compatibilidade pós-0.4 | primeiro slice de release concluído |
-| 16 | fidelidade de runtime pós-0.5 | primeiro slice de release concluído |
+| 16 | fidelidade de runtime pós-0.5 | segundo slice de release concluído |
 
 ## Prioridades de Curto Prazo
 
-Depois da release `0.6.0-alpha`, a próxima prioridade é continuar a fidelidade de runtime da fase 16 sem ampliar alegações de compatibilidade além de slices de runtime/biblioteca testados.
+Depois da release `0.7.0-alpha`, a próxima prioridade é continuar a fidelidade de runtime da fase 16 sem ampliar alegações de compatibilidade além de slices de runtime/biblioteca testados.
 
-O primeiro corredor entregue cobre:
+O corredor entregue em `0.7.0-alpha` cobre:
 
 1. o menor slice de `hb_JsonDecode` ancorado em oráculo que mapeia escalares, arrays e objetos JSON para o modelo atual de valores do runtime;
 2. documentação explícita dos edge cases JSON/valor ainda não suportados, sem sugerir cobertura completa da API Harbour;
-3. slices focados de `hb_gzCompressBound()` e `hb_gzCompress()` cobrindo saída direta, `@nResult`, `nDstBufLen` numérico e limites de compressão documentados;
-4. tratamento focado de exit status em `hb_processRun( cCommand )`, deixando captura, detach, ambiente e quoting para oráculos posteriores;
+3. slices focados de zlib cobrindo `hb_gzCompressBound()`, `hb_ZCompressBound()`, `hb_gzCompress()` com saída direta, `@nResult`, `nDstBufLen` numérico, writeback de buffer, `hb_ZError()` e limites de compressão documentados;
+4. tratamento focado de exit status em `hb_processRun( cCommand )` e captura de stdout em `hb_processRun( cCommand, NIL, @cStdOut )`, deixando stdin, stderr, detach, ambiente e quoting para oráculos posteriores;
 5. adiamento de sockets e threading até o runtime ter decisões explícitas de IO, ownership e concorrência multiplataforma.
 
 Prioridades secundárias permanecem:

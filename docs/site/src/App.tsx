@@ -19,7 +19,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const GITHUB_URL = 'https://github.com/arcostasi/harbour-rust';
 const RELEASES_URL = `${GITHUB_URL}/releases`;
-const CURRENT_RELEASE = '0.6.0-alpha';
+const CURRENT_RELEASE = '0.7.0-alpha';
 const CURRENT_RELEASE_URL = `${RELEASES_URL}/tag/${CURRENT_RELEASE}`;
 const DISCUSSIONS_URL = `${GITHUB_URL}/discussions`;
 const ISSUES_URL = `${GITHUB_URL}/issues`;
@@ -67,11 +67,11 @@ const translations = {
     sections: {
       statusTitle: 'Current baseline',
       statusIntro:
-        'The project has completed phases 0 through 16 and ships focused runtime-fidelity slices as 0.6.0-alpha.',
+        'The project has completed phases 0 through 16 and ships expanded runtime-fidelity slices as 0.7.0-alpha.',
       statusItems: [
         'Lexer, parser, HIR, semantic analysis, runtime, IR, and C code generation are implemented.',
         'Procedural compatibility, arrays, STATIC, memvars, codeblocks, and selected advanced preprocessor features are available.',
-        'Focused hb_JsonDecode(), hb_gzCompressBound(), hb_gzCompress(), and hb_processRun() runtime slices are tested and documented.',
+        'Focused hb_JsonDecode(), zlib-family, and hb_processRun() runtime slices are tested and documented, including hb_ZCompressBound(), hb_ZError(), destination-buffer writeback, and stdout capture.',
         'DBF/RDD support is present as an initial usable foundation.',
         'CLI, regression harnesses, benchmark smoke, fuzz scaffolding, release automation, and three-platform validation are in place.',
       ],
@@ -138,11 +138,11 @@ const translations = {
     sections: {
       statusTitle: 'Baseline atual',
       statusIntro:
-        'O projeto concluiu as fases 0 a 16 e publica slices focados de fidelidade de runtime como 0.6.0-alpha.',
+        'O projeto concluiu as fases 0 a 16 e publica slices ampliados de fidelidade de runtime como 0.7.0-alpha.',
       statusItems: [
         'Lexer, parser, HIR, análise semântica, runtime, IR e geração de código C estão implementados.',
         'Compatibilidade procedural, arrays, STATIC, memvars, codeblocks e recursos avançados selecionados do pré-processador já estão disponíveis.',
-        'Slices focados de runtime para hb_JsonDecode(), hb_gzCompressBound(), hb_gzCompress() e hb_processRun() estão testados e documentados.',
+        'Slices focados de runtime para hb_JsonDecode(), família zlib e hb_processRun() estão testados e documentados, incluindo hb_ZCompressBound(), hb_ZError(), writeback de buffer e captura de stdout.',
         'O suporte a DBF/RDD já existe como base inicial utilizável.',
         'CLI, harnesses de regressão, benchmark smoke, scaffold de fuzzing, automação de release e validação em três plataformas já estão configurados.',
       ],

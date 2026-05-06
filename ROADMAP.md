@@ -17,6 +17,7 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | `0.4.0-alpha` | RDD foundation, CLI/DX, regression and release tooling | completed |
 | `0.5.0-alpha` | curated phase 15 compatibility expansion, focused advanced PP corpus growth | completed |
 | `0.6.0-alpha` | phase 16 runtime fidelity, starting with focused Harbour runtime/library builtins | completed |
+| `0.7.0-alpha` | phase 16 runtime fidelity, expanded zlib and process-run slices | completed |
 
 ## Phase Snapshot
 
@@ -38,13 +39,13 @@ This roadmap organizes Harbour Rust into small, cumulative, verifiable milestone
 | 13 | oracle-backed advanced preprocessor markers | completed |
 | 14 | curated compatibility corpus expansion | completed |
 | 15 | post-0.4 compatibility expansion | first release slice completed |
-| 16 | post-0.5 runtime fidelity | first release slice completed |
+| 16 | post-0.5 runtime fidelity | second release slice completed |
 
 ## Near-Term Priorities
 
-After the `0.6.0-alpha` release, the next priority is to continue phase 16 runtime fidelity without widening compatibility claims beyond tested runtime/library slices.
+After the `0.7.0-alpha` release, the next priority is to continue phase 16 runtime fidelity without widening compatibility claims beyond tested runtime/library slices.
 
-The first delivered corridor covers:
+The delivered `0.7.0-alpha` corridor covers:
 
 1. the smallest oracle-backed `hb_JsonDecode` slice that maps JSON scalars, arrays, and objects into the current runtime value model;
 2. explicit documentation of unsupported JSON/value edge cases instead of implying full Harbour API coverage;
