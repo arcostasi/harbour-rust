@@ -51,6 +51,13 @@ Degrau adjacente agora entregue sobre a mesma família:
 - o segundo slot agora cobre também `@cBuffer` string prealocado: tamanho suficiente escreve a string comprimida no buffer e `@nResult := 0`; tamanho insuficiente preserva o buffer e escreve `@nResult := -5`;
 - nível explícito de compressão, paridade byte-a-byte com zlib upstream e semântica genérica de chamadas por referência continuam fora do recorte.
 
+Slice zlib adjacente entregue:
+
+- `hb_ZError( nError )` para códigos numéricos comuns do zlib;
+- `0` retorna string vazia, `-5` retorna `"buffer error"` e `-6` retorna `"incompatible version"` no baseline curado;
+- tipos não-numéricos e argumento ausente usam erro `BASE 3012 Argument error (HB_ZERROR)` no recorte atual;
+- integração com a biblioteca zlib do host e comportamento indefinido para códigos fora da tabela curada seguem fora do recorte.
+
 Slice seguinte já entregue no corredor de execução de processos:
 
 - `hb_processRun( cCommand )` na forma mínima de um argumento;

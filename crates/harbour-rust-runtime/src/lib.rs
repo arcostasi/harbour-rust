@@ -855,6 +855,7 @@ pub enum Builtin {
     HbGzCompress,
     HbProcessRun,
     HbJsonDecode,
+    HbZError,
     Type,
     Empty,
     SubStr,
@@ -922,6 +923,8 @@ impl Builtin {
             Some(Self::HbProcessRun)
         } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
             Some(Self::HbJsonDecode)
+        } else if name.eq_ignore_ascii_case("HB_ZERROR") {
+            Some(Self::HbZError)
         } else if name.eq_ignore_ascii_case("TYPE") {
             Some(Self::Type)
         } else if name.eq_ignore_ascii_case("EMPTY") {
@@ -1377,6 +1380,31 @@ pub fn hb_gzcompress_with_buffer(arguments: &mut [Value]) -> Result<Value, Runti
         *result = Value::from(result_code);
     }
     Ok(compressed)
+}
+
+pub fn hb_zerror(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::hb_zerror_argument_error(None));
+    };
+    let code = match value {
+        Value::Integer(code) => *code,
+        Value::Float(code) if code.raw().is_finite() => code.raw().trunc() as i64,
+        _ => {
+            return Err(RuntimeError::hb_zerror_argument_error(Some(value.kind())));
+        }
+    };
+    Ok(Value::from(match code {
+        2 => "need dictionary",
+        1 => "stream end",
+        0 => "",
+        -1 => "file error",
+        -2 => "stream error",
+        -3 => "data error",
+        -4 => "insufficient memory",
+        -5 => "buffer error",
+        -6 => "incompatible version",
+        _ => "",
+    }))
 }
 
 pub fn hb_jsondecode(value: Option<&Value>) -> Result<Value, RuntimeError> {
@@ -2003,6 +2031,7 @@ pub fn call_builtin(
         }
         Some(Builtin::HbProcessRun) => hb_processrun(arguments.first()),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
+        Some(Builtin::HbZError) => hb_zerror(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
@@ -2063,6 +2092,7 @@ pub fn call_builtin_mut(
         Some(Builtin::HbGzCompress) => hb_gzcompress_with_buffer(arguments),
         Some(Builtin::HbProcessRun) => hb_processrun_with_stdout(arguments),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
+        Some(Builtin::HbZError) => hb_zerror(arguments.first()),
         Some(Builtin::Type) => type_value(arguments.first()),
         Some(Builtin::Empty) => empty(arguments.first()),
         Some(Builtin::SubStr) => substr(arguments.first(), arguments.get(1), arguments.get(2)),
@@ -2445,6 +2475,14 @@ impl RuntimeError {
     pub fn hb_gzcompress_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 3012 Argument error (HB_GZCOMPRESS)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn hb_zerror_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 3012 Argument error (HB_ZERROR)".to_owned(),
             expected: None,
             actual,
         }
@@ -3195,9 +3233,9 @@ mod tests {
         HarbourString, OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs,
         aclone, asize, at, call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
         hb_gzcompress_with_buffer, hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode,
-        hb_processrun, hb_processrun_with_stdout, int, len, log_value, max_value, min_value,
-        mod_value, qout, replicate, round_value, sin_value, space, sqrt_value, str_value,
-        tan_value, type_value, val,
+        hb_processrun, hb_processrun_with_stdout, hb_zerror, int, len, log_value, max_value,
+        min_value, mod_value, qout, replicate, round_value, sin_value, space, sqrt_value,
+        str_value, tan_value, type_value, val,
     };
 
     #[test]
@@ -4686,6 +4724,40 @@ mod tests {
     }
 
     #[test]
+    fn hb_zerror_maps_the_current_zlib_error_slice() {
+        assert_eq!(hb_zerror(Some(&Value::from(0_i64))), Ok(Value::from("")));
+        assert_eq!(
+            hb_zerror(Some(&Value::from(-5_i64))),
+            Ok(Value::from("buffer error"))
+        );
+        assert_eq!(
+            hb_zerror(Some(&Value::from(-6_i64))),
+            Ok(Value::from("incompatible version"))
+        );
+        assert_eq!(hb_zerror(Some(&Value::from(99_i64))), Ok(Value::from("")));
+    }
+
+    #[test]
+    fn hb_zerror_reports_argument_errors_for_missing_or_invalid_input() {
+        assert_eq!(
+            hb_zerror(None),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_ZERROR)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            hb_zerror(Some(&Value::from(true))),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_ZERROR)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Logical),
+            })
+        );
+    }
+
+    #[test]
     fn hb_gzcompress_dispatches_through_the_builtin_surfaces() {
         let mut context = RuntimeContext::new();
 
@@ -4714,6 +4786,11 @@ mod tests {
         assert_eq!(compressed.as_bytes().len(), 26);
         assert_eq!(mutable_arguments[0], Value::from("abc"));
         assert_eq!(mutable_arguments[2], Value::from(0_i64));
+
+        assert_eq!(
+            call_builtin("HB_ZERROR", &[Value::from(-5_i64)], &mut context),
+            Ok(Value::from("buffer error"))
+        );
     }
 
     #[test]

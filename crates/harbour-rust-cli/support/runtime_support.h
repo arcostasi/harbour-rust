@@ -233,6 +233,10 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_buffer(
     struct harbour_runtime_Value *buffer,
     struct harbour_runtime_Value *nresult
 );
+struct harbour_runtime_Value harbour_builtin_hb_zerror(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+);
 struct harbour_runtime_Value harbour_builtin_type(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

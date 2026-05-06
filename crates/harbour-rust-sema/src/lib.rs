@@ -611,6 +611,7 @@ fn is_runtime_builtin(name: &str) -> bool {
         || name.eq_ignore_ascii_case("HB_GZCOMPRESS")
         || name.eq_ignore_ascii_case("HB_PROCESSRUN")
         || name.eq_ignore_ascii_case("HB_JSONDECODE")
+        || name.eq_ignore_ascii_case("HB_ZERROR")
         || name.eq_ignore_ascii_case("TYPE")
         || name.eq_ignore_ascii_case("EMPTY")
         || name.eq_ignore_ascii_case("SUBSTR")

@@ -124,8 +124,10 @@ Os primeiros fixtures já adicionados nessa linha incluem:
 - `tests/fixtures/parser/gz_compress_builtin_dstlen.prg`
 - `tests/fixtures/parser/gz_compress_builtin_nresult.prg`
 - `tests/fixtures/parser/gz_compress_builtin_nresult_invalid.prg`
+- `tests/fixtures/parser/zerror_builtin.prg`
 - `tests/fixtures/compat/gz_compress_runtime.prg`
 - `tests/fixtures/compat/gz_compress_nresult_runtime.prg`
+- `tests/fixtures/compat/zerror_runtime.prg`
 - `tests/fixtures/parser/process_run_builtin.prg`
 - `tests/fixtures/parser/process_run_builtin_invalid.prg`
 - `tests/fixtures/parser/process_run_stdout_builtin.prg`

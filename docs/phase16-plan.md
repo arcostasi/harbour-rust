@@ -69,6 +69,16 @@ Acceptance for this slice:
 - return `NIL`, preserve the current buffer value, and write `@nResult := -5` when the buffer is too small;
 - keep compression-level selection, zlib byte-for-byte parity, and generic by-reference call semantics out of scope.
 
+The next adjacent zlib slice now delivered is `hb_ZError`.
+
+Acceptance for this slice:
+
+- accept a numeric error code and return the stable message text for common zlib codes;
+- cover the observable empty-string result for `0` and selected negative error codes such as `-5` and `-6`;
+- report a focused argument error for missing or non-numeric input in the current runtime model;
+- cover runtime unit tests, public compiler/runtime execution, and a focused compatibility baseline tied to `hbzlib.c`;
+- keep host-zlib linkage and undefined out-of-table behavior out of scope.
+
 The first process-execution slice now delivered is minimal `hb_processRun`.
 
 Acceptance for this slice:
@@ -94,7 +104,7 @@ Acceptance for this slice:
 
 After `hb_JsonDecode`, the next candidates are:
 
-- the remaining `hb_gzCompress` surface, especially compression-level selection and zlib byte-for-byte parity, after the delivered bound, direct-output, `@nResult`, numeric `nDstBufLen`, and `@cBuffer` slices;
+- the remaining zlib surface, especially `hb_gzCompress` compression-level selection, zlib byte-for-byte parity, and APIs beyond the delivered `hb_ZError` table slice;
 - the remaining `hb_processRun` surface, especially stdin, stderr capture, merged streams, detach behavior, environment behavior, quoting, and platform differences.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.

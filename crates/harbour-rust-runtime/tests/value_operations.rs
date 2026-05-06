@@ -2,9 +2,9 @@ use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
     at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
     hb_gzcompress_with_buffer, hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode,
-    hb_processrun, hb_processrun_with_stdout, int, left, len, log_value, lower, ltrim, max_value,
-    min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space, sqrt_value,
-    str_value, substr, tan_value, trim, type_value, upper, val, valtype,
+    hb_processrun, hb_processrun_with_stdout, hb_zerror, int, left, len, log_value, lower, ltrim,
+    max_value, min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space,
+    sqrt_value, str_value, substr, tan_value, trim, type_value, upper, val, valtype,
 };
 
 #[test]
@@ -1712,6 +1712,39 @@ fn public_hb_gzcompress_with_buffer_writes_the_observable_buffer_slot() {
     );
     assert_eq!(len(Some(&small_arguments[1])), Ok(Value::from(25_i64)));
     assert_eq!(small_arguments[2], Value::from(-5_i64));
+}
+
+#[test]
+fn public_hb_zerror_maps_the_current_zlib_error_slice() {
+    assert_eq!(hb_zerror(Some(&Value::from(0_i64))), Ok(Value::from("")));
+    assert_eq!(
+        hb_zerror(Some(&Value::from(-5_i64))),
+        Ok(Value::from("buffer error"))
+    );
+    assert_eq!(
+        hb_zerror(Some(&Value::from(-6_i64))),
+        Ok(Value::from("incompatible version"))
+    );
+}
+
+#[test]
+fn public_hb_zerror_reports_xbase_style_argument_errors() {
+    assert_eq!(
+        hb_zerror(None),
+        Err(RuntimeError {
+            message: "BASE 3012 Argument error (HB_ZERROR)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        hb_zerror(Some(&Value::from(true))),
+        Err(RuntimeError {
+            message: "BASE 3012 Argument error (HB_ZERROR)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Logical),
+        })
+    );
 }
 
 #[test]

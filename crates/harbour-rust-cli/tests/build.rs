@@ -554,6 +554,28 @@ fn build_command_writes_c_output_for_gz_compress_builtin_buffer_fixture() {
 }
 
 #[test]
+fn build_command_writes_c_output_for_zerror_builtin_fixture() {
+    let temp_dir = unique_temp_dir("zerror-builtin");
+    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let output_path = temp_dir.join("zerror_builtin.c");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("build")
+        .arg(workspace_path("tests/fixtures/parser/zerror_builtin.prg"))
+        .arg("--out")
+        .arg(&output_path)
+        .status()
+        .expect("run cli");
+
+    assert!(status.success(), "expected successful build status");
+
+    let generated = fs::read_to_string(&output_path).expect("generated c output");
+    assert!(generated.contains("harbour_builtin_hb_zerror("));
+
+    fs::remove_dir_all(&temp_dir).expect("cleanup temp dir");
+}
+
+#[test]
 fn build_command_writes_c_output_for_json_decode_builtin_fixture() {
     let temp_dir = unique_temp_dir("json-decode-builtin");
     fs::create_dir_all(&temp_dir).expect("temp dir");
@@ -1695,6 +1717,20 @@ fn run_command_executes_gz_compress_builtin_buffer_fixture_with_expected_output(
 
     let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
     assert_eq!(stdout, "C\n26\n0\nC\n26\n");
+}
+
+#[test]
+fn run_command_executes_zerror_builtin_fixture_with_expected_output() {
+    let output = Command::new(env!("CARGO_BIN_EXE_harbour-rust-cli"))
+        .arg("run")
+        .arg(workspace_path("tests/fixtures/parser/zerror_builtin.prg"))
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success(), "expected successful run status");
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert_eq!(stdout, "\nbuffer error\nincompatible version\n");
 }
 
 #[test]

@@ -2200,6 +2200,48 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompress_with_buffer(
     return harbour_gzcompress_with_options(arguments, argument_count, nresult, buffer);
 }
 
+struct harbour_runtime_Value harbour_builtin_hb_zerror(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    long long code;
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_ZERROR)");
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_INTEGER) {
+        code = arguments[0].as.integer;
+    } else if (arguments[0].kind == HARBOUR_VALUE_FLOAT && isfinite(arguments[0].as.floating)) {
+        code = (long long) trunc(arguments[0].as.floating);
+    } else {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_ZERROR)");
+    }
+
+    switch (code) {
+        case 2:
+            return harbour_value_from_string_literal("need dictionary");
+        case 1:
+            return harbour_value_from_string_literal("stream end");
+        case 0:
+            return harbour_value_from_string_literal("");
+        case -1:
+            return harbour_value_from_string_literal("file error");
+        case -2:
+            return harbour_value_from_string_literal("stream error");
+        case -3:
+            return harbour_value_from_string_literal("data error");
+        case -4:
+            return harbour_value_from_string_literal("insufficient memory");
+        case -5:
+            return harbour_value_from_string_literal("buffer error");
+        case -6:
+            return harbour_value_from_string_literal("incompatible version");
+        default:
+            return harbour_value_from_string_literal("");
+    }
+}
+
 struct harbour_runtime_Value harbour_builtin_hb_jsondecode(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count
