@@ -1,0 +1,4 @@
+hb_ZCompressBound("abc") => 16
+hb_ZCompressBound(10) => 23
+hb_ZCompressBound(0) => 13
+hb_ZCompressBound(.T.) => BASE 3012 Argument error (HB_ZCOMPRESSBOUND)

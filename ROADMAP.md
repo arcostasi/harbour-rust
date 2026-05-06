@@ -48,7 +48,7 @@ The first delivered corridor covers:
 
 1. the smallest oracle-backed `hb_JsonDecode` slice that maps JSON scalars, arrays, and objects into the current runtime value model;
 2. explicit documentation of unsupported JSON/value edge cases instead of implying full Harbour API coverage;
-3. focused zlib-family slices covering `hb_gzCompressBound()`, `hb_gzCompress()` direct output, `@nResult`, numeric `nDstBufLen`, destination-buffer writeback, `hb_ZError()`, and documented compression limits;
+3. focused zlib-family slices covering `hb_gzCompressBound()`, `hb_ZCompressBound()`, `hb_gzCompress()` direct output, `@nResult`, numeric `nDstBufLen`, destination-buffer writeback, `hb_ZError()`, and documented compression limits;
 4. focused `hb_processRun( cCommand )` exit-status handling plus the adjacent `hb_processRun( cCommand, NIL, @cStdOut )` stdout-capture slice, with stdin, stderr, detach, environment, and quoting left for later oracles;
 5. deferred sockets and threading until the runtime has explicit cross-platform IO, ownership, and concurrency decisions.
 

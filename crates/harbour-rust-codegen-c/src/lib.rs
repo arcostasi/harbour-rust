@@ -92,6 +92,7 @@ enum RuntimeBuiltin {
     ValType,
     HbGzCompressBound,
     HbGzCompress,
+    HbZCompressBound,
     HbProcessRun,
     HbJsonDecode,
     HbZError,
@@ -158,6 +159,8 @@ impl RuntimeBuiltin {
             Some(Self::HbGzCompressBound)
         } else if name.eq_ignore_ascii_case("HB_GZCOMPRESS") {
             Some(Self::HbGzCompress)
+        } else if name.eq_ignore_ascii_case("HB_ZCOMPRESSBOUND") {
+            Some(Self::HbZCompressBound)
         } else if name.eq_ignore_ascii_case("HB_PROCESSRUN") {
             Some(Self::HbProcessRun)
         } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
@@ -229,6 +232,7 @@ impl RuntimeBuiltin {
             Self::ValType => "harbour_builtin_valtype",
             Self::HbGzCompressBound => "harbour_builtin_hb_gzcompressbound",
             Self::HbGzCompress => "harbour_builtin_hb_gzcompress",
+            Self::HbZCompressBound => "harbour_builtin_hb_zcompressbound",
             Self::HbProcessRun => "harbour_builtin_hb_processrun",
             Self::HbJsonDecode => "harbour_builtin_hb_jsondecode",
             Self::HbZError => "harbour_builtin_hb_zerror",
@@ -276,6 +280,7 @@ impl RuntimeBuiltin {
             Self::ValType => "ValType",
             Self::HbGzCompressBound => "hb_gzCompressBound",
             Self::HbGzCompress => "hb_gzCompress",
+            Self::HbZCompressBound => "hb_ZCompressBound",
             Self::HbProcessRun => "hb_processRun",
             Self::HbJsonDecode => "hb_JsonDecode",
             Self::HbZError => "hb_ZError",
@@ -528,6 +533,9 @@ impl Emitter {
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_hb_gzcompressbound(const harbour_runtime_Value *arguments, size_t argument_count);",
+        );
+        self.emit_line(
+            "extern harbour_runtime_Value harbour_builtin_hb_zcompressbound(const harbour_runtime_Value *arguments, size_t argument_count);",
         );
         self.emit_line(
             "extern harbour_runtime_Value harbour_builtin_hb_gzcompress(const harbour_runtime_Value *arguments, size_t argument_count);",

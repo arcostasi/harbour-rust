@@ -33,6 +33,13 @@ Primeiro slice adjacente já entregue na mesma família de runtime/library fidel
 - tipos inválidos continuam seguindo erro de argumentos no baseline atual;
 - `hb_gzCompress()` propriamente dito, buffers por referência e demais APIs zlib continuam fora do recorte atual.
 
+Slice adjacente de bound bruto zlib:
+
+- `hb_ZCompressBound( cData | nDataLen )` para string ou comprimento numérico direto;
+- retorno inteiro com a estimativa máxima de tamanho comprimido alinhada à fórmula observável do upstream sem o acréscimo gzip (`compressBound`);
+- tipos inválidos usam `BASE 3012 Argument error (HB_ZCOMPRESSBOUND)` no recorte atual;
+- compressão zlib bruta (`hb_ZCompress`) e descompressão seguem fora do recorte.
+
 Slice seguinte já entregue no mesmo corredor:
 
 - `hb_gzCompress( cData )` na forma mínima de um argumento;

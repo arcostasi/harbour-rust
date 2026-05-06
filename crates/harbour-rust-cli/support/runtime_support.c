@@ -2176,6 +2176,50 @@ struct harbour_runtime_Value harbour_builtin_hb_gzcompressbound(
     return harbour_value_from_integer((long long) bound);
 }
 
+struct harbour_runtime_Value harbour_builtin_hb_zcompressbound(
+    const struct harbour_runtime_Value *arguments,
+    size_t argument_count
+) {
+    unsigned long long source_length;
+    unsigned long long bound;
+
+    if (arguments == NULL || argument_count == 0) {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_ZCOMPRESSBOUND)");
+    }
+
+    if (arguments[0].kind == HARBOUR_VALUE_STRING) {
+        if (arguments[0].as.string.length > (size_t) LLONG_MAX) {
+            return harbour_value_error_literal("BASE 3012 Argument error (HB_ZCOMPRESSBOUND)");
+        }
+        source_length = (unsigned long long) arguments[0].as.string.length;
+    } else if (arguments[0].kind == HARBOUR_VALUE_INTEGER) {
+        if (arguments[0].as.integer < 0) {
+            return harbour_value_error_literal("BASE 3012 Argument error (HB_ZCOMPRESSBOUND)");
+        }
+        source_length = (unsigned long long) arguments[0].as.integer;
+    } else if (arguments[0].kind == HARBOUR_VALUE_FLOAT) {
+        double source_value = arguments[0].as.floating;
+
+        if (!isfinite(source_value) || source_value < 0.0 || source_value > (double) LLONG_MAX) {
+            return harbour_value_error_literal("BASE 3012 Argument error (HB_ZCOMPRESSBOUND)");
+        }
+        source_length = (unsigned long long) trunc(source_value);
+    } else {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_ZCOMPRESSBOUND)");
+    }
+
+    bound = source_length;
+    bound += source_length >> 12;
+    bound += source_length >> 14;
+    bound += source_length >> 25;
+    bound += 13;
+    if (bound > (unsigned long long) LLONG_MAX) {
+        return harbour_value_error_literal("BASE 3012 Argument error (HB_ZCOMPRESSBOUND)");
+    }
+
+    return harbour_value_from_integer((long long) bound);
+}
+
 struct harbour_runtime_Value harbour_builtin_hb_gzcompress(
     const struct harbour_runtime_Value *arguments,
     size_t argument_count

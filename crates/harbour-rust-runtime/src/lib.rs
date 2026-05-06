@@ -853,6 +853,7 @@ pub enum Builtin {
     ValType,
     HbGzCompressBound,
     HbGzCompress,
+    HbZCompressBound,
     HbProcessRun,
     HbJsonDecode,
     HbZError,
@@ -919,6 +920,8 @@ impl Builtin {
             Some(Self::HbGzCompressBound)
         } else if name.eq_ignore_ascii_case("HB_GZCOMPRESS") {
             Some(Self::HbGzCompress)
+        } else if name.eq_ignore_ascii_case("HB_ZCOMPRESSBOUND") {
+            Some(Self::HbZCompressBound)
         } else if name.eq_ignore_ascii_case("HB_PROCESSRUN") {
             Some(Self::HbProcessRun)
         } else if name.eq_ignore_ascii_case("HB_JSONDECODE") {
@@ -1276,6 +1279,14 @@ pub fn hb_gzcompressbound(value: Option<&Value>) -> Result<Value, RuntimeError> 
     Ok(Value::from(bound))
 }
 
+pub fn hb_zcompressbound(value: Option<&Value>) -> Result<Value, RuntimeError> {
+    let length = hb_zcompressbound_input_len(value)?;
+    let bound = zlib_compress_bound(length)
+        .and_then(|value| i64::try_from(value).ok())
+        .ok_or_else(|| RuntimeError::hb_zcompressbound_argument_error(value.map(Value::kind)))?;
+    Ok(Value::from(bound))
+}
+
 pub fn hb_gzcompress(value: Option<&Value>) -> Result<Value, RuntimeError> {
     let arguments = value.into_iter().collect::<Vec<_>>();
     hb_gzcompress_with_options(arguments.as_slice())
@@ -1576,12 +1587,43 @@ fn hb_gzcompressbound_input_len(value: Option<&Value>) -> Result<u128, RuntimeEr
     }
 }
 
+fn hb_zcompressbound_input_len(value: Option<&Value>) -> Result<u128, RuntimeError> {
+    let Some(value) = value else {
+        return Err(RuntimeError::hb_zcompressbound_argument_error(None));
+    };
+
+    match value {
+        Value::String(text) => Ok(text.len() as u128),
+        Value::Integer(length) if *length >= 0 => Ok(*length as u128),
+        Value::Float(length) => {
+            let length = length.raw();
+            if !length.is_finite() || length < 0.0 || length > i64::MAX as f64 {
+                return Err(RuntimeError::hb_zcompressbound_argument_error(Some(
+                    ValueKind::Float,
+                )));
+            }
+            Ok(length.trunc() as u128)
+        }
+        _ => Err(RuntimeError::hb_zcompressbound_argument_error(Some(
+            value.kind(),
+        ))),
+    }
+}
+
 fn gzip_compress_bound(length: u128) -> Option<u128> {
     length
         .checked_add(length >> 12)?
         .checked_add(length >> 14)?
         .checked_add(length >> 25)?
         .checked_add(25)
+}
+
+fn zlib_compress_bound(length: u128) -> Option<u128> {
+    length
+        .checked_add(length >> 12)?
+        .checked_add(length >> 14)?
+        .checked_add(length >> 25)?
+        .checked_add(13)
 }
 
 fn gzip_encode_stored(bytes: &[u8]) -> HarbourString {
@@ -2025,6 +2067,7 @@ pub fn call_builtin(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
+        Some(Builtin::HbZCompressBound) => hb_zcompressbound(arguments.first()),
         Some(Builtin::HbGzCompress) => {
             let argument_refs = arguments.iter().collect::<Vec<_>>();
             hb_gzcompress_with_options(argument_refs.as_slice())
@@ -2089,6 +2132,7 @@ pub fn call_builtin_mut(
         Some(Builtin::Val) => val(arguments.first()),
         Some(Builtin::ValType) => valtype(arguments.first()),
         Some(Builtin::HbGzCompressBound) => hb_gzcompressbound(arguments.first()),
+        Some(Builtin::HbZCompressBound) => hb_zcompressbound(arguments.first()),
         Some(Builtin::HbGzCompress) => hb_gzcompress_with_buffer(arguments),
         Some(Builtin::HbProcessRun) => hb_processrun_with_stdout(arguments),
         Some(Builtin::HbJsonDecode) => hb_jsondecode(arguments.first()),
@@ -2467,6 +2511,14 @@ impl RuntimeError {
     pub fn hb_gzcompressbound_argument_error(actual: Option<ValueKind>) -> Self {
         Self {
             message: "BASE 3012 Argument error (HB_GZCOMPRESSBOUND)".to_owned(),
+            expected: None,
+            actual,
+        }
+    }
+
+    pub fn hb_zcompressbound_argument_error(actual: Option<ValueKind>) -> Self {
+        Self {
+            message: "BASE 3012 Argument error (HB_ZCOMPRESSBOUND)".to_owned(),
             expected: None,
             actual,
         }
@@ -3233,9 +3285,9 @@ mod tests {
         HarbourString, OutputBuffer, RuntimeContext, RuntimeError, Value, ValueKind, aadd, abs,
         aclone, asize, at, call_builtin, call_builtin_mut, cos_value, exp_value, hb_gzcompress,
         hb_gzcompress_with_buffer, hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode,
-        hb_processrun, hb_processrun_with_stdout, hb_zerror, int, len, log_value, max_value,
-        min_value, mod_value, qout, replicate, round_value, sin_value, space, sqrt_value,
-        str_value, tan_value, type_value, val,
+        hb_processrun, hb_processrun_with_stdout, hb_zcompressbound, hb_zerror, int, len,
+        log_value, max_value, min_value, mod_value, qout, replicate, round_value, sin_value, space,
+        sqrt_value, str_value, tan_value, type_value, val,
     };
 
     #[test]
@@ -4573,6 +4625,22 @@ mod tests {
     }
 
     #[test]
+    fn hb_zcompressbound_matches_the_current_zlib_bound_formula() {
+        assert_eq!(
+            hb_zcompressbound(Some(&Value::from("abc"))),
+            Ok(Value::from(16_i64))
+        );
+        assert_eq!(
+            hb_zcompressbound(Some(&Value::from(10_i64))),
+            Ok(Value::from(23_i64))
+        );
+        assert_eq!(
+            hb_zcompressbound(Some(&Value::from(0_i64))),
+            Ok(Value::from(13_i64))
+        );
+    }
+
+    #[test]
     fn hb_gzcompressbound_reports_argument_errors_for_missing_or_invalid_input() {
         assert_eq!(
             hb_gzcompressbound(None),
@@ -4586,6 +4654,26 @@ mod tests {
             hb_gzcompressbound(Some(&Value::from(true))),
             Err(RuntimeError {
                 message: "BASE 3012 Argument error (HB_GZCOMPRESSBOUND)".to_owned(),
+                expected: None,
+                actual: Some(ValueKind::Logical),
+            })
+        );
+    }
+
+    #[test]
+    fn hb_zcompressbound_reports_argument_errors_for_missing_or_invalid_input() {
+        assert_eq!(
+            hb_zcompressbound(None),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_ZCOMPRESSBOUND)".to_owned(),
+                expected: None,
+                actual: None,
+            })
+        );
+        assert_eq!(
+            hb_zcompressbound(Some(&Value::from(true))),
+            Err(RuntimeError {
+                message: "BASE 3012 Argument error (HB_ZCOMPRESSBOUND)".to_owned(),
                 expected: None,
                 actual: Some(ValueKind::Logical),
             })
@@ -4607,6 +4695,11 @@ mod tests {
             Ok(Value::from(35_i64))
         );
         assert_eq!(mutable_arguments[0], Value::from(10_i64));
+
+        assert_eq!(
+            call_builtin("hb_zcompressbound", &[Value::from("abc")], &mut context),
+            Ok(Value::from(16_i64))
+        );
     }
 
     #[test]

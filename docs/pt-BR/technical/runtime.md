@@ -52,7 +52,7 @@ O runtime já suporta:
 - `Str()` em largura default agora está alinhado para números positivos grandes e para a escala visual de literais float no caminho executável em C; além disso, o padding com largura negativa explícita e o arredondamento guiado por largura também seguem o oráculo com comportamento half-away-from-zero.
 - saída executável de `Round()` com floats grandes agora preservada em decimal simples, sem colapsar para notação científica no caminho host C.
 - o comportamento executável orientado a tipos agora cobre `ValType()` sobre codeblocks e `Empty()` sobre codeblocks e valores de erro do host C com expectativas guiadas por oráculo.
-- slices focados da fase 16 em runtime/biblioteca agora cobrem `hb_JsonDecode()`, `hb_gzCompressBound()`, a superfície atual de `hb_gzCompress()` incluindo writeback de buffer de destino, `hb_ZError()`, `hb_processRun( cCommand )` e captura de stdout com `hb_processRun( cCommand, NIL, @cStdOut )`.
+- slices focados da fase 16 em runtime/biblioteca agora cobrem `hb_JsonDecode()`, `hb_gzCompressBound()`, `hb_ZCompressBound()`, a superfície atual de `hb_gzCompress()` incluindo writeback de buffer de destino, `hb_ZError()`, `hb_processRun( cCommand )` e captura de stdout com `hb_processRun( cCommand, NIL, @cStdOut )`.
 
 ## Limites Conhecidos
 

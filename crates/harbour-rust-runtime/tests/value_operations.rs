@@ -2,9 +2,10 @@ use harbour_rust_runtime::{
     OutputBuffer, RuntimeContext, RuntimeError, Value, aadd, abs, aclone, adel, ains, ascan, asize,
     at, call_builtin, call_builtin_mut, cos_value, empty, exp_value, hb_gzcompress,
     hb_gzcompress_with_buffer, hb_gzcompress_with_nresult, hb_gzcompressbound, hb_jsondecode,
-    hb_processrun, hb_processrun_with_stdout, hb_zerror, int, left, len, log_value, lower, ltrim,
-    max_value, min_value, mod_value, qout, replicate, right, round_value, rtrim, sin_value, space,
-    sqrt_value, str_value, substr, tan_value, trim, type_value, upper, val, valtype,
+    hb_processrun, hb_processrun_with_stdout, hb_zcompressbound, hb_zerror, int, left, len,
+    log_value, lower, ltrim, max_value, min_value, mod_value, qout, replicate, right, round_value,
+    rtrim, sin_value, space, sqrt_value, str_value, substr, tan_value, trim, type_value, upper,
+    val, valtype,
 };
 
 #[test]
@@ -1559,6 +1560,22 @@ fn public_hb_gzcompressbound_matches_the_current_zlib_bound_formula() {
 }
 
 #[test]
+fn public_hb_zcompressbound_matches_the_current_zlib_bound_formula() {
+    assert_eq!(
+        hb_zcompressbound(Some(&Value::from("abc"))),
+        Ok(Value::from(16_i64))
+    );
+    assert_eq!(
+        hb_zcompressbound(Some(&Value::from(10_i64))),
+        Ok(Value::from(23_i64))
+    );
+    assert_eq!(
+        hb_zcompressbound(Some(&Value::from(0_i64))),
+        Ok(Value::from(13_i64))
+    );
+}
+
+#[test]
 fn public_hb_gzcompressbound_reports_argument_errors_for_missing_or_invalid_input() {
     assert_eq!(
         hb_gzcompressbound(None),
@@ -1572,6 +1589,26 @@ fn public_hb_gzcompressbound_reports_argument_errors_for_missing_or_invalid_inpu
         hb_gzcompressbound(Some(&Value::from(true))),
         Err(RuntimeError {
             message: "BASE 3012 Argument error (HB_GZCOMPRESSBOUND)".to_owned(),
+            expected: None,
+            actual: Some(harbour_rust_runtime::ValueKind::Logical),
+        })
+    );
+}
+
+#[test]
+fn public_hb_zcompressbound_reports_argument_errors_for_missing_or_invalid_input() {
+    assert_eq!(
+        hb_zcompressbound(None),
+        Err(RuntimeError {
+            message: "BASE 3012 Argument error (HB_ZCOMPRESSBOUND)".to_owned(),
+            expected: None,
+            actual: None,
+        })
+    );
+    assert_eq!(
+        hb_zcompressbound(Some(&Value::from(true))),
+        Err(RuntimeError {
+            message: "BASE 3012 Argument error (HB_ZCOMPRESSBOUND)".to_owned(),
             expected: None,
             actual: Some(harbour_rust_runtime::ValueKind::Logical),
         })
@@ -1593,6 +1630,11 @@ fn public_hb_gzcompressbound_dispatches_through_builtin_surfaces() {
         Ok(Value::from(35_i64))
     );
     assert_eq!(mutable_arguments[0], Value::from(10_i64));
+
+    assert_eq!(
+        call_builtin("HB_ZCOMPRESSBOUND", &[Value::from("abc")], &mut context),
+        Ok(Value::from(16_i64))
+    );
 }
 
 #[test]

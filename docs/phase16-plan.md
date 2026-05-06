@@ -30,6 +30,16 @@ Acceptance for this slice:
 - exercise the runtime surface, the public compiler/codegen path, and a focused compatibility baseline;
 - keep full `hb_gzCompress` output semantics explicitly out of scope for this step.
 
+The adjacent raw-zlib bound slice now delivered is `hb_ZCompressBound`.
+
+Acceptance for this slice:
+
+- accept either source text or a numeric source length;
+- return the raw zlib maximum compressed-size estimate without the gzip header adjustment;
+- report argument errors for unsupported types;
+- exercise the runtime surface, the public compiler/codegen path, and a focused compatibility baseline;
+- keep raw `hb_ZCompress` and decompression APIs out of scope.
+
 The next delivered slice in the same corridor is the minimal one-argument `hb_gzCompress`.
 
 Acceptance for this slice:
@@ -104,7 +114,7 @@ Acceptance for this slice:
 
 After `hb_JsonDecode`, the next candidates are:
 
-- the remaining zlib surface, especially `hb_gzCompress` compression-level selection, zlib byte-for-byte parity, and APIs beyond the delivered `hb_ZError` table slice;
+- the remaining zlib surface, especially raw `hb_ZCompress`, decompression APIs, `hb_gzCompress` compression-level selection, zlib byte-for-byte parity, and APIs beyond the delivered `hb_ZCompressBound`/`hb_ZError` slices;
 - the remaining `hb_processRun` surface, especially stdin, stderr capture, merged streams, detach behavior, environment behavior, quoting, and platform differences.
 
 These should be implemented one focused fixture group at a time. They should not become broad rewrites of the runtime surface.
